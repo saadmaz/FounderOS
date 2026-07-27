@@ -21,6 +21,17 @@ LOOKUPS = {
     "Time Categories": ["Deep Work", "Shallow Work", "Meeting", "Admin", "Learning"],
     "Billable": ["Yes", "No"],
     "Employee Status": ["Active", "Inactive", "On Leave"],
+    "Expense Categories": ["Software & Tools", "Payroll", "Contractors", "Marketing",
+                            "Travel", "Office & Supplies", "Legal & Professional",
+                            "Rent & Utilities", "Equipment", "Shipping & Fulfillment",
+                            "Materials & Inventory", "Bank & Payment Fees", "Taxes", "Other"],
+    "Revenue Categories": ["Product Sales", "Subscription Revenue", "Service Revenue",
+                            "Consulting", "Licensing", "Interest Income", "Other Income"],
+    "Payment Methods": ["Bank Transfer", "Credit Card", "Debit Card", "Cash",
+                         "PayPal", "Stripe", "Check", "Wire Transfer"],
+    "Approval Status": ["Pending", "Approved", "Rejected"],
+    "Payment Status": ["Unpaid", "Paid", "Partially Paid", "Overdue"],
+    "Invoice Status": ["Draft", "Sent", "Paid", "Overdue", "Cancelled"],
 }
 
 # ---- Employees ------------------------------------------------------------
@@ -117,4 +128,108 @@ TIME_LOG = [
     (13, "Omar Siddiqui", date(2026, 7, 10), "09:00", "12:00", 0, "Yes", "Deep Work", "Search filters"),
     (16, "Humayra Shajahan", date(2026, 5, 20), "09:00", "11:00", 0, "No", "Meeting", "Parent interviews batch 1"),
     (17, "Humayra Shajahan", date(2026, 7, 5), "09:00", "11:30", 15, "No", "Meeting", "Tutor interviews batch 1"),
+]
+
+# ---- Vendors ----------------------------------------------------------------
+# (Name, Category, Contact Name, Email, Phone, Payment Terms, Notes)
+VENDORS = [
+    ("AWS", "Software & Tools", "-", "billing@aws.amazon.com", "-", "Net 30", "Cloud hosting for Nimbus Analytics"),
+    ("Figma", "Software & Tools", "-", "billing@figma.com", "-", "Net 15", "Design tooling"),
+    ("Ceramics Supply Co", "Materials & Inventory", "Tom Reyes", "sales@ceramicsupply.com", "+44 161 555 0110", "Net 30", "Glaze & clay materials for Kiln & Co"),
+    ("Meta Ads", "Marketing", "-", "support@meta.com", "-", "Due on receipt", "Paid social campaigns"),
+    ("WeWork", "Rent & Utilities", "-", "billing@wework.com", "-", "Net 15", "Shared office space"),
+    ("Upwork Contractor - J. Lee", "Contractors", "Jamie Lee", "jamie.lee@example.com", "-", "Net 15", "Freelance dev support"),
+]
+
+# ---- Expenses -----------------------------------------------------------------
+# (company_id, project_index or None, category, vendor, date, amount, currency, tax,
+#  payment_method, paid_by, reimbursable, reimbursed, reimb_date, approval, payment_status,
+#  receipt_link, notes)
+EXPENSES = [
+    ("COMP-0001", 1, "Software & Tools", "AWS", date(2026, 7, 1), 640.00, "USD", 0.00,
+     "Credit Card", "Nimbus Analytics", "No", "No", None, "Approved", "Paid",
+     "https://drive.google.com/file/d/aws-jul-invoice", "Monthly cloud hosting"),
+    ("COMP-0001", None, "Software & Tools", "Figma", date(2026, 7, 3), 45.00, "USD", 0.00,
+     "Credit Card", "Nimbus Analytics", "No", "No", None, "Approved", "Paid",
+     "https://drive.google.com/file/d/figma-jul-invoice", "Design seats"),
+    ("COMP-0001", 2, "Contractors", "Upwork Contractor - J. Lee", date(2026, 7, 12), 1200.00, "USD", 0.00,
+     "Bank Transfer", "Nimbus Analytics", "No", "No", None, "Approved", "Paid",
+     "", "Onboarding flow contractor sprint"),
+    ("COMP-0001", None, "Rent & Utilities", "WeWork", date(2026, 7, 1), 450.00, "USD", 0.00,
+     "Bank Transfer", "Nimbus Analytics", "No", "No", None, "Approved", "Paid",
+     "", "Monthly desk membership"),
+    ("COMP-0001", 3, "Legal & Professional", "-", date(2026, 6, 20), 850.00, "USD", 0.00,
+     "Bank Transfer", "Humayra Shajahan", "Yes", "No", None, "Approved", "Unpaid",
+     "", "SOC 2 readiness consultation"),
+    ("COMP-0001", None, "Travel", "-", date(2026, 6, 5), 312.40, "USD", 0.00,
+     "Credit Card", "Humayra Shajahan", "Yes", "Yes", date(2026, 6, 20), "Approved", "Paid",
+     "https://drive.google.com/file/d/travel-receipt-1", "Investor meeting flight"),
+    ("COMP-0002", 4, "Materials & Inventory", "Ceramics Supply Co", date(2026, 7, 2), 2140.00, "GBP", 0.00,
+     "Wire Transfer", "Kiln & Co", "No", "No", None, "Approved", "Paid",
+     "https://drive.google.com/file/d/ceramics-jul", "Glaze restock for winter line"),
+    ("COMP-0002", 4, "Marketing", "Meta Ads", date(2026, 7, 8), 600.00, "GBP", 0.00,
+     "Credit Card", "Kiln & Co", "No", "No", None, "Approved", "Paid",
+     "", "Lookbook boost campaign"),
+    ("COMP-0002", None, "Shipping & Fulfillment", "-", date(2026, 7, 10), 380.75, "GBP", 0.00,
+     "Debit Card", "Nadia Farooq", "Yes", "No", None, "Pending", "Unpaid",
+     "https://drive.google.com/file/d/shipping-receipt-1", "Courier costs for wholesale batch"),
+    ("COMP-0002", 5, "Equipment", "-", date(2026, 6, 28), 1450.00, "GBP", 0.00,
+     "Bank Transfer", "Kiln & Co", "No", "No", None, "Approved", "Paid",
+     "", "Conveyor sensor for pick/pack pilot"),
+    ("COMP-0002", None, "Office & Supplies", "-", date(2026, 7, 14), 96.20, "GBP", 0.00,
+     "Debit Card", "Nadia Farooq", "Yes", "Yes", date(2026, 7, 22), "Approved", "Paid",
+     "", "Packaging samples"),
+    ("COMP-0003", 6, "Contractors", "Upwork Contractor - J. Lee", date(2026, 7, 5), 900.00, "USD", 0.00,
+     "Bank Transfer", "Pathlight Tutors", "No", "No", None, "Approved", "Paid",
+     "", "Background-check API integration"),
+    ("COMP-0003", None, "Legal & Professional", "-", date(2026, 6, 10), 500.00, "USD", 0.00,
+     "Bank Transfer", "Humayra Shajahan", "Yes", "No", None, "Pending", "Unpaid",
+     "", "Marketplace terms of service draft"),
+    ("COMP-0003", None, "Software & Tools", "-", date(2026, 7, 1), 29.00, "USD", 0.00,
+     "Credit Card", "Pathlight Tutors", "No", "No", None, "Approved", "Paid",
+     "", "Survey tooling for parent interviews"),
+]
+
+# ---- Revenue --------------------------------------------------------------
+# (company_id, project_index or None, client, category, date, amount, currency,
+#  payment_status, invoice_index or None, notes)
+REVENUE = [
+    ("COMP-0001", None, "Beacon Retail Group", "Subscription Revenue", date(2026, 5, 1), 4200.00, "USD", "Paid", 1, "May subscription"),
+    ("COMP-0001", None, "Beacon Retail Group", "Subscription Revenue", date(2026, 6, 1), 4200.00, "USD", "Paid", 2, "June subscription"),
+    ("COMP-0001", None, "Beacon Retail Group", "Subscription Revenue", date(2026, 7, 1), 4600.00, "USD", "Paid", 3, "July subscription, seat upgrade"),
+    ("COMP-0001", None, "Harlow & Finch", "Subscription Revenue", date(2026, 6, 1), 1800.00, "USD", "Paid", 4, "June subscription"),
+    ("COMP-0001", None, "Harlow & Finch", "Subscription Revenue", date(2026, 7, 1), 1800.00, "USD", "Paid", 5, "July subscription"),
+    ("COMP-0001", 1, "Vantage Point Capital", "Consulting", date(2026, 7, 15), 3000.00, "USD", "Unpaid", 6, "Custom dashboard consulting engagement"),
+    ("COMP-0002", None, "Direct-to-Consumer Store", "Product Sales", date(2026, 6, 5), 3120.50, "GBP", "Paid", None, "Online store, May batch"),
+    ("COMP-0002", None, "Direct-to-Consumer Store", "Product Sales", date(2026, 7, 5), 4580.25, "GBP", "Paid", None, "Online store, June batch"),
+    ("COMP-0002", None, "The Nook Homeware", "Product Sales", date(2026, 6, 18), 1250.00, "GBP", "Paid", 7, "Wholesale order #1"),
+    ("COMP-0002", None, "The Nook Homeware", "Product Sales", date(2026, 7, 20), 1875.00, "GBP", "Unpaid", 8, "Wholesale order #2"),
+    ("COMP-0003", 7, "Riverside Family Co-op", "Service Revenue", date(2026, 7, 10), 450.00, "USD", "Paid", None, "Pilot tutoring sessions"),
+]
+
+# ---- Invoices -----------------------------------------------------------------
+# (company_id, client, currency, amount, issue_date, due_date, status, paid_date, notes)
+INVOICES = [
+    ("COMP-0001", "Beacon Retail Group", "USD", 4200.00, date(2026, 5, 1), date(2026, 5, 15), "Paid", date(2026, 5, 10), "May subscription invoice"),
+    ("COMP-0001", "Beacon Retail Group", "USD", 4200.00, date(2026, 6, 1), date(2026, 6, 15), "Paid", date(2026, 6, 12), "June subscription invoice"),
+    ("COMP-0001", "Beacon Retail Group", "USD", 4600.00, date(2026, 7, 1), date(2026, 7, 15), "Paid", date(2026, 7, 9), "July subscription invoice"),
+    ("COMP-0001", "Harlow & Finch", "USD", 1800.00, date(2026, 6, 1), date(2026, 6, 15), "Paid", date(2026, 6, 14), "June subscription invoice"),
+    ("COMP-0001", "Harlow & Finch", "USD", 1800.00, date(2026, 7, 1), date(2026, 7, 15), "Paid", date(2026, 7, 11), "July subscription invoice"),
+    ("COMP-0001", "Vantage Point Capital", "USD", 3000.00, date(2026, 7, 15), date(2026, 8, 14), "Sent", None, "Consulting engagement, net 30"),
+    ("COMP-0002", "The Nook Homeware", "GBP", 1250.00, date(2026, 6, 18), date(2026, 7, 2), "Paid", date(2026, 6, 30), "Wholesale order #1"),
+    ("COMP-0002", "The Nook Homeware", "GBP", 1875.00, date(2026, 7, 20), date(2026, 8, 3), "Sent", None, "Wholesale order #2"),
+]
+
+# ---- Budgets --------------------------------------------------------------------
+# (company_id, category, month, budgeted_amount)
+BUDGETS = [
+    ("COMP-0001", "Software & Tools", date(2026, 7, 1), 800.00),
+    ("COMP-0001", "Contractors", date(2026, 7, 1), 1500.00),
+    ("COMP-0001", "Rent & Utilities", date(2026, 7, 1), 500.00),
+    ("COMP-0002", "Materials & Inventory", date(2026, 7, 1), 2500.00),
+    ("COMP-0002", "Marketing", date(2026, 7, 1), 800.00),
+    ("COMP-0002", "Shipping & Fulfillment", date(2026, 7, 1), 500.00),
+    ("COMP-0003", "Contractors", date(2026, 7, 1), 1000.00),
+    ("COMP-0003", "Legal & Professional", date(2026, 7, 1), 600.00),
+    ("COMP-0003", "Software & Tools", date(2026, 7, 1), 100.00),
 ]

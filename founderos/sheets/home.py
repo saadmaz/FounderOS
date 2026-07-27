@@ -10,25 +10,39 @@ from .. import styles
 from ..seed_data import COMPANIES
 from . import companies as companies_mod
 
-NAV_TARGETS = [
+NAV_ROW_1 = [
     ("🏢 Companies", "Companies", styles.MODULE_COLORS["companies"]),
     ("📁 Projects", "Projects", styles.MODULE_COLORS["projects"]),
     ("✅ Tasks", "Tasks", styles.MODULE_COLORS["tasks"]),
     ("⏱️ Time Log", "Time_Log", styles.MODULE_COLORS["time"]),
     ("🧑‍💼 Employees", "Employees", styles.MODULE_COLORS["employees"]),
+]
+NAV_ROW_2 = [
+    ("💰 Finance", "Finance", styles.ACCENT_TEAL),
+    ("🧾 Expenses", "Expenses", styles.MODULE_COLORS["tasks"]),
+    ("📄 Invoices", "Invoices", styles.ACCENT_PURPLE),
+    ("📊 Budgets", "Budgets", styles.ACCENT_AMBER),
     ("⚙️ Lookups", "Lookups", styles.MODULE_COLORS["lookups"]),
 ]
+# kept for any external import expecting the old flat name
+NAV_TARGETS = NAV_ROW_1 + NAV_ROW_2
 
 KPI_CARDS = [
-    ("Total Companies", '=COUNTA(Tbl_Companies[Company ID])', "companies"),
-    ("Active Companies", '=COUNTIF(Tbl_Companies[Status],"Active")', "companies"),
-    ("Total Projects", '=COUNTA(Tbl_Projects[Project ID])', "projects"),
-    ("Active Projects", '=COUNTIFS(Tbl_Projects[Status],"<>Completed",Tbl_Projects[Status],"<>Cancelled")', "projects"),
-    ("Open Tasks", '=COUNTIFS(Tbl_Tasks[Status],"<>Completed",Tbl_Tasks[Status],"<>Cancelled")', "tasks"),
-    ("Overdue Tasks", '=COUNTIFS(Tbl_Tasks[Due Date],"<"&TODAY(),Tbl_Tasks[Status],"<>Completed",Tbl_Tasks[Status],"<>Cancelled")', "tasks"),
-    ("Due This Week", '=COUNTIFS(Tbl_Tasks[Due Date],">="&TODAY(),Tbl_Tasks[Due Date],"<="&(TODAY()+7),Tbl_Tasks[Status],"<>Completed",Tbl_Tasks[Status],"<>Cancelled")', "tasks"),
-    ("Hours Logged (This Month)", '=ROUND(SUMIFS(Tbl_TimeLog[Total Hours],Tbl_TimeLog[Date],">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1)),1)', "time"),
-    ("Total Hours Logged", '=ROUND(SUM(Tbl_TimeLog[Total Hours]),1)', "time"),
+    ("Total Companies", '=COUNTA(Tbl_Companies[Company ID])', "companies", "0"),
+    ("Active Companies", '=COUNTIF(Tbl_Companies[Status],"Active")', "companies", "0"),
+    ("Total Projects", '=COUNTA(Tbl_Projects[Project ID])', "projects", "0"),
+    ("Active Projects", '=COUNTIFS(Tbl_Projects[Status],"<>Completed",Tbl_Projects[Status],"<>Cancelled")', "projects", "0"),
+    ("Open Tasks", '=COUNTIFS(Tbl_Tasks[Status],"<>Completed",Tbl_Tasks[Status],"<>Cancelled")', "tasks", "0"),
+    ("Overdue Tasks", '=COUNTIFS(Tbl_Tasks[Due Date],"<"&TODAY(),Tbl_Tasks[Status],"<>Completed",Tbl_Tasks[Status],"<>Cancelled")', "tasks", "0"),
+    ("Due This Week", '=COUNTIFS(Tbl_Tasks[Due Date],">="&TODAY(),Tbl_Tasks[Due Date],"<="&(TODAY()+7),Tbl_Tasks[Status],"<>Completed",Tbl_Tasks[Status],"<>Cancelled")', "tasks", "0"),
+    ("Hours Logged (This Month)", '=ROUND(SUMIFS(Tbl_TimeLog[Total Hours],Tbl_TimeLog[Date],">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1)),1)', "time", "0"),
+    ("Total Hours Logged", '=ROUND(SUM(Tbl_TimeLog[Total Hours]),1)', "time", "0"),
+]
+
+FINANCE_KPI_CARDS = [
+    ("Total Revenue", '=ROUND(SUM(Tbl_Revenue[Amount]),0)', "companies", "#,##0"),
+    ("Total Expenses", '=ROUND(SUM(Tbl_Expenses[Total]),0)', "tasks", "#,##0"),
+    ("Net Profit", '=ROUND(SUM(Tbl_Revenue[Amount])-SUM(Tbl_Expenses[Total]),0)', "time", "#,##0"),
 ]
 
 SNAPSHOT_MAX_ROWS = 25
@@ -89,29 +103,41 @@ def build(wb):
     sub.font = styles.body_font(color=styles.GRAY, italic=True, size=9)
     ws.row_dimensions[5].height = 16
 
-    # Navigation
+    # Navigation - two rows: Operations, then Finance/System
     nav_row = 7
     ws.cell(row=nav_row, column=2, value="NAVIGATE").font = Font(name=styles.FONT_NAME, size=9, bold=True, color=styles.GRAY)
     nav_row += 1
-    col = 2
     span = 2
-    for label, target, color in NAV_TARGETS:
-        _button(ws, nav_row, col, span, label, target, color)
-        col += span + 1
+    for nav_group in (NAV_ROW_1, NAV_ROW_2):
+        col = 2
+        for label, target, color in nav_group:
+            _button(ws, nav_row, col, span, label, target, color)
+            col += span + 1
+        nav_row += 2
 
     # KPI cards
-    kpi_row = nav_row + 2
+    kpi_row = nav_row + 1
     ws.cell(row=kpi_row, column=2, value="KEY METRICS").font = Font(name=styles.FONT_NAME, size=9, bold=True, color=styles.GRAY)
     kpi_row += 1
     col = 2
     per_row = 3
     row_cursor = kpi_row
-    for i, (label, formula, module_key) in enumerate(KPI_CARDS):
-        _kpi_card(ws, row_cursor, col, label, formula, styles.MODULE_COLORS[module_key])
+    for i, (label, formula, module_key, numfmt) in enumerate(KPI_CARDS):
+        _kpi_card(ws, row_cursor, col, label, formula, styles.MODULE_COLORS[module_key], number_format=numfmt)
         col += 3
         if (i + 1) % per_row == 0:
             col = 2
             row_cursor += 4
+
+    # Finance snapshot cards
+    fin_row = row_cursor + 1
+    ws.cell(row=fin_row, column=2, value="FINANCE AT A GLANCE").font = Font(name=styles.FONT_NAME, size=9, bold=True, color=styles.GRAY)
+    fin_row += 1
+    col = 2
+    for label, formula, module_key, numfmt in FINANCE_KPI_CARDS:
+        _kpi_card(ws, fin_row, col, label, formula, styles.MODULE_COLORS[module_key], number_format=numfmt)
+        col += 3
+    row_cursor = fin_row + 4
 
     # Company snapshot panel
     snap_header_row = row_cursor + 1
@@ -119,8 +145,9 @@ def build(wb):
         name=styles.FONT_NAME, size=9, bold=True, color=styles.GRAY)
     snap_header_row += 1
 
-    headers = ["Company", "Status", "Stage", "Employees", "Projects", "Open Tasks", "Hours Logged"]
-    widths = [22, 12, 14, 11, 10, 11, 13]
+    headers = ["Company", "Status", "Stage", "Employees", "Projects", "Open Tasks",
+               "Hours Logged", "Revenue", "Expenses", "Profit"]
+    widths = [22, 12, 14, 11, 10, 11, 13, 13, 13, 12]
     for i, h in enumerate(headers):
         cell = ws.cell(row=snap_header_row, column=2 + i, value=h)
         ws.column_dimensions[get_column_letter(2 + i)].width = widths[i]
@@ -128,7 +155,8 @@ def build(wb):
 
     comp_idx = {name: i for i, (name, _) in enumerate(companies_mod.COLUMNS)}
     comp_r0 = 4  # Companies!FIRST_DATA_ROW
-    src_cols = ["Company Name", "Status", "Stage", "Employees", "Total Projects", "Open Tasks", "Hours Logged"]
+    src_cols = ["Company Name", "Status", "Stage", "Employees", "Total Projects", "Open Tasks",
+                "Hours Logged", "Total Revenue", "Total Expenses", "Total Profit"]
 
     for k in range(1, SNAPSHOT_MAX_ROWS + 1):
         r = snap_header_row + k
@@ -144,6 +172,8 @@ def build(wb):
             cell.border = styles.THIN_BORDER
             if field == "Hours Logged":
                 cell.number_format = "0.0"
+            if field in ("Total Revenue", "Total Expenses", "Total Profit"):
+                cell.number_format = "#,##0.00"
 
     last_snap_row = snap_header_row + SNAPSHOT_MAX_ROWS
     ws.freeze_panes = "B8"
@@ -166,6 +196,6 @@ def build(wb):
     chart.add_data(data, titles_from_data=True)
     chart.set_categories(cats)
     chart.legend = None
-    ws.add_chart(chart, f"K{snap_header_row}")
+    ws.add_chart(chart, f"M{snap_header_row}")
 
     return ws

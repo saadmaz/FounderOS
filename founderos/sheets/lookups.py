@@ -14,7 +14,8 @@ from ..seed_data import LOOKUPS
 LIST_ORDER = [
     "Departments", "Priority Levels", "Statuses", "Company Status",
     "Company Stage", "Task Types", "Currencies", "Time Categories", "Billable",
-    "Employee Status",
+    "Employee Status", "Expense Categories", "Revenue Categories", "Payment Methods",
+    "Approval Status", "Payment Status", "Invoice Status",
 ]
 
 HEADER_ROW = 3
@@ -33,6 +34,12 @@ NAME_MAP = {
     "Time Categories": "List_TimeCategories",
     "Billable": "List_Billable",
     "Employee Status": "List_EmployeeStatus",
+    "Expense Categories": "List_ExpenseCategories",
+    "Revenue Categories": "List_RevenueCategories",
+    "Payment Methods": "List_PaymentMethods",
+    "Approval Status": "List_ApprovalStatus",
+    "Payment Status": "List_PaymentStatus",
+    "Invoice Status": "List_InvoiceStatus",
 }
 
 

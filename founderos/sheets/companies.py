@@ -19,7 +19,10 @@ COLUMNS = [
     ("Country", 12), ("Currency", 10), ("Founder", 18), ("Status", 12),
     ("Date Started", 13), ("Stage", 14), ("Employees", 11), ("Total Projects", 13),
     ("Active Projects", 13), ("Open Tasks", 11), ("Completed Tasks", 14),
-    ("Hours Logged", 12), ("Notes", 30),
+    ("Hours Logged", 12), ("Total Revenue", 13), ("Total Expenses", 13),
+    ("Total Profit", 12), ("Profit Margin", 12), ("Monthly Revenue", 14),
+    ("Monthly Expenses", 15), ("Monthly Profit", 13), ("Revenue / Hour", 13),
+    ("Outstanding Reimbursements", 17), ("Notes", 30),
 ]
 
 FIRST_COL = 2  # column B
@@ -78,6 +81,50 @@ def build(wb):
         hrs = ws.cell(row=r, column=FIRST_COL + idx["Hours Logged"],
                        value=f'=ROUND(SUMIFS(Tbl_TimeLog[Total Hours],Tbl_TimeLog[Company],{name_ref}),1)')
         hrs.number_format = "0.0"
+
+        # Finance KPIs - all derived from Tbl_Revenue / Tbl_Expenses, nothing typed.
+        rev_cell = ws.cell(row=r, column=FIRST_COL + idx["Total Revenue"],
+                            value=f'=ROUND(SUMIFS(Tbl_Revenue[Amount],Tbl_Revenue[Company],{name_ref}),2)')
+        rev_cell.number_format = "#,##0.00"
+        exp_cell = ws.cell(row=r, column=FIRST_COL + idx["Total Expenses"],
+                            value=f'=ROUND(SUMIFS(Tbl_Expenses[Total],Tbl_Expenses[Company],{name_ref}),2)')
+        exp_cell.number_format = "#,##0.00"
+        rev_ref = f"{col_letter(idx['Total Revenue'])}{r}"
+        exp_ref = f"{col_letter(idx['Total Expenses'])}{r}"
+        profit_cell = ws.cell(row=r, column=FIRST_COL + idx["Total Profit"],
+                               value=f'=ROUND({rev_ref}-{exp_ref},2)')
+        profit_cell.number_format = "#,##0.00"
+        profit_ref = f"{col_letter(idx['Total Profit'])}{r}"
+        margin_cell = ws.cell(row=r, column=FIRST_COL + idx["Profit Margin"],
+                               value=f'=IF({rev_ref}=0,0,{profit_ref}/{rev_ref})')
+        margin_cell.number_format = "0%"
+
+        mrev_cell = ws.cell(
+            row=r, column=FIRST_COL + idx["Monthly Revenue"],
+            value=(f'=ROUND(SUMIFS(Tbl_Revenue[Amount],Tbl_Revenue[Company],{name_ref},'
+                   f'Tbl_Revenue[Date],">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1)),2)'))
+        mrev_cell.number_format = "#,##0.00"
+        mexp_cell = ws.cell(
+            row=r, column=FIRST_COL + idx["Monthly Expenses"],
+            value=(f'=ROUND(SUMIFS(Tbl_Expenses[Total],Tbl_Expenses[Company],{name_ref},'
+                   f'Tbl_Expenses[Date],">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1)),2)'))
+        mexp_cell.number_format = "#,##0.00"
+        mrev_ref = f"{col_letter(idx['Monthly Revenue'])}{r}"
+        mexp_ref = f"{col_letter(idx['Monthly Expenses'])}{r}"
+        mprofit_cell = ws.cell(row=r, column=FIRST_COL + idx["Monthly Profit"],
+                                value=f'=ROUND({mrev_ref}-{mexp_ref},2)')
+        mprofit_cell.number_format = "#,##0.00"
+
+        hrs_ref = f"{col_letter(idx['Hours Logged'])}{r}"
+        rph_cell = ws.cell(row=r, column=FIRST_COL + idx["Revenue / Hour"],
+                            value=f'=IF({hrs_ref}=0,0,ROUND({rev_ref}/{hrs_ref},2))')
+        rph_cell.number_format = "#,##0.00"
+
+        outstanding_cell = ws.cell(
+            row=r, column=FIRST_COL + idx["Outstanding Reimbursements"],
+            value=(f'=ROUND(SUMIFS(Tbl_Expenses[Total],Tbl_Expenses[Company],{name_ref},'
+                   f'Tbl_Expenses[Reimbursable],"Yes",Tbl_Expenses[Reimbursed],"No"),2)'))
+        outstanding_cell.number_format = "#,##0.00"
 
         for c in range(FIRST_COL, FIRST_COL + len(COLUMNS)):
             ws.cell(row=r, column=c).font = styles.body_font()
