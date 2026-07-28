@@ -8,11 +8,13 @@
 process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
 process.env.FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099";
 
-import admin from "firebase-admin";
+import { initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 
-admin.initializeApp({ projectId: "demo-founderos" });
-const auth = admin.auth();
-const db = admin.firestore();
+initializeApp({ projectId: "demo-founderos" });
+const auth = getAuth();
+const db = getFirestore();
 
 const DEMO_EMAIL = "demo@founderos.app";
 const DEMO_PASSWORD = "founderos123";
