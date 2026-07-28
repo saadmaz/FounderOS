@@ -21,18 +21,9 @@ import { updateProject, useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
 import { formatHours, sumHours } from "@/lib/format";
-import type { ProjectStatus } from "@/lib/types";
+import { projectStatusLabel } from "@/lib/labels";
+import { PROJECT_STATUSES, type ProjectStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
-
-const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
-  { value: "not_started", label: "Not Started" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "blocked", label: "Blocked" },
-  { value: "in_review", label: "In Review" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "on_hold", label: "On Hold" },
-];
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -98,11 +89,11 @@ export default function ProjectDetailPage() {
             value={project.status}
             onValueChange={(v) => v && updateProject(workspace!.id, project.id, { status: v as ProjectStatus })}
           >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
+            <SelectTrigger className="w-37.5">
+              <SelectValue>{(v: ProjectStatus) => projectStatusLabel(v)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {STATUS_OPTIONS.map((s) => (
+              {PROJECT_STATUSES.map((s) => (
                 <SelectItem key={s.value} value={s.value}>
                   {s.label}
                 </SelectItem>

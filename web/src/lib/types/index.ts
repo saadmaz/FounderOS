@@ -56,7 +56,24 @@ export type ProjectStatus =
   | "completed"
   | "cancelled"
   | "on_hold";
+export const PROJECT_STATUSES: { value: ProjectStatus; label: string }[] = [
+  { value: "not_started", label: "Not Started" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "blocked", label: "Blocked" },
+  { value: "in_review", label: "In Review" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "on_hold", label: "On Hold" },
+];
+
 export type Priority = "critical" | "high" | "medium" | "low";
+
+export const PRIORITIES: { value: Priority; label: string }[] = [
+  { value: "critical", label: "Critical" },
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+];
 
 export interface Project {
   id: string;

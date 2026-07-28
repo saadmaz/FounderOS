@@ -135,7 +135,7 @@ export default function DashboardPage() {
       <div className="flex-1 space-y-6 p-4 lg:p-6">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <StatCard
-            label="Companies"
+            label="Active Companies"
             value={String(companies.filter((c) => c.status === "active").length)}
             icon={Building2}
             loading={companiesLoading}

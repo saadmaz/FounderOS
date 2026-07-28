@@ -26,7 +26,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
 import { useProjects } from "@/lib/data/projects";
 import { createTask } from "@/lib/data/tasks";
-import { TASK_STATUSES } from "@/lib/types";
+import { priorityLabel, taskStatusLabel } from "@/lib/labels";
+import { PRIORITIES, TASK_STATUSES } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const schema = z.object({
@@ -123,7 +124,9 @@ export function TaskFormDialog({
               <Label>Company</Label>
               <Select value={companyId} onValueChange={(v) => setValue("companyId", v ?? "")}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select company" />
+                  <SelectValue placeholder="Select company">
+                    {(v: string) => companies.find((c) => c.id === v)?.name ?? "Select company"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {companies.map((c) => (
@@ -146,7 +149,9 @@ export function TaskFormDialog({
                 disabled={!companyId}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="No project" />
+                  <SelectValue placeholder="No project">
+                    {(v: string) => projects.find((p) => p.id === v)?.name ?? "No project"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map((p) => (
@@ -164,12 +169,12 @@ export function TaskFormDialog({
               <Label>Priority</Label>
               <Select value={watch("priority")} onValueChange={(v) => setValue("priority", v as FormValues["priority"])}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>{(v: FormValues["priority"]) => priorityLabel(v)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {["critical", "high", "medium", "low"].map((p) => (
-                    <SelectItem key={p} value={p} className="capitalize">
-                      {p}
+                  {PRIORITIES.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -179,7 +184,7 @@ export function TaskFormDialog({
               <Label>Status</Label>
               <Select value={watch("status")} onValueChange={(v) => setValue("status", v as FormValues["status"])}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>{(v: FormValues["status"]) => taskStatusLabel(v)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {TASK_STATUSES.map((s) => (

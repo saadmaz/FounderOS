@@ -112,7 +112,7 @@ export function CompanyFormDialog({
               <Label>Type</Label>
               <Select value={watch("type")} onValueChange={(v) => setValue("type", v as FormValues["type"])}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>{(v: string) => <span className="capitalize">{v}</span>}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {["startup", "client", "agency", "personal", "investment"].map((t) => (
@@ -127,7 +127,7 @@ export function CompanyFormDialog({
               <Label>Stage</Label>
               <Select value={watch("stage")} onValueChange={(v) => setValue("stage", v as FormValues["stage"])}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>{(v: string) => <span className="capitalize">{v.replace("-", " ")}</span>}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {["idea", "pre-launch", "launched", "growth", "scaling", "mature"].map((s) => (

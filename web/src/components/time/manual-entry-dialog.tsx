@@ -109,7 +109,9 @@ export function ManualEntryDialog({
             <Label>Company</Label>
             <Select value={watch("companyId")} onValueChange={(v) => setValue("companyId", v ?? "")}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select company" />
+                <SelectValue placeholder="Select company">
+                  {(v: string) => companies.find((c) => c.id === v)?.name ?? "Select company"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {companies.map((c) => (

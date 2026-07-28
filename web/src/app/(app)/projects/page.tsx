@@ -46,7 +46,9 @@ export default function ProjectsPage() {
       <div className="flex items-center gap-2 border-b border-border px-4 py-2.5 lg:px-6">
         <Select value={companyFilter} onValueChange={(v) => setCompanyFilter(v ?? "all")}>
           <SelectTrigger size="sm" className="w-44">
-            <SelectValue placeholder="All companies" />
+            <SelectValue>
+              {(v: string) => (v === "all" ? "All companies" : companies.find((c) => c.id === v)?.name ?? v)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All companies</SelectItem>

@@ -25,6 +25,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
 import { createProject } from "@/lib/data/projects";
+import { priorityLabel } from "@/lib/labels";
+import { PRIORITIES } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const schema = z.object({
@@ -112,7 +114,9 @@ export function ProjectFormDialog({
               <Label>Company</Label>
               <Select value={watch("companyId")} onValueChange={(v) => setValue("companyId", v ?? "")}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select company" />
+                  <SelectValue placeholder="Select company">
+                    {(v: string) => companies.find((c) => c.id === v)?.name ?? "Select company"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {companies.map((c) => (
@@ -128,12 +132,12 @@ export function ProjectFormDialog({
               <Label>Priority</Label>
               <Select value={watch("priority")} onValueChange={(v) => setValue("priority", v as FormValues["priority"])}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>{(v: FormValues["priority"]) => priorityLabel(v)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {["critical", "high", "medium", "low"].map((p) => (
-                    <SelectItem key={p} value={p} className="capitalize">
-                      {p}
+                  {PRIORITIES.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

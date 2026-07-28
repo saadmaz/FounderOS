@@ -10,18 +10,9 @@ import {
 } from "@/components/ui/select";
 import { PriorityBadge } from "@/components/shared/status-badge";
 import { updateProject } from "@/lib/data/projects";
-import type { Company, Project, ProjectStatus, Task } from "@/lib/types";
+import { projectStatusLabel } from "@/lib/labels";
+import { PROJECT_STATUSES, type Company, type Project, type ProjectStatus, type Task } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
-
-const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
-  { value: "not_started", label: "Not Started" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "blocked", label: "Blocked" },
-  { value: "in_review", label: "In Review" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "on_hold", label: "On Hold" },
-];
 
 export function ProjectList({
   projects,
@@ -76,10 +67,10 @@ export function ProjectList({
                   onValueChange={(v) => v && updateProject(workspaceId, p.id, { status: v as ProjectStatus })}
                 >
                   <SelectTrigger size="sm" className="h-7 w-[130px]">
-                    <SelectValue />
+                    <SelectValue>{(v: ProjectStatus) => projectStatusLabel(v)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {STATUS_OPTIONS.map((s) => (
+                    {PROJECT_STATUSES.map((s) => (
                       <SelectItem key={s.value} value={s.value}>
                         {s.label}
                       </SelectItem>

@@ -29,6 +29,7 @@ import {
 import { PriorityBadge } from "@/components/shared/status-badge";
 import { deleteTask, setTaskStatus } from "@/lib/data/tasks";
 import { formatDate } from "@/lib/format";
+import { taskStatusLabel } from "@/lib/labels";
 import { TASK_STATUSES, type Company, type Task, type TaskStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -103,7 +104,7 @@ export function TaskTable({
             onValueChange={(v) => v && setTaskStatus(workspaceId, t.id, v as TaskStatus)}
           >
             <SelectTrigger size="sm" className="h-7 w-[140px] border-none bg-transparent shadow-none">
-              <SelectValue />
+              <SelectValue>{(v: TaskStatus) => taskStatusLabel(v)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {TASK_STATUSES.map((s) => (
@@ -163,37 +164,39 @@ export function TaskTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-border">
-      <Table>
-        <TableHeader className="bg-surface">
-          {table.getHeaderGroups().map((hg) => (
-            <TableRow key={hg.id} className="hover:bg-transparent">
-              {hg.headers.map((h) => (
-                <TableHead key={h.id} className="text-xs font-medium text-muted-foreground">
-                  {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id} className="hover:bg-secondary/40">
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id} className="py-2">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+      <div className="scrollbar-thin overflow-x-auto">
+        <Table>
+          <TableHeader className="bg-surface">
+            {table.getHeaderGroups().map((hg) => (
+              <TableRow key={hg.id} className="hover:bg-transparent">
+                {hg.headers.map((h) => (
+                  <TableHead key={h.id} className="text-xs font-medium text-muted-foreground">
+                    {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id} className="hover:bg-secondary/40">
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id} className="py-2">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+            {tasks.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
+                  No tasks yet.
                 </TableCell>
-              ))}
-            </TableRow>
-          ))}
-          {tasks.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
-                No tasks yet.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

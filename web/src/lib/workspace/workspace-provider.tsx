@@ -31,15 +31,24 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     (async () => {
-      const workspaceId = await ensureWorkspaceForUser(user);
-      const [ws, member] = await Promise.all([
-        getWorkspace(workspaceId),
-        getMember(workspaceId, user.uid),
-      ]);
-      if (cancelled) return;
-      setWorkspace(ws);
-      setRole(member?.role ?? null);
-      setLoading(false);
+      try {
+        const workspaceId = await ensureWorkspaceForUser(user);
+        const [ws, member] = await Promise.all([
+          getWorkspace(workspaceId),
+          getMember(workspaceId, user.uid),
+        ]);
+        if (cancelled) return;
+        setWorkspace(ws);
+        setRole(member?.role ?? null);
+      } catch (err) {
+        console.error("Failed to load workspace", err);
+        if (!cancelled) {
+          setWorkspace(null);
+          setRole(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => {
       cancelled = true;

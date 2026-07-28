@@ -23,12 +23,5 @@ i  firestore: Firestore Emulator logging to firestore-debug.log
 
 Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
  
-!  firestore: Fatal error occurred: 
-   Firestore Emulator has exited with code: 3221225786, 
-   stopping all running emulators
-i  ui: Stopping Emulator UI
-i  firestore: Stopping Firestore Emulator
-i  auth: Stopping Authentication Emulator
-i  storage: Stopping Storage Emulator
-i  hub: Stopping emulator hub
-i  logging: Stopping Logging Emulator
+i  firestore: Change detected, updating rules...
++  firestore: Rules updated.

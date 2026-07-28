@@ -34,6 +34,12 @@ service cloud.firestore {
       return isMember(workspaceId) && role(workspaceId) in ['owner', 'admin'];
     }
 
+    // Points a signed-in user at their workspace(s); read/written by the
+    // client during the first-login bootstrap flow (see ensureWorkspaceForUser).
+    match /userWorkspaces/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
     match /workspaces/{workspaceId} {
       allow read: if isMember(workspaceId);
       allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;

@@ -108,7 +108,9 @@ export function TimerBar({
           <div className="flex-1">
             <Select value={companyId} onValueChange={(v) => setCompanyId(v ?? "")}>
               <SelectTrigger className="w-56">
-                <SelectValue placeholder="Select company" />
+                <SelectValue placeholder="Select company">
+                  {(v: string) => companies.find((c) => c.id === v)?.name ?? "Select company"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {companies.map((c) => (
