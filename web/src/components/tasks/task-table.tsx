@@ -1,0 +1,199 @@
+"use client";
+
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from "@tanstack/react-table";
+import { ArrowUpDown, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { PriorityBadge } from "@/components/shared/status-badge";
+import { deleteTask, setTaskStatus } from "@/lib/data/tasks";
+import { formatDate } from "@/lib/format";
+import { TASK_STATUSES, type Company, type Task, type TaskStatus } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+export function TaskTable({
+  tasks,
+  companies,
+  workspaceId,
+  showCompany = true,
+}: {
+  tasks: Task[];
+  companies: Company[];
+  workspaceId: string;
+  showCompany?: boolean;
+}) {
+  const [sorting, setSorting] = useState<SortingState>([{ id: "dueDate", desc: false }]);
+  const companyById = new Map(companies.map((c) => [c.id, c]));
+  const today = new Date().setHours(0, 0, 0, 0);
+
+  const columns: ColumnDef<Task>[] = [
+    {
+      accessorKey: "title",
+      header: "Task",
+      cell: ({ row }) => {
+        const t = row.original;
+        const company = companyById.get(t.companyId);
+        return (
+          <div className="flex items-center gap-2.5">
+            {showCompany && (
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: company?.color ?? "#71717A" }}
+              />
+            )}
+            <span
+              className={cn(
+                "truncate text-sm",
+                t.status === "completed" && "text-muted-foreground line-through"
+              )}
+            >
+              {t.title}
+            </span>
+          </div>
+        );
+      },
+    },
+    ...(showCompany
+      ? [
+          {
+            accessorKey: "companyId",
+            header: "Company",
+            cell: ({ row }: { row: { original: Task } }) => (
+              <span className="text-sm text-muted-foreground">
+                {companyById.get(row.original.companyId)?.name ?? "—"}
+              </span>
+            ),
+          } satisfies ColumnDef<Task>,
+        ]
+      : []),
+    {
+      accessorKey: "priority",
+      header: "Priority",
+      cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const t = row.original;
+        return (
+          <Select
+            value={t.status}
+            onValueChange={(v) => v && setTaskStatus(workspaceId, t.id, v as TaskStatus)}
+          >
+            <SelectTrigger size="sm" className="h-7 w-[140px] border-none bg-transparent shadow-none">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TASK_STATUSES.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      },
+    },
+    {
+      accessorKey: "dueDate",
+      header: ({ column }) => (
+        <button
+          className="flex items-center gap-1"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Due <ArrowUpDown className="size-3" />
+        </button>
+      ),
+      cell: ({ row }) => {
+        const due = row.original.dueDate;
+        const overdue = due && due < today && row.original.status !== "completed";
+        return (
+          <span className={cn("text-sm", overdue ? "font-medium text-danger" : "text-muted-foreground")}>
+            {formatDate(due)}
+          </span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 text-muted-foreground-2 hover:text-danger"
+          onClick={() => deleteTask(workspaceId, row.original.id)}
+        >
+          <Trash2 className="size-3.5" />
+        </Button>
+      ),
+    },
+  ];
+
+  const table = useReactTable({
+    data: tasks,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border">
+      <Table>
+        <TableHeader className="bg-surface">
+          {table.getHeaderGroups().map((hg) => (
+            <TableRow key={hg.id} className="hover:bg-transparent">
+              {hg.headers.map((h) => (
+                <TableHead key={h.id} className="text-xs font-medium text-muted-foreground">
+                  {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow key={row.id} className="hover:bg-secondary/40">
+              {row.getVisibleCells().map((cell) => (
+                <TableCell key={cell.id} className="py-2">
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+          {tasks.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
+                No tasks yet.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}

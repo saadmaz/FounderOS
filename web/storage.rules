@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(workspaceId) {
+      return isSignedIn() && firestore.exists(
+        /databases/(default)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid)
+      );
+    }
+
+    // workspaces/{workspaceId}/(receipts|documents|logos)/...
+    match /workspaces/{workspaceId}/{allPaths=**} {
+      allow read, write: if isMember(workspaceId);
+    }
+  }
+}

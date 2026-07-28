@@ -1,0 +1,73 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function memberDoc(workspaceId) {
+      return get(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid));
+    }
+
+    function isMember(workspaceId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid));
+    }
+
+    function role(workspaceId) {
+      return memberDoc(workspaceId).data.role;
+    }
+
+    // owner/admin/manager can manage structural data (companies, projects)
+    function canManage(workspaceId) {
+      return isMember(workspaceId) && role(workspaceId) in ['owner', 'admin', 'manager'];
+    }
+
+    // day-to-day contributors: everyone except viewer
+    function canContribute(workspaceId) {
+      return isMember(workspaceId) && role(workspaceId) != 'viewer';
+    }
+
+    function isOwnerOrAdmin(workspaceId) {
+      return isMember(workspaceId) && role(workspaceId) in ['owner', 'admin'];
+    }
+
+    match /workspaces/{workspaceId} {
+      allow read: if isMember(workspaceId);
+      allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isOwnerOrAdmin(workspaceId);
+
+      match /members/{memberId} {
+        allow read: if isMember(workspaceId);
+        // Bootstrapping: the workspace creator may create their own owner membership.
+        allow create: if isSignedIn() && request.auth.uid == memberId &&
+          request.resource.data.role == 'owner' &&
+          get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.createdBy == request.auth.uid;
+        // Inviting others / changing roles is owner/admin only.
+        allow create, update, delete: if isOwnerOrAdmin(workspaceId);
+      }
+
+      match /companies/{companyId} {
+        allow read: if isMember(workspaceId);
+        allow create, update, delete: if canManage(workspaceId);
+      }
+
+      match /projects/{projectId} {
+        allow read: if isMember(workspaceId);
+        allow create, update, delete: if canManage(workspaceId);
+      }
+
+      match /tasks/{taskId} {
+        allow read: if isMember(workspaceId);
+        allow create, update, delete: if canContribute(workspaceId);
+      }
+
+      match /timeEntries/{entryId} {
+        allow read: if isMember(workspaceId);
+        allow create, update, delete: if canContribute(workspaceId);
+      }
+    }
+  }
+}

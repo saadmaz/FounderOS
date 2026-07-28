@@ -1,0 +1,171 @@
+"use client";
+
+import { ArrowLeft, CheckSquare, Clock, FileText, FolderKanban, Loader2, Plus, Users } from "lucide-react";
+import Link from "next/link";
+import { notFound, useParams } from "next/navigation";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ComingSoon } from "@/components/shared/coming-soon";
+import { StatCard } from "@/components/shared/stat-card";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
+import { ProjectList } from "@/components/projects/project-list";
+import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
+import { TaskTable } from "@/components/tasks/task-table";
+import { useCompanies } from "@/lib/data/companies";
+import { useProjects } from "@/lib/data/projects";
+import { useTasks } from "@/lib/data/tasks";
+import { useTimeEntries } from "@/lib/data/time-entries";
+import { formatHours, sumHours } from "@/lib/format";
+import { useWorkspace } from "@/lib/workspace/workspace-provider";
+
+export default function CompanyDetailPage() {
+  const { companyId } = useParams<{ companyId: string }>();
+  const { workspace } = useWorkspace();
+  const { data: companies, loading: companiesLoading } = useCompanies(workspace?.id ?? null);
+  const { data: projects } = useProjects(workspace?.id ?? null, companyId);
+  const { data: tasks } = useTasks(workspace?.id ?? null, companyId);
+  const { data: timeEntries } = useTimeEntries(workspace?.id ?? null);
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+
+  const company = companies.find((c) => c.id === companyId);
+
+  const hours = useMemo(
+    () => sumHours(timeEntries.filter((e) => e.companyId === companyId)),
+    [timeEntries, companyId]
+  );
+  const openTasks = tasks.filter((t) => t.status !== "completed" && t.status !== "cancelled").length;
+  const activeProjects = projects.filter(
+    (p) => p.status !== "completed" && p.status !== "cancelled"
+  ).length;
+
+  if (companiesLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (!company) return notFound();
+
+  return (
+    <>
+      <div className="border-b border-border px-4 py-4 lg:px-6">
+        <Link
+          href="/companies"
+          className="mb-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-3.5" />
+          All companies
+        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <span
+            className="flex size-12 shrink-0 items-center justify-center rounded-xl text-lg font-semibold text-white"
+            style={{ backgroundColor: company.color }}
+          >
+            {company.name[0]}
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-tight">{company.name}</h1>
+              <StatusBadge status={company.status} />
+            </div>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {company.industry ?? "—"} · <span className="capitalize">{company.type}</span> ·{" "}
+              <span className="capitalize">{company.stage.replace("-", " ")}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-3 gap-3 sm:max-w-md">
+          <StatCard label="Open Tasks" value={String(openTasks)} icon={CheckSquare} accent="text-warning" accentBg="bg-warning/10" />
+          <StatCard label="Active Projects" value={String(activeProjects)} icon={FolderKanban} accent="text-analytics-purple" accentBg="bg-analytics-purple/10" />
+          <StatCard label="Hours Logged" value={formatHours(hours)} icon={Clock} accent="text-analytics-pink" accentBg="bg-analytics-pink/10" />
+        </div>
+      </div>
+
+      <Tabs defaultValue="overview" className="flex flex-1 flex-col gap-0">
+        <div className="border-b border-border px-4 lg:px-6">
+          <TabsList className="h-11 bg-transparent p-0">
+            {["overview", "projects", "tasks", "finance", "crm", "documents"].map((v) => (
+              <TabsTrigger
+                key={v}
+                value={v}
+                className="rounded-none border-b-2 border-transparent px-3 capitalize data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              >
+                {v}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+        <TabsContent value="overview" className="flex-1 space-y-6 p-4 lg:p-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Recent Projects</h2>
+                <Button variant="ghost" size="sm" onClick={() => setProjectDialogOpen(true)}>
+                  <Plus className="size-3.5" /> Add
+                </Button>
+              </div>
+              <ProjectList
+                projects={projects.slice(0, 5)}
+                companies={companies}
+                tasks={tasks}
+                workspaceId={workspace!.id}
+                showCompany={false}
+              />
+            </section>
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Recent Tasks</h2>
+                <Button variant="ghost" size="sm" onClick={() => setTaskDialogOpen(true)}>
+                  <Plus className="size-3.5" /> Add
+                </Button>
+              </div>
+              <TaskTable
+                tasks={tasks.slice(0, 8)}
+                companies={companies}
+                workspaceId={workspace!.id}
+                showCompany={false}
+              />
+            </section>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="projects" className="flex-1 p-4 lg:p-6">
+          <div className="mb-3 flex justify-end">
+            <Button size="sm" onClick={() => setProjectDialogOpen(true)} className="gap-1.5">
+              <Plus className="size-3.5" /> New project
+            </Button>
+          </div>
+          <ProjectList projects={projects} companies={companies} tasks={tasks} workspaceId={workspace!.id} showCompany={false} />
+        </TabsContent>
+
+        <TabsContent value="tasks" className="flex-1 p-4 lg:p-6">
+          <div className="mb-3 flex justify-end">
+            <Button size="sm" onClick={() => setTaskDialogOpen(true)} className="gap-1.5">
+              <Plus className="size-3.5" /> New task
+            </Button>
+          </div>
+          <TaskTable tasks={tasks} companies={companies} workspaceId={workspace!.id} showCompany={false} />
+        </TabsContent>
+
+        <TabsContent value="finance" className="flex flex-1">
+          <ComingSoon icon={<FileText />} title="Finance" description={`Expenses, revenue, and P&L for ${company.name}.`} />
+        </TabsContent>
+        <TabsContent value="crm" className="flex flex-1">
+          <ComingSoon icon={<Users />} title="CRM" description={`Clients and leads tied to ${company.name}.`} />
+        </TabsContent>
+        <TabsContent value="documents" className="flex flex-1">
+          <ComingSoon icon={<FileText />} title="Documents" description={`Contracts and files for ${company.name}.`} />
+        </TabsContent>
+      </Tabs>
+
+      <ProjectFormDialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen} defaultCompanyId={companyId} />
+      <TaskFormDialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen} defaultCompanyId={companyId} />
+    </>
+  );
+}
