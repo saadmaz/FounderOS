@@ -33,9 +33,10 @@ firebase-debug.log*
 firestore-debug.log*
 ui-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
-!.env.local.example
+# env files - .env is committed on purpose (public Firebase web config,
+# safe by design; keeps Vercel in sync automatically). Anything with a
+# .local suffix stays out of git.
+.env*.local
 
 # vercel
 .vercel
