@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-founderos"
+    "default": "demo-founderos",
+    "production": "founderos-saad"
   }
 }
