@@ -135,13 +135,22 @@ export default function FinancePage() {
 
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
 
-  const byCompany = <T extends { companyId: string }>(items: T[]) =>
-    companyFilter === "all" ? items : items.filter((i) => i.companyId === companyFilter);
-
-  const filteredExpenses = useMemo(() => byCompany(expenses), [expenses, companyFilter]);
-  const filteredRevenue = useMemo(() => byCompany(revenue), [revenue, companyFilter]);
-  const filteredInvoices = useMemo(() => byCompany(invoices), [invoices, companyFilter]);
-  const filteredBudgets = useMemo(() => byCompany(budgets), [budgets, companyFilter]);
+  const filteredExpenses = useMemo(
+    () => (companyFilter === "all" ? expenses : expenses.filter((i) => i.companyId === companyFilter)),
+    [expenses, companyFilter]
+  );
+  const filteredRevenue = useMemo(
+    () => (companyFilter === "all" ? revenue : revenue.filter((i) => i.companyId === companyFilter)),
+    [revenue, companyFilter]
+  );
+  const filteredInvoices = useMemo(
+    () => (companyFilter === "all" ? invoices : invoices.filter((i) => i.companyId === companyFilter)),
+    [invoices, companyFilter]
+  );
+  const filteredBudgets = useMemo(
+    () => (companyFilter === "all" ? budgets : budgets.filter((i) => i.companyId === companyFilter)),
+    [budgets, companyFilter]
+  );
   const filteredVendors = useMemo(
     () => (companyFilter === "all" ? vendors : vendors.filter((v) => v.companyId === companyFilter)),
     [vendors, companyFilter]

@@ -98,6 +98,7 @@ export default function GoalsPage() {
   const [statusFilter, setStatusFilter] = useState<string>(ALL);
 
   const canEdit = role === "owner" || role === "admin" || role === "manager";
+  const now = new Date().getTime();
 
   const companyName = useMemo(() => {
     const map = new Map(companies.map((c) => [c.id, c.name]));
@@ -211,7 +212,7 @@ export default function GoalsPage() {
             {filtered.map((g, i) => {
               const percent = progressPercent(g);
               const hasTarget = typeof g.targetValue === "number" && g.targetValue > 0;
-              const overdue = Boolean(g.targetDate) && g.targetDate! < Date.now() && g.status !== "completed";
+              const overdue = Boolean(g.targetDate) && g.targetDate! < now && g.status !== "completed";
               const company = companyName(g.companyId);
               return (
                 <motion.div

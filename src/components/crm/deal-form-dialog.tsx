@@ -33,10 +33,19 @@ const schema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   companyId: z.string().min(1, "Pick a company"),
   contactId: z.string().optional(),
-  value: z.coerce.number().min(0, "Value can't be negative"),
+  value: z
+    .string()
+    .min(1, "Value is required")
+    .refine((v) => !Number.isNaN(Number(v)) && Number(v) >= 0, "Enter a valid amount"),
   currency: z.string().min(1),
   stage: z.enum(["lead", "qualified", "proposal", "negotiation", "won", "lost"]),
-  probability: z.coerce.number().min(0).max(100).optional(),
+  probability: z
+    .string()
+    .optional()
+    .refine(
+      (v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0 && Number(v) <= 100),
+      "Enter 0-100"
+    ),
   expectedCloseDate: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -79,10 +88,10 @@ export function DealFormDialog({
       title: "",
       companyId: defaultCompanyId ?? "",
       contactId: "",
-      value: 0,
+      value: "0",
       currency: "USD",
       stage: defaultStage ?? "lead",
-      probability: undefined,
+      probability: "",
       expectedCloseDate: "",
       notes: "",
     },
@@ -95,10 +104,10 @@ export function DealFormDialog({
         title: deal.title,
         companyId: deal.companyId,
         contactId: deal.contactId ?? "",
-        value: deal.value,
+        value: String(deal.value),
         currency: deal.currency,
         stage: deal.stage,
-        probability: deal.probability,
+        probability: deal.probability != null ? String(deal.probability) : "",
         expectedCloseDate: toDateInput(deal.expectedCloseDate),
         notes: deal.notes ?? "",
       });
@@ -107,10 +116,10 @@ export function DealFormDialog({
         title: "",
         companyId: defaultCompanyId ?? "",
         contactId: "",
-        value: 0,
+        value: "0",
         currency: "USD",
         stage: defaultStage ?? "lead",
-        probability: undefined,
+        probability: "",
         expectedCloseDate: "",
         notes: "",
       });
@@ -129,10 +138,10 @@ export function DealFormDialog({
         companyId: values.companyId,
         contactId: values.contactId || undefined,
         title: values.title,
-        value: values.value,
+        value: Number(values.value),
         currency: values.currency,
         stage: values.stage,
-        probability: values.probability ?? undefined,
+        probability: values.probability ? Number(values.probability) : undefined,
         expectedCloseDate: values.expectedCloseDate
           ? new Date(values.expectedCloseDate).getTime()
           : null,

@@ -34,7 +34,12 @@ const schema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   companyId: z.string().min(1, "Pick a company"),
   scheduledAt: z.string().min(1, "Pick a date and time"),
-  durationMinutes: z.coerce.number().int().min(5, "Must be at least 5 minutes").max(1440),
+  durationMinutes: z
+    .string()
+    .min(1, "Required")
+    .refine((v) => Number.isInteger(Number(v)) && Number(v) >= 5 && Number(v) <= 1440, {
+      message: "Must be between 5 and 1440 minutes",
+    }),
   location: z.string().optional(),
   agenda: z.string().optional(),
   attendeeIds: z.array(z.string()),
@@ -84,7 +89,7 @@ export function MeetingFormDialog({
       title: "",
       companyId: "",
       scheduledAt: defaultScheduledAt(),
-      durationMinutes: 30,
+      durationMinutes: "30",
       location: "",
       agenda: "",
       attendeeIds: [],
@@ -98,7 +103,7 @@ export function MeetingFormDialog({
         title: meeting.title,
         companyId: meeting.companyId,
         scheduledAt: toDatetimeLocalValue(meeting.scheduledAt),
-        durationMinutes: meeting.durationMinutes,
+        durationMinutes: String(meeting.durationMinutes),
         location: meeting.location ?? "",
         agenda: meeting.agenda ?? "",
         attendeeIds: meeting.attendeeIds ?? [],
@@ -108,7 +113,7 @@ export function MeetingFormDialog({
         title: "",
         companyId: companies[0]?.id ?? "",
         scheduledAt: defaultScheduledAt(),
-        durationMinutes: 30,
+        durationMinutes: "30",
         location: "",
         agenda: "",
         attendeeIds: [],
@@ -131,12 +136,13 @@ export function MeetingFormDialog({
     setSubmitting(true);
     try {
       const scheduledAt = new Date(values.scheduledAt).getTime();
+      const durationMinutes = Number(values.durationMinutes);
       if (isEditing && meeting) {
         await updateMeeting(workspace.id, meeting.id, {
           title: values.title,
           companyId: values.companyId,
           scheduledAt,
-          durationMinutes: values.durationMinutes,
+          durationMinutes,
           location: values.location || undefined,
           agenda: values.agenda || undefined,
           attendeeIds: values.attendeeIds,
@@ -147,7 +153,7 @@ export function MeetingFormDialog({
           title: values.title,
           companyId: values.companyId,
           scheduledAt,
-          durationMinutes: values.durationMinutes,
+          durationMinutes,
           location: values.location || undefined,
           agenda: values.agenda || undefined,
           attendeeIds: values.attendeeIds,

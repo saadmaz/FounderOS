@@ -21,7 +21,8 @@ export interface NavItem {
   label: string;
   href: string;
   icon: LucideIcon;
-  /** Core-loop pages are fully built; the rest route to a "coming soon" state. */
+  /** Every section is built out; kept as an explicit flag rather than removed
+   *  outright so a future in-progress page has somewhere to signal it. */
   ready: boolean;
 }
 
@@ -36,26 +37,26 @@ export const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { label: "Companies", href: "/companies", icon: Building2, ready: true },
       { label: "Projects", href: "/projects", icon: FolderKanban, ready: true },
       { label: "Tasks", href: "/tasks", icon: CheckSquare, ready: true },
-      { label: "Calendar", href: "/calendar", icon: Calendar, ready: false },
+      { label: "Calendar", href: "/calendar", icon: Calendar, ready: true },
       { label: "Time Tracking", href: "/time", icon: Clock, ready: true },
     ],
   },
   {
     title: "Business",
     items: [
-      { label: "Finance", href: "/finance", icon: Wallet, ready: false },
-      { label: "CRM", href: "/crm", icon: Users, ready: false },
-      { label: "Meetings", href: "/meetings", icon: LayoutGrid, ready: false },
-      { label: "Documents", href: "/documents", icon: FileText, ready: false },
+      { label: "Finance", href: "/finance", icon: Wallet, ready: true },
+      { label: "CRM", href: "/crm", icon: Users, ready: true },
+      { label: "Meetings", href: "/meetings", icon: LayoutGrid, ready: true },
+      { label: "Documents", href: "/documents", icon: FileText, ready: true },
     ],
   },
   {
     title: "Growth",
     items: [
-      { label: "Goals", href: "/goals", icon: Target, ready: false },
-      { label: "Ideas", href: "/ideas", icon: Lightbulb, ready: false },
-      { label: "Learning", href: "/learning", icon: BookOpen, ready: false },
-      { label: "Analytics", href: "/analytics", icon: BarChart3, ready: false },
+      { label: "Goals", href: "/goals", icon: Target, ready: true },
+      { label: "Ideas", href: "/ideas", icon: Lightbulb, ready: true },
+      { label: "Learning", href: "/learning", icon: BookOpen, ready: true },
+      { label: "Analytics", href: "/analytics", icon: BarChart3, ready: true },
     ],
   },
 ];
