@@ -132,3 +132,347 @@ export interface TimeEntry {
   note?: string;
   createdAt: number;
 }
+
+// ===================== Finance =====================
+
+export type ExpenseCategory =
+  | "software"
+  | "payroll"
+  | "marketing"
+  | "office"
+  | "travel"
+  | "legal"
+  | "other";
+
+export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
+  { value: "software", label: "Software" },
+  { value: "payroll", label: "Payroll" },
+  { value: "marketing", label: "Marketing" },
+  { value: "office", label: "Office" },
+  { value: "travel", label: "Travel" },
+  { value: "legal", label: "Legal" },
+  { value: "other", label: "Other" },
+];
+
+export type ExpenseStatus = "pending" | "approved" | "reimbursed" | "rejected";
+
+export const EXPENSE_STATUSES: { value: ExpenseStatus; label: string }[] = [
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "reimbursed", label: "Reimbursed" },
+  { value: "rejected", label: "Rejected" },
+];
+
+export interface Expense {
+  id: string;
+  workspaceId: string;
+  companyId: string;
+  vendorId?: string;
+  category: ExpenseCategory;
+  amount: number;
+  currency: string;
+  date: number;
+  description?: string;
+  status: ExpenseStatus;
+  billable: boolean;
+  receiptPath?: string; // Storage path, workspaces/{workspaceId}/receipts/...
+  createdBy: string; // WorkspaceMember id
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type RevenueCategory = "sales" | "subscription" | "services" | "investment" | "other";
+
+export const REVENUE_CATEGORIES: { value: RevenueCategory; label: string }[] = [
+  { value: "sales", label: "Sales" },
+  { value: "subscription", label: "Subscription" },
+  { value: "services", label: "Services" },
+  { value: "investment", label: "Investment" },
+  { value: "other", label: "Other" },
+];
+
+export interface RevenueEntry {
+  id: string;
+  workspaceId: string;
+  companyId: string;
+  category: RevenueCategory;
+  amount: number;
+  currency: string;
+  date: number;
+  source?: string;
+  note?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
+
+export const INVOICE_STATUSES: { value: InvoiceStatus; label: string }[] = [
+  { value: "draft", label: "Draft" },
+  { value: "sent", label: "Sent" },
+  { value: "paid", label: "Paid" },
+  { value: "overdue", label: "Overdue" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+export interface InvoiceLineItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface Invoice {
+  id: string;
+  workspaceId: string;
+  companyId: string;
+  invoiceNumber: string;
+  clientName: string;
+  status: InvoiceStatus;
+  lineItems: InvoiceLineItem[];
+  amount: number; // sum of lineItems, denormalized for querying/sorting
+  currency: string;
+  issuedDate: number;
+  dueDate: number;
+  paidDate?: number | null;
+  note?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type BudgetPeriod = "monthly" | "quarterly" | "yearly";
+
+export const BUDGET_PERIODS: { value: BudgetPeriod; label: string }[] = [
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+  { value: "yearly", label: "Yearly" },
+];
+
+export interface Budget {
+  id: string;
+  workspaceId: string;
+  companyId: string;
+  category: ExpenseCategory;
+  period: BudgetPeriod;
+  periodStart: number;
+  allocatedAmount: number;
+  currency: string;
+  note?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Vendor {
+  id: string;
+  workspaceId: string;
+  companyId: string;
+  name: string;
+  category?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ===================== CRM =====================
+
+export type ContactStatus = "active" | "inactive";
+
+export interface Contact {
+  id: string;
+  workspaceId: string;
+  companyId: string;
+  name: string;
+  title?: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+  status: ContactStatus;
+  lastContactedAt?: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type DealStage = "lead" | "qualified" | "proposal" | "negotiation" | "won" | "lost";
+
+export const DEAL_STAGES: { value: DealStage; label: string }[] = [
+  { value: "lead", label: "Lead" },
+  { value: "qualified", label: "Qualified" },
+  { value: "proposal", label: "Proposal" },
+  { value: "negotiation", label: "Negotiation" },
+  { value: "won", label: "Won" },
+  { value: "lost", label: "Lost" },
+];
+
+export interface Deal {
+  id: string;
+  workspaceId: string;
+  companyId: string;
+  contactId?: string;
+  title: string;
+  value: number;
+  currency: string;
+  stage: DealStage;
+  probability?: number; // 0-100
+  expectedCloseDate?: number | null;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ===================== Documents =====================
+
+export interface DocumentFile {
+  id: string;
+  workspaceId: string;
+  companyId?: string;
+  name: string;
+  storagePath: string; // Storage path, workspaces/{workspaceId}/documents/...
+  contentType: string;
+  size: number;
+  uploadedBy: string; // WorkspaceMember id
+  createdAt: number;
+}
+
+// ===================== Calendar =====================
+
+export type CalendarEventType = "event" | "deadline" | "reminder";
+
+export interface CalendarEvent {
+  id: string;
+  workspaceId: string;
+  companyId?: string;
+  title: string;
+  type: CalendarEventType;
+  startsAt: number;
+  endsAt?: number | null;
+  allDay: boolean;
+  notes?: string;
+  createdBy: string;
+  createdAt: number;
+}
+
+// ===================== Meetings =====================
+
+export type MeetingStatus = "scheduled" | "completed" | "cancelled";
+
+export const MEETING_STATUSES: { value: MeetingStatus; label: string }[] = [
+  { value: "scheduled", label: "Scheduled" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+export interface Meeting {
+  id: string;
+  workspaceId: string;
+  companyId: string;
+  title: string;
+  scheduledAt: number;
+  durationMinutes: number;
+  attendeeIds: string[]; // WorkspaceMember ids
+  location?: string;
+  agenda?: string;
+  notes?: string;
+  status: MeetingStatus;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ===================== Goals =====================
+
+export type GoalStatus = "not_started" | "in_progress" | "completed" | "missed";
+
+export const GOAL_STATUSES: { value: GoalStatus; label: string }[] = [
+  { value: "not_started", label: "Not Started" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "completed", label: "Completed" },
+  { value: "missed", label: "Missed" },
+];
+
+export type GoalCategory = "revenue" | "growth" | "product" | "personal" | "other";
+
+export const GOAL_CATEGORIES: { value: GoalCategory; label: string }[] = [
+  { value: "revenue", label: "Revenue" },
+  { value: "growth", label: "Growth" },
+  { value: "product", label: "Product" },
+  { value: "personal", label: "Personal" },
+  { value: "other", label: "Other" },
+];
+
+export interface Goal {
+  id: string;
+  workspaceId: string;
+  companyId?: string;
+  title: string;
+  description?: string;
+  category: GoalCategory;
+  status: GoalStatus;
+  targetValue?: number;
+  currentValue?: number;
+  unit?: string; // e.g. "$", "customers", "%"
+  targetDate?: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ===================== Ideas =====================
+
+export type IdeaStatus = "new" | "considering" | "planned" | "in_progress" | "shipped" | "rejected";
+
+export const IDEA_STATUSES: { value: IdeaStatus; label: string }[] = [
+  { value: "new", label: "New" },
+  { value: "considering", label: "Considering" },
+  { value: "planned", label: "Planned" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "shipped", label: "Shipped" },
+  { value: "rejected", label: "Rejected" },
+];
+
+export interface Idea {
+  id: string;
+  workspaceId: string;
+  companyId?: string;
+  title: string;
+  description?: string;
+  status: IdeaStatus;
+  votes: number;
+  tags?: string[];
+  createdBy: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ===================== Learning =====================
+
+export type LearningType = "book" | "course" | "article" | "podcast" | "video" | "other";
+
+export const LEARNING_TYPES: { value: LearningType; label: string }[] = [
+  { value: "book", label: "Book" },
+  { value: "course", label: "Course" },
+  { value: "article", label: "Article" },
+  { value: "podcast", label: "Podcast" },
+  { value: "video", label: "Video" },
+  { value: "other", label: "Other" },
+];
+
+export type LearningStatus = "queued" | "in_progress" | "completed";
+
+export const LEARNING_STATUSES: { value: LearningStatus; label: string }[] = [
+  { value: "queued", label: "Queued" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "completed", label: "Completed" },
+];
+
+export interface LearningItem {
+  id: string;
+  workspaceId: string;
+  title: string;
+  type: LearningType;
+  status: LearningStatus;
+  url?: string;
+  notes?: string;
+  rating?: number; // 1-5
+  createdAt: number;
+  updatedAt: number;
+}

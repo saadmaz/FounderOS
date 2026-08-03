@@ -7,6 +7,7 @@ const MESSAGES: Record<string, string> = {
   "auth/weak-password": "Use at least 6 characters.",
   "auth/popup-closed-by-user": "Sign-in was cancelled.",
   "auth/too-many-requests": "Too many attempts. Try again in a moment.",
+  "auth/requires-recent-login": "For security, please sign out and back in before changing your password.",
 };
 
 export function authErrorMessage(err: unknown): string {

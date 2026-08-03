@@ -1,12 +1,286 @@
-import { Users } from "lucide-react";
-import { ComingSoon } from "@/components/shared/coming-soon";
+"use client";
+
+import { MoreHorizontal, Pencil, Plus, Trash2, TrendingUp, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
+import { ContactFormDialog } from "@/components/crm/contact-form-dialog";
+import { DealBoard } from "@/components/crm/deal-board";
+import { DealFormDialog } from "@/components/crm/deal-form-dialog";
+import { useCompanies } from "@/lib/data/companies";
+import { deleteContact, useContacts } from "@/lib/data/contacts";
+import { useDeals } from "@/lib/data/deals";
+import { formatDate } from "@/lib/format";
+import type { Contact, Deal } from "@/lib/types";
+import { useWorkspace } from "@/lib/workspace/workspace-provider";
+import { toast } from "sonner";
+
+const CONTACT_STATUS_STYLES: Record<Contact["status"], string> = {
+  active: "bg-success/10 text-success",
+  inactive: "bg-muted text-muted-foreground-2",
+};
+
+const CONTACT_STATUS_LABELS: Record<Contact["status"], string> = {
+  active: "Active",
+  inactive: "Inactive",
+};
 
 export default function CrmPage() {
+  const { workspace } = useWorkspace();
+  const { data: companies } = useCompanies(workspace?.id ?? null);
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const companyIdFilter = companyFilter === "all" ? undefined : companyFilter;
+
+  const { data: contacts, loading: contactsLoading } = useContacts(
+    workspace?.id ?? null,
+    companyIdFilter
+  );
+  const { data: deals, loading: dealsLoading } = useDeals(workspace?.id ?? null, companyIdFilter);
+
+  const [tab, setTab] = useState<"contacts" | "pipeline">("contacts");
+
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+
+  const [dealDialogOpen, setDealDialogOpen] = useState(false);
+  const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+
+  const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
+
+  function openNewContact() {
+    setEditingContact(null);
+    setContactDialogOpen(true);
+  }
+  function openEditContact(contact: Contact) {
+    setEditingContact(contact);
+    setContactDialogOpen(true);
+  }
+  function openNewDeal() {
+    setEditingDeal(null);
+    setDealDialogOpen(true);
+  }
+  function openEditDeal(deal: Deal) {
+    setEditingDeal(deal);
+    setDealDialogOpen(true);
+  }
+
+  async function handleDeleteContact(contact: Contact) {
+    if (!workspace) return;
+    await deleteContact(workspace.id, contact.id);
+    toast.success(`${contact.name} deleted`);
+  }
+
   return (
-    <ComingSoon
-      icon={<Users />}
-      title="CRM"
-      description="Clients, leads, and deal pipelines - relationship-focused, Attio-style profiles for every contact."
-    />
+    <>
+      <PageHeader
+        title="CRM"
+        description={`${contacts.length} contact${contacts.length === 1 ? "" : "s"} · ${deals.length} deal${deals.length === 1 ? "" : "s"}`}
+        actions={
+          tab === "contacts" ? (
+            <Button onClick={openNewContact} className="gap-1.5">
+              <Plus className="size-4" />
+              New contact
+            </Button>
+          ) : (
+            <Button onClick={openNewDeal} className="gap-1.5">
+              <Plus className="size-4" />
+              New deal
+            </Button>
+          )
+        }
+      />
+
+      <Tabs
+        value={tab}
+        onValueChange={(v) => setTab((v as "contacts" | "pipeline") ?? "contacts")}
+        className="flex flex-1 flex-col"
+      >
+        <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5 lg:px-6">
+          <TabsList>
+            <TabsTrigger value="contacts">Contacts</TabsTrigger>
+            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          </TabsList>
+
+          <Select value={companyFilter} onValueChange={(v) => setCompanyFilter(v ?? "all")}>
+            <SelectTrigger size="sm" className="ml-auto w-44">
+              <SelectValue>
+                {(v: string) => (v === "all" ? "All companies" : companies.find((c) => c.id === v)?.name ?? v)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All companies</SelectItem>
+              {companies.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <TabsContent value="contacts" className="flex flex-1 flex-col">
+          {contactsLoading ? (
+            <div className="flex-1 p-4 lg:p-6">
+              <div className="h-64 animate-pulse rounded-xl bg-muted" />
+            </div>
+          ) : contacts.length === 0 ? (
+            <div className="flex flex-1 p-6">
+              <EmptyState
+                icon={Users}
+                title="No contacts yet"
+                description="Add your first contact to start building relationships across your companies."
+                action={
+                  <Button onClick={openNewContact} className="gap-1.5">
+                    <Plus className="size-4" />
+                    New contact
+                  </Button>
+                }
+              />
+            </div>
+          ) : (
+            <div className="flex-1 p-4 lg:p-6">
+              <div className="overflow-hidden rounded-xl border border-border">
+                <Table>
+                  <TableHeader className="bg-surface">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="text-xs font-medium text-muted-foreground">Name</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Title</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Email</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Phone</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Last Contacted</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
+                      <TableHead />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {contacts.map((contact) => {
+                      const company = companyById.get(contact.companyId);
+                      return (
+                        <TableRow key={contact.id} className="hover:bg-secondary/40">
+                          <TableCell className="py-2 text-sm font-medium">{contact.name}</TableCell>
+                          <TableCell className="py-2 text-sm text-muted-foreground">
+                            {contact.title ?? "—"}
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <div className="flex items-center gap-2">
+                              {company && (
+                                <span
+                                  className="size-2 rounded-full"
+                                  style={{ backgroundColor: company.color }}
+                                />
+                              )}
+                              <span className="text-sm">{company?.name ?? "—"}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-2 text-sm text-muted-foreground">
+                            {contact.email ?? "—"}
+                          </TableCell>
+                          <TableCell className="py-2 text-sm text-muted-foreground">
+                            {contact.phone ?? "—"}
+                          </TableCell>
+                          <TableCell className="py-2 text-sm text-muted-foreground">
+                            {formatDate(contact.lastContactedAt)}
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <span
+                              className={`inline-flex w-fit items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${CONTACT_STATUS_STYLES[contact.status]}`}
+                            >
+                              {CONTACT_STATUS_LABELS[contact.status]}
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-2 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" />}>
+                                <MoreHorizontal className="size-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onSelect={() => openEditContact(contact)}>
+                                  <Pencil className="size-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleDeleteContact(contact)}>
+                                  <Trash2 className="size-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="pipeline" className="flex flex-1 flex-col">
+          {dealsLoading ? (
+            <div className="flex-1 p-4 lg:p-6">
+              <div className="h-64 animate-pulse rounded-xl bg-muted" />
+            </div>
+          ) : deals.length === 0 ? (
+            <div className="flex flex-1 p-6">
+              <EmptyState
+                icon={TrendingUp}
+                title="No deals yet"
+                description="Add your first deal to start tracking the pipeline across your companies."
+                action={
+                  <Button onClick={openNewDeal} className="gap-1.5">
+                    <Plus className="size-4" />
+                    New deal
+                  </Button>
+                }
+              />
+            </div>
+          ) : (
+            <DealBoard
+              deals={deals}
+              contacts={contacts}
+              workspaceId={workspace!.id}
+              onCardClick={openEditDeal}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <ContactFormDialog
+        open={contactDialogOpen}
+        onOpenChange={setContactDialogOpen}
+        contact={editingContact}
+        defaultCompanyId={companyIdFilter}
+      />
+      <DealFormDialog
+        open={dealDialogOpen}
+        onOpenChange={setDealDialogOpen}
+        deal={editingDeal}
+        defaultCompanyId={companyIdFilter}
+      />
+    </>
   );
 }

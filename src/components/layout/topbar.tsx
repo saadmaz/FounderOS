@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, LogOut, Menu, Moon, Search, Settings, Sun } from "lucide-react";
+import { Bell, LogOut, Menu, Moon, Search, Settings, Sun, User } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -102,6 +102,10 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
               <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem render={<Link href="/profile" />}>
+              <User className="size-4" />
+              My Profile
+            </DropdownMenuItem>
             <DropdownMenuItem render={<Link href="/settings" />}>
               <Settings className="size-4" />
               Settings
