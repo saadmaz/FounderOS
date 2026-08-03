@@ -14,6 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://work.saadmaz.com"),
   title: "FounderOS",
   description: "The operating system for founders running multiple companies.",
 };
