@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useDraggable } from "@dnd-kit/core";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PriorityBadge } from "@/components/shared/status-badge";
 import { setTaskStatus } from "@/lib/data/tasks";
 import { formatDate } from "@/lib/format";
@@ -114,7 +114,7 @@ export function TaskBoard({
   workspaceId: string;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const companyById = new Map(companies.map((c) => [c.id, c]));
+  const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   function handleDragStart(e: DragStartEvent) {
