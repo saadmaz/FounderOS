@@ -28,6 +28,14 @@ export type CompanyStatus = "active" | "paused" | "archived" | "exploring";
 export type CompanyStage = "idea" | "pre-launch" | "launched" | "growth" | "scaling" | "mature";
 export type CompanyType = "startup" | "client" | "agency" | "personal" | "investment";
 
+export interface CompanyLinks {
+  website?: string;
+  linkedin?: string;
+  twitter?: string;
+  instagram?: string;
+  other?: string;
+}
+
 export interface Company {
   id: string;
   workspaceId: string;
@@ -39,9 +47,11 @@ export interface Company {
   stage: CompanyStage;
   currency: string;
   color: string; // hex accent used for badges/charts tied to this company
-  website?: string;
+  logoUrl?: string;
+  description?: string;
   founder?: string;
   startedAt?: number;
+  links?: CompanyLinks;
   notes?: string;
   createdAt: number;
   updatedAt: number;

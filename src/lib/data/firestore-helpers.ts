@@ -17,3 +17,16 @@ export function fromFirestore<T>(snap: QueryDocumentSnapshot<DocumentData>): T {
 export function now(): number {
   return Date.now();
 }
+
+/**
+ * Firestore's addDoc/updateDoc throw on any field whose value is `undefined`
+ * (top-level or nested) - strip them so optional-field patterns like
+ * `foo: values.foo || undefined` can be spread into a write payload safely.
+ */
+export function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const result = {} as T;
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) (result as Record<string, unknown>)[key] = value;
+  }
+  return result;
+}

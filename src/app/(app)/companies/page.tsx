@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Archive, ArchiveRestore, Building2, MoreHorizontal, Plus } from "lucide-react";
+import { Archive, ArchiveRestore, Building2, MoreHorizontal, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CompanyFormDialog } from "@/components/companies/company-form-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -19,6 +20,7 @@ import { archiveCompany, restoreCompany, useCompanies } from "@/lib/data/compani
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
 import { formatHours, sumHours } from "@/lib/format";
+import type { Company } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { toast } from "sonner";
 
@@ -28,6 +30,7 @@ export default function CompaniesPage() {
   const { data: tasks } = useTasks(workspace?.id ?? null);
   const { data: timeEntries } = useTimeEntries(workspace?.id ?? null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<Company | null>(null);
 
   const active = useMemo(() => companies.filter((c) => c.status !== "archived"), [companies]);
   const archived = useMemo(() => companies.filter((c) => c.status === "archived"), [companies]);
@@ -99,6 +102,10 @@ export default function CompaniesPage() {
                         <MoreHorizontal className="size-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => setEditing(c)}>
+                          <Pencil className="size-4" />
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => handleArchive(c.id, c.name)}>
                           <Archive className="size-4" />
                           Archive
@@ -108,12 +115,15 @@ export default function CompaniesPage() {
                   </div>
                   <Link href={`/companies/${c.id}`} className="flex flex-col">
                     <div className="flex items-center gap-3">
-                      <span
-                        className="flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold text-white"
-                        style={{ backgroundColor: c.color }}
-                      >
-                        {c.name[0]}
-                      </span>
+                      <Avatar size="lg" className="size-10 shrink-0 rounded-lg">
+                        <AvatarImage src={c.logoUrl} className="rounded-lg" />
+                        <AvatarFallback
+                          className="rounded-lg text-sm font-semibold text-white"
+                          style={{ backgroundColor: c.color }}
+                        >
+                          {c.name[0]}
+                        </AvatarFallback>
+                      </Avatar>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">{c.name}</p>
                         <p className="truncate text-xs text-muted-foreground">
@@ -121,6 +131,9 @@ export default function CompaniesPage() {
                         </p>
                       </div>
                     </div>
+                    {c.description && (
+                      <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{c.description}</p>
+                    )}
                     <div className="mt-4 flex items-center gap-2">
                       <StatusBadge status={c.status} />
                       <span className="rounded-full bg-secondary px-2 py-0.5 text-xs capitalize text-muted-foreground">
@@ -175,6 +188,11 @@ export default function CompaniesPage() {
       </div>
 
       <CompanyFormDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <CompanyFormDialog
+        open={Boolean(editing)}
+        onOpenChange={(v) => !v && setEditing(null)}
+        company={editing}
+      />
     </>
   );
 }
