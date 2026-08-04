@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createBudget, updateBudget } from "@/lib/data/budgets";
 import { BUDGET_PERIODS, EXPENSE_CATEGORIES, type Budget, type Company } from "@/lib/types";
 
@@ -106,7 +107,7 @@ export function BudgetFormDialog({
     try {
       const periodStart = new Date(`${values.periodStart}T00:00:00`).getTime();
       if (isEditing && budget) {
-        await updateBudget(workspaceId, budget.id, {
+        await updateBudget(workspaceId, budget.id, omitUndefined({
           companyId: values.companyId,
           category: values.category,
           period: values.period,
@@ -114,10 +115,10 @@ export function BudgetFormDialog({
           allocatedAmount: Number(values.allocatedAmount),
           currency: values.currency,
           note: values.note || undefined,
-        });
+        }));
         toast.success("Budget updated");
       } else {
-        await createBudget(workspaceId, {
+        await createBudget(workspaceId, omitUndefined({
           companyId: values.companyId,
           category: values.category,
           period: values.period,
@@ -125,7 +126,7 @@ export function BudgetFormDialog({
           allocatedAmount: Number(values.allocatedAmount),
           currency: values.currency,
           note: values.note || undefined,
-        });
+        }));
         toast.success("Budget created");
       }
       onOpenChange(false);

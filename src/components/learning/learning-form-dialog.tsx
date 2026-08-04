@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createLearningItem } from "@/lib/data/learning";
 import { LEARNING_TYPES } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -66,13 +67,13 @@ export function LearningFormDialog({
     if (!workspace) return;
     setSubmitting(true);
     try {
-      await createLearningItem(workspace.id, {
+      await createLearningItem(workspace.id, omitUndefined({
         title: values.title,
         type: values.type,
         status: "queued",
         url: values.url || undefined,
         notes: values.notes || undefined,
-      });
+      }));
       toast.success(`${values.title} added`);
       reset();
       onOpenChange(false);

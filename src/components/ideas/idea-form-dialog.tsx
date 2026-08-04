@@ -25,6 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createIdea } from "@/lib/data/ideas";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -77,13 +78,13 @@ export function IdeaFormDialog({
             .map((t) => t.trim())
             .filter(Boolean)
         : undefined;
-      await createIdea(workspace.id, {
+      await createIdea(workspace.id, omitUndefined({
         title: values.title,
         description: values.description || undefined,
         companyId: values.companyId && values.companyId !== NO_COMPANY ? values.companyId : undefined,
         tags: tags && tags.length > 0 ? tags : undefined,
         createdBy: user.uid,
-      });
+      }));
       toast.success("Idea added");
       reset();
       onOpenChange(false);

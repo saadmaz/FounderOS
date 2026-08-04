@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createVendor, updateVendor } from "@/lib/data/vendors";
 import type { Company, Vendor } from "@/lib/types";
 
@@ -102,7 +103,7 @@ export function VendorFormDialog({
   async function onSubmit(values: FormValues) {
     setSubmitting(true);
     try {
-      const payload = {
+      const payload = omitUndefined({
         companyId: values.companyId,
         name: values.name,
         category: values.category || undefined,
@@ -110,7 +111,7 @@ export function VendorFormDialog({
         contactPhone: values.contactPhone || undefined,
         website: values.website || undefined,
         notes: values.notes || undefined,
-      };
+      });
       if (isEditing && vendor) {
         await updateVendor(workspaceId, vendor.id, payload);
         toast.success("Vendor updated");

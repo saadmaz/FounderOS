@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
 import { useContacts } from "@/lib/data/contacts";
 import { createDeal, deleteDeal, updateDeal } from "@/lib/data/deals";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { DEAL_STAGES, type Deal } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -134,7 +135,7 @@ export function DealFormDialog({
     if (!workspace) return;
     setSubmitting(true);
     try {
-      const payload = {
+      const payload = omitUndefined({
         companyId: values.companyId,
         contactId: values.contactId || undefined,
         title: values.title,
@@ -146,7 +147,7 @@ export function DealFormDialog({
           ? new Date(values.expectedCloseDate).getTime()
           : null,
         notes: values.notes || undefined,
-      };
+      });
       if (isEditing && deal) {
         await updateDeal(workspace.id, deal.id, payload);
         toast.success("Deal updated");

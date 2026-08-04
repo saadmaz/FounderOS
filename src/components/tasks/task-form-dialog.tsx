@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { useProjects } from "@/lib/data/projects";
 import { createTask } from "@/lib/data/tasks";
 import { priorityLabel, taskStatusLabel } from "@/lib/labels";
@@ -87,7 +88,7 @@ export function TaskFormDialog({
     if (!workspace) return;
     setSubmitting(true);
     try {
-      await createTask(workspace.id, {
+      await createTask(workspace.id, omitUndefined({
         companyId: values.companyId,
         projectId: values.projectId || undefined,
         title: values.title,
@@ -95,7 +96,7 @@ export function TaskFormDialog({
         status: values.status,
         priority: values.priority,
         dueDate: values.dueDate ? new Date(values.dueDate).getTime() : null,
-      });
+      }));
       toast.success("Task created");
       reset();
       onOpenChange(false);

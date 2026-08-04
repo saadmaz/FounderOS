@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { createCalendarEvent, updateCalendarEvent } from "@/lib/data/calendar-events";
 import { useCompanies } from "@/lib/data/companies";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import type { CalendarEvent, CalendarEventType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -151,7 +152,7 @@ export function CalendarEventDialog({
           ? new Date(`${values.date}T${values.endTime}`).getTime()
           : null;
 
-      const payload = {
+      const payload = omitUndefined({
         title: values.title,
         type: values.type,
         startsAt,
@@ -159,7 +160,7 @@ export function CalendarEventDialog({
         allDay: values.allDay,
         companyId: values.companyId === NO_COMPANY ? undefined : values.companyId,
         notes: values.notes || undefined,
-      };
+      });
 
       if (event) {
         await updateCalendarEvent(workspace.id, event.id, payload);

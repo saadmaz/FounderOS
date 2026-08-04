@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createProject } from "@/lib/data/projects";
 import { priorityLabel } from "@/lib/labels";
 import { PRIORITIES } from "@/lib/types";
@@ -78,14 +79,14 @@ export function ProjectFormDialog({
     if (!workspace) return;
     setSubmitting(true);
     try {
-      await createProject(workspace.id, {
+      await createProject(workspace.id, omitUndefined({
         companyId: values.companyId,
         name: values.name,
         description: values.description || undefined,
         priority: values.priority,
         status: "not_started",
         estimatedHours: values.estimatedHours ? Number(values.estimatedHours) : undefined,
-      });
+      }));
       toast.success("Project created");
       reset();
       onOpenChange(false);

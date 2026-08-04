@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { logManualEntry } from "@/lib/data/time-entries";
 import type { Company } from "@/lib/types";
 
@@ -80,14 +81,14 @@ export function ManualEntryDialog({
     try {
       const startedAt = new Date(`${values.date}T${values.startTime}`).getTime();
       const endedAt = new Date(`${values.date}T${values.endTime}`).getTime();
-      await logManualEntry(workspaceId, {
+      await logManualEntry(workspaceId, omitUndefined({
         memberId,
         companyId: values.companyId,
         startedAt,
         endedAt,
         billable: values.billable,
         note: values.note || undefined,
-      });
+      }));
       toast.success("Time logged");
       reset();
       onOpenChange(false);

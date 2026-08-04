@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createMeeting, updateMeeting } from "@/lib/data/meetings";
 import { useMembers } from "@/lib/data/members";
 import type { Meeting } from "@/lib/types";
@@ -138,7 +139,7 @@ export function MeetingFormDialog({
       const scheduledAt = new Date(values.scheduledAt).getTime();
       const durationMinutes = Number(values.durationMinutes);
       if (isEditing && meeting) {
-        await updateMeeting(workspace.id, meeting.id, {
+        await updateMeeting(workspace.id, meeting.id, omitUndefined({
           title: values.title,
           companyId: values.companyId,
           scheduledAt,
@@ -146,10 +147,10 @@ export function MeetingFormDialog({
           location: values.location || undefined,
           agenda: values.agenda || undefined,
           attendeeIds: values.attendeeIds,
-        });
+        }));
         toast.success("Meeting updated");
       } else {
-        await createMeeting(workspace.id, {
+        await createMeeting(workspace.id, omitUndefined({
           title: values.title,
           companyId: values.companyId,
           scheduledAt,
@@ -158,7 +159,7 @@ export function MeetingFormDialog({
           agenda: values.agenda || undefined,
           attendeeIds: values.attendeeIds,
           status: "scheduled",
-        });
+        }));
         toast.success("Meeting scheduled");
       }
       onOpenChange(false);

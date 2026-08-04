@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createInvoice, updateInvoice } from "@/lib/data/invoices";
 import { formatCurrency } from "@/lib/format";
 import { INVOICE_STATUSES, type Company, type Invoice } from "@/lib/types";
@@ -152,7 +153,7 @@ export function InvoiceFormDialog({
       }));
       const amount = lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice, 0);
       if (isEditing && invoice) {
-        await updateInvoice(workspaceId, invoice.id, {
+        await updateInvoice(workspaceId, invoice.id, omitUndefined({
           companyId: values.companyId,
           invoiceNumber: values.invoiceNumber,
           clientName: values.clientName,
@@ -163,10 +164,10 @@ export function InvoiceFormDialog({
           issuedDate,
           dueDate,
           note: values.note || undefined,
-        });
+        }));
         toast.success("Invoice updated");
       } else {
-        await createInvoice(workspaceId, {
+        await createInvoice(workspaceId, omitUndefined({
           companyId: values.companyId,
           invoiceNumber: values.invoiceNumber,
           clientName: values.clientName,
@@ -177,7 +178,7 @@ export function InvoiceFormDialog({
           issuedDate,
           dueDate,
           note: values.note || undefined,
-        });
+        }));
         toast.success("Invoice created");
       }
       onOpenChange(false);

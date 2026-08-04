@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createExpense, updateExpense } from "@/lib/data/expenses";
 import { EXPENSE_CATEGORIES, EXPENSE_STATUSES, type Company, type Expense } from "@/lib/types";
 
@@ -113,7 +114,7 @@ export function ExpenseFormDialog({
     try {
       const date = new Date(`${values.date}T00:00:00`).getTime();
       if (isEditing && expense) {
-        await updateExpense(workspaceId, expense.id, {
+        await updateExpense(workspaceId, expense.id, omitUndefined({
           companyId: values.companyId,
           category: values.category,
           status: values.status,
@@ -122,10 +123,10 @@ export function ExpenseFormDialog({
           date,
           billable: values.billable,
           description: values.description || undefined,
-        });
+        }));
         toast.success("Expense updated");
       } else {
-        await createExpense(workspaceId, {
+        await createExpense(workspaceId, omitUndefined({
           companyId: values.companyId,
           category: values.category,
           status: values.status,
@@ -135,7 +136,7 @@ export function ExpenseFormDialog({
           billable: values.billable,
           description: values.description || undefined,
           createdBy: memberId,
-        });
+        }));
         toast.success("Expense added");
       }
       onOpenChange(false);

@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createRevenueEntry, updateRevenueEntry } from "@/lib/data/revenue";
 import { REVENUE_CATEGORIES, type Company, type RevenueEntry } from "@/lib/types";
 
@@ -106,7 +107,7 @@ export function RevenueFormDialog({
     try {
       const date = new Date(`${values.date}T00:00:00`).getTime();
       if (isEditing && entry) {
-        await updateRevenueEntry(workspaceId, entry.id, {
+        await updateRevenueEntry(workspaceId, entry.id, omitUndefined({
           companyId: values.companyId,
           category: values.category,
           amount: Number(values.amount),
@@ -114,10 +115,10 @@ export function RevenueFormDialog({
           date,
           source: values.source || undefined,
           note: values.note || undefined,
-        });
+        }));
         toast.success("Revenue entry updated");
       } else {
-        await createRevenueEntry(workspaceId, {
+        await createRevenueEntry(workspaceId, omitUndefined({
           companyId: values.companyId,
           category: values.category,
           amount: Number(values.amount),
@@ -125,7 +126,7 @@ export function RevenueFormDialog({
           date,
           source: values.source || undefined,
           note: values.note || undefined,
-        });
+        }));
         toast.success("Revenue logged");
       }
       onOpenChange(false);

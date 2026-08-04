@@ -25,6 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
 import { createContact, updateContact } from "@/lib/data/contacts";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import type { Contact } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -120,7 +121,7 @@ export function ContactFormDialog({
     if (!workspace) return;
     setSubmitting(true);
     try {
-      const payload = {
+      const payload = omitUndefined({
         companyId: values.companyId,
         name: values.name,
         title: values.title || undefined,
@@ -131,7 +132,7 @@ export function ContactFormDialog({
           ? new Date(values.lastContactedAt).getTime()
           : null,
         notes: values.notes || undefined,
-      };
+      });
       if (isEditing && contact) {
         await updateContact(workspace.id, contact.id, payload);
         toast.success("Contact updated");

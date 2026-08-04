@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createGoal, updateGoal } from "@/lib/data/goals";
 import { GOAL_CATEGORIES, GOAL_STATUSES, type Goal } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -108,7 +109,7 @@ export function GoalFormDialog({
     if (!workspace) return;
     setSubmitting(true);
     try {
-      const payload = {
+      const payload = omitUndefined({
         title: values.title,
         description: values.description || undefined,
         category: values.category,
@@ -118,7 +119,7 @@ export function GoalFormDialog({
         currentValue: values.currentValue ? Number(values.currentValue) : undefined,
         unit: values.unit || undefined,
         targetDate: values.targetDate ? new Date(`${values.targetDate}T00:00:00`).getTime() : null,
-      };
+      });
       if (isEditing && goal) {
         await updateGoal(workspace.id, goal.id, payload);
         toast.success("Goal updated");
