@@ -26,7 +26,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { createCompany, updateCompany, uploadCompanyLogo } from "@/lib/data/companies";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
+import { createCompany, updateCompany } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
 import type { Company } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -117,7 +118,6 @@ export function CompanyFormDialog({
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [draftId, setDraftId] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -137,7 +137,6 @@ export function CompanyFormDialog({
     if (!open) return;
     reset(defaultsFor(company));
     setStep(0);
-    setDraftId(crypto.randomUUID());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, company]);
 
@@ -176,7 +175,7 @@ export function CompanyFormDialog({
     if (!file || !workspace) return;
     setUploadingLogo(true);
     try {
-      const url = await uploadCompanyLogo(workspace.id, company?.id ?? draftId, file);
+      const url = await uploadImageToCloudinary(file, `founderos/${workspace.id}/logos`);
       setValue("logoUrl", url, { shouldValidate: true });
     } catch {
       toast.error("Couldn't upload the logo. Try again.");
