@@ -157,7 +157,7 @@ export default function LoginPage() {
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Humayra Shajahan"
+                    placeholder="Your name"
                     className="pl-9"
                     required
                   />
