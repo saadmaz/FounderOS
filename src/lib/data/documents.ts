@@ -48,17 +48,17 @@ export async function uploadDocument(
 }
 
 /** Removes both the Cloudinary asset (via a server route - deleting needs
- * the API secret) and the Firestore metadata doc. */
+ * the API secret) and the Firestore metadata doc. Throws if the Cloudinary
+ * delete fails, rather than silently deleting only the metadata - fetch()
+ * doesn't reject on a non-2xx response, so that check has to be explicit. */
 export async function deleteDocument(workspaceId: string, document: DocumentFile) {
-  try {
-    await fetch("/api/documents/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ publicId: document.publicId, resourceType: document.resourceType }),
-    });
-  } catch {
-    // Cloudinary asset may already be gone (e.g. manual cleanup) - the
-    // metadata doc is still the source of truth for the list, so remove it.
+  const res = await fetch("/api/documents/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ publicId: document.publicId, resourceType: document.resourceType }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to delete Cloudinary asset (${res.status})`);
   }
   return deleteDoc(doc(db, path(workspaceId), document.id));
 }

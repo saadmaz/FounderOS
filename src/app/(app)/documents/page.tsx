@@ -176,12 +176,19 @@ export default function DocumentsPage() {
                   return (
                     <TableRow key={d.id} className="hover:bg-secondary/40">
                       <TableCell className="py-2">
-                        <div className="flex items-center gap-2.5">
+                        <a
+                          href={d.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2.5"
+                        >
                           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
                             <Icon className="size-4 text-muted-foreground" />
                           </span>
-                          <span className="max-w-64 truncate text-sm font-medium">{d.name}</span>
-                        </div>
+                          <span className="max-w-64 truncate text-sm font-medium hover:underline">
+                            {d.name}
+                          </span>
+                        </a>
                       </TableCell>
                       <TableCell className="py-2">
                         {company ? (
