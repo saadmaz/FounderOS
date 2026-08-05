@@ -7,6 +7,7 @@ import {
   orderBy,
   updateDoc,
 } from "firebase/firestore";
+import { trackEvent } from "@/lib/analytics";
 import { db } from "@/lib/firebase/client";
 import type { Company } from "@/lib/types";
 import { now } from "./firestore-helpers";
@@ -28,13 +29,15 @@ export async function createCompany(
     Partial<Company>
 ) {
   const ts = now();
-  return addDoc(collection(db, path(workspaceId)), {
+  const ref = await addDoc(collection(db, path(workspaceId)), {
     ...input,
     workspaceId,
     createdAt: ts,
     updatedAt: ts,
     archivedAt: null,
   });
+  trackEvent("company_created", { company_type: input.type, stage: input.stage });
+  return ref;
 }
 
 export async function updateCompany(
@@ -49,10 +52,12 @@ export async function updateCompany(
 }
 
 export async function archiveCompany(workspaceId: string, companyId: string) {
-  return updateCompany(workspaceId, companyId, {
+  const result = await updateCompany(workspaceId, companyId, {
     status: "archived",
     archivedAt: now(),
   });
+  trackEvent("company_archived");
+  return result;
 }
 
 export async function restoreCompany(workspaceId: string, companyId: string) {

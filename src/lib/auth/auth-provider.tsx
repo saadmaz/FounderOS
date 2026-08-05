@@ -2,6 +2,7 @@
 
 import { type User, onAuthStateChanged } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
+import { identifyUser } from "@/lib/analytics";
 import { auth } from "@/lib/firebase/client";
 
 interface AuthContextValue {
@@ -19,6 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
+      identifyUser(u?.uid ?? null);
     });
     return () => unsubscribe();
   }, []);

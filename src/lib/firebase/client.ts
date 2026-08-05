@@ -29,12 +29,18 @@ export const storage = getStorage(app);
 // (no IndexedDB, some webviews, etc. fail the check) - never call getAnalytics
 // during SSR/build, that's what broke the Vercel build for auth/firestore
 // before env vars were configured.
-export let analytics: Analytics | null = null;
-if (typeof window !== "undefined" && firebaseConfig.measurementId) {
-  isAnalyticsSupported().then((supported) => {
-    if (supported) analytics = getAnalytics(app);
-  });
-}
+//
+// analyticsReady is a promise (not a plain nullable value) on purpose: code
+// that fires early - sign_up/login on the very first page load, for example
+// - would otherwise race the async isSupported() check below and read
+// analytics as still-null, silently dropping the event. Awaiting this
+// promise instead makes every caller wait for the real answer.
+export const analyticsReady: Promise<Analytics | null> =
+  typeof window !== "undefined" && firebaseConfig.measurementId
+    ? isAnalyticsSupported()
+        .then((supported) => (supported ? getAnalytics(app) : null))
+        .catch(() => null)
+    : Promise.resolve(null);
 
 // Connect to the Local Emulator Suite exactly once, in the browser only.
 // Guarded by a global flag because Fast Refresh re-runs this module.

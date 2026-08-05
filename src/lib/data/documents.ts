@@ -1,6 +1,7 @@
 "use client";
 
 import { addDoc, collection, deleteDoc, doc, orderBy, where } from "firebase/firestore";
+import { trackEvent } from "@/lib/analytics";
 import { uploadDocumentToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase/client";
 import type { DocumentFile } from "@/lib/types";
@@ -33,7 +34,7 @@ export async function uploadDocument(
   );
 
   const ts = now();
-  return addDoc(collection(db, path(workspaceId)), {
+  const ref = await addDoc(collection(db, path(workspaceId)), {
     workspaceId,
     ...(input.companyId ? { companyId: input.companyId } : {}),
     name: input.file.name,
@@ -45,6 +46,8 @@ export async function uploadDocument(
     uploadedBy: input.uploadedBy,
     createdAt: ts,
   });
+  trackEvent("document_uploaded", { resource_type: resourceType, size: input.file.size });
+  return ref;
 }
 
 /** Removes both the Cloudinary asset (via a server route - deleting needs
@@ -60,5 +63,7 @@ export async function deleteDocument(workspaceId: string, document: DocumentFile
   if (!res.ok) {
     throw new Error(`Failed to delete Cloudinary asset (${res.status})`);
   }
-  return deleteDoc(doc(db, path(workspaceId), document.id));
+  const result = await deleteDoc(doc(db, path(workspaceId), document.id));
+  trackEvent("document_deleted");
+  return result;
 }

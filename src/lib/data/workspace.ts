@@ -2,6 +2,7 @@
 
 import type { User } from "firebase/auth";
 import { collection, doc, getDoc, setDoc, writeBatch } from "firebase/firestore";
+import { trackEvent } from "@/lib/analytics";
 import { db } from "@/lib/firebase/client";
 import type { Workspace, WorkspaceMember } from "@/lib/types";
 import { now, omitUndefined } from "./firestore-helpers";
@@ -49,6 +50,7 @@ export async function ensureWorkspaceForUser(user: User): Promise<string> {
   batch.set(pointerRef, { primaryWorkspaceId: workspaceRef.id });
   await batch.commit();
 
+  trackEvent("workspace_created", { workspace_id: workspaceRef.id });
   return workspaceRef.id;
 }
 

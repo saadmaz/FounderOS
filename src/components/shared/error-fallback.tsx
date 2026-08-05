@@ -3,7 +3,7 @@
 import { AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { analytics } from "@/lib/firebase/client";
+import { trackEvent } from "@/lib/analytics";
 
 /**
  * Shared UI for every error.tsx boundary in the app (see src/app/error.tsx
@@ -23,13 +23,9 @@ export function ErrorFallback({
 }) {
   useEffect(() => {
     console.error("Caught by error boundary:", error);
-    // Best-effort - fires the GA4-standard "exception" event so crashes show
-    // up in Firebase/GA4 analytics without any extra dashboard setup.
-    import("firebase/analytics")
-      .then(({ logEvent }) => {
-        if (analytics) logEvent(analytics, "exception", { description: error.message, fatal: true });
-      })
-      .catch(() => {});
+    // GA4's standard "exception" event - crashes show up in Firebase/GA4
+    // analytics without any extra dashboard setup.
+    trackEvent("exception", { description: error.message, fatal: true });
   }, [error]);
 
   return (

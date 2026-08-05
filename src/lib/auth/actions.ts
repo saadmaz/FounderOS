@@ -13,6 +13,7 @@ import {
 } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { trackEvent } from "@/lib/analytics";
 import { auth, db, storage } from "@/lib/firebase/client";
 
 export async function signUpWithEmail(name: string, email: string, password: string) {
@@ -20,17 +21,20 @@ export async function signUpWithEmail(name: string, email: string, password: str
   if (name) {
     await updateProfile(cred.user, { displayName: name });
   }
+  trackEvent("sign_up", { method: "password" });
   return cred.user;
 }
 
 export async function signInWithEmail(email: string, password: string) {
   const cred = await signInWithEmailAndPassword(auth, email, password);
+  trackEvent("login", { method: "password" });
   return cred.user;
 }
 
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   const cred = await signInWithPopup(auth, provider);
+  trackEvent("login", { method: "google" });
   return cred.user;
 }
 
