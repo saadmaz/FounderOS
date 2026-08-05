@@ -1,8 +1,8 @@
 "use client";
 
 import { addDoc, collection, deleteDoc, doc, orderBy, where } from "firebase/firestore";
-import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { db, storage } from "@/lib/firebase/client";
+import { uploadDocumentToCloudinary } from "@/lib/cloudinary";
+import { db } from "@/lib/firebase/client";
 import type { DocumentFile } from "@/lib/types";
 import { now } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
@@ -20,23 +20,26 @@ export function useDocuments(workspaceId: string | null, companyId?: string) {
 }
 
 /**
- * Uploads the file's bytes to Storage, then writes the metadata doc that
- * the rest of the app (list, filters, etc.) actually queries against.
+ * Uploads the file to Cloudinary, then writes the metadata doc that the
+ * rest of the app (list, filters, etc.) actually queries against.
  */
 export async function uploadDocument(
   workspaceId: string,
   input: { file: File; companyId?: string; uploadedBy: string }
 ) {
-  const storagePath = `workspaces/${workspaceId}/documents/${input.uploadedBy}-${Date.now()}-${input.file.name}`;
-  const storageRef = ref(storage, storagePath);
-  await uploadBytes(storageRef, input.file);
+  const { url, publicId, resourceType } = await uploadDocumentToCloudinary(
+    input.file,
+    `founderos/${workspaceId}/documents`
+  );
 
   const ts = now();
   return addDoc(collection(db, path(workspaceId)), {
     workspaceId,
     ...(input.companyId ? { companyId: input.companyId } : {}),
     name: input.file.name,
-    storagePath,
+    url,
+    publicId,
+    resourceType,
     contentType: input.file.type || "application/octet-stream",
     size: input.file.size,
     uploadedBy: input.uploadedBy,
@@ -44,17 +47,17 @@ export async function uploadDocument(
   });
 }
 
-/** Resolves a fresh download URL for a document on demand. */
-export async function getDocumentDownloadURL(storagePath: string) {
-  return getDownloadURL(ref(storage, storagePath));
-}
-
-/** Removes both the Storage object and its Firestore metadata doc. */
+/** Removes both the Cloudinary asset (via a server route - deleting needs
+ * the API secret) and the Firestore metadata doc. */
 export async function deleteDocument(workspaceId: string, document: DocumentFile) {
   try {
-    await deleteObject(ref(storage, document.storagePath));
+    await fetch("/api/documents/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ publicId: document.publicId, resourceType: document.resourceType }),
+    });
   } catch {
-    // Storage object may already be gone (e.g. manual cleanup) - the
+    // Cloudinary asset may already be gone (e.g. manual cleanup) - the
     // metadata doc is still the source of truth for the list, so remove it.
   }
   return deleteDoc(doc(db, path(workspaceId), document.id));

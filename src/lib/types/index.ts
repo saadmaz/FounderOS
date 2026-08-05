@@ -338,7 +338,9 @@ export interface DocumentFile {
   workspaceId: string;
   companyId?: string;
   name: string;
-  storagePath: string; // Storage path, workspaces/{workspaceId}/documents/...
+  url: string; // Cloudinary secure_url - stable, safe to use directly
+  publicId: string; // Cloudinary public_id, needed to delete the asset later
+  resourceType: "image" | "video" | "raw"; // Cloudinary's asset bucket, needed to delete it
   contentType: string;
   size: number;
   uploadedBy: string; // WorkspaceMember id

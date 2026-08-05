@@ -34,7 +34,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { UploadDialog } from "@/components/documents/upload-dialog";
 import { useCompanies } from "@/lib/data/companies";
-import { deleteDocument, getDocumentDownloadURL, useDocuments } from "@/lib/data/documents";
+import { deleteDocument, useDocuments } from "@/lib/data/documents";
 import { useMembers } from "@/lib/data/members";
 import { formatDate } from "@/lib/format";
 import type { DocumentFile } from "@/lib/types";
@@ -91,13 +91,8 @@ export default function DocumentsPage() {
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
-  async function handleDownload(docFile: DocumentFile) {
-    try {
-      const url = await getDocumentDownloadURL(docFile.storagePath);
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch {
-      toast.error("Couldn't get a download link. Try again.");
-    }
+  function handleDownload(docFile: DocumentFile) {
+    window.open(docFile.url, "_blank", "noopener,noreferrer");
   }
 
   async function handleDelete(docFile: DocumentFile) {
