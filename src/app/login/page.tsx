@@ -1,32 +1,27 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { ArrowRight, Building2, Loader2, Lock, Mail, Sparkles, User, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { signInWithEmail, signInWithGoogle, signUpWithEmail } from "@/lib/auth/actions";
+import { resetPassword, signInWithEmail, signInWithGoogle, signUpWithEmail } from "@/lib/auth/actions";
 import { authErrorMessage } from "@/lib/auth/error-messages";
 import { cn } from "@/lib/utils";
-
-const PITCH_POINTS = [
-  { icon: Building2, text: "Every company you run, in one workspace" },
-  { icon: Zap, text: "Tasks, time, and projects that update in real time" },
-  { icon: Sparkles, text: "Built for founders juggling more than one thing" },
-];
 
 export default function LoginPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user) router.replace("/dashboard");
@@ -39,6 +34,10 @@ export default function LoginPage() {
     try {
       if (mode === "signup") {
         await signUpWithEmail(name, email, password);
+      } else if (mode === "reset") {
+        await resetPassword(email);
+        setResetSent(true);
+        return;
       } else {
         await signInWithEmail(email, password);
       }
@@ -48,6 +47,13 @@ export default function LoginPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function switchMode(next: "signin" | "signup" | "reset") {
+    setMode(next);
+    setError(null);
+    setResetSent(false);
+    setPassword("");
   }
 
   async function handleGoogle() {
@@ -64,72 +70,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      {/* Branding panel */}
-      <div className="relative hidden overflow-hidden bg-[#09090B] lg:flex lg:flex-col lg:justify-between lg:p-12">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-40"
-          style={{
-            background:
-              "radial-gradient(600px circle at 15% 20%, rgba(37,99,235,0.35), transparent 60%), radial-gradient(500px circle at 85% 80%, rgba(139,92,246,0.25), transparent 60%)",
-          }}
-        />
-        <div className="relative flex items-center gap-2 text-white">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
-            <Zap className="size-4.5 text-white" fill="currentColor" />
-          </div>
-          <span className="text-lg font-semibold tracking-tight">FounderOS</span>
-        </div>
+    <AuthShell>
+      <h2 className="text-2xl font-semibold tracking-tight">
+        {mode === "signin" ? "Welcome back" : mode === "signup" ? "Create your workspace" : "Reset your password"}
+      </h2>
+      <p className="mt-1.5 text-sm text-muted-foreground">
+        {mode === "signin"
+          ? "Sign in to keep running your companies."
+          : mode === "signup"
+            ? "One workspace for every company you're building."
+            : "Enter your email and we'll send you a reset link."}
+      </p>
 
-        <div className="relative max-w-md space-y-8">
-          <h1 className="text-4xl font-semibold leading-tight tracking-tight text-white">
-            Run every company you own from one calm place.
-          </h1>
-          <div className="space-y-4">
-            {PITCH_POINTS.map((p, i) => (
-              <motion.div
-                key={p.text}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 * i, duration: 0.4 }}
-                className="flex items-center gap-3 text-[#A1A1AA]"
-              >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/5">
-                  <p.icon className="size-4 text-[#93C5FD]" />
-                </div>
-                <span className="text-sm">{p.text}</span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        <p className="relative text-xs text-[#52525B]">© {new Date().getFullYear()} FounderOS</p>
-      </div>
-
-      {/* Auth form */}
-      <div className="flex items-center justify-center bg-background p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="w-full max-w-sm"
-        >
-          <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
-              <Zap className="size-4.5 text-white" fill="currentColor" />
-            </div>
-            <span className="text-lg font-semibold tracking-tight">FounderOS</span>
-          </div>
-
-          <h2 className="text-2xl font-semibold tracking-tight">
-            {mode === "signin" ? "Welcome back" : "Create your workspace"}
-          </h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            {mode === "signin"
-              ? "Sign in to keep running your companies."
-              : "One workspace for every company you're building."}
-          </p>
-
+      {mode !== "reset" && (
+        <>
           <Button
             type="button"
             variant="outline"
@@ -146,41 +100,71 @@ export default function LoginPage() {
             <span className="text-xs text-muted-foreground-2">or</span>
             <div className="h-px flex-1 bg-border" />
           </div>
+        </>
+      )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground-2" />
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name"
-                    className="pl-9"
-                    required
-                  />
-                </div>
-              </div>
-            )}
+      {mode === "reset" && resetSent ? (
+        <div className="mt-6 space-y-4">
+          <p className="rounded-md bg-success/10 px-3 py-2 text-sm text-success">
+            If an account exists for {email}, a reset link is on its way.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-1.5"
+            onClick={() => switchMode("signin")}
+          >
+            <ArrowLeft className="size-4" />
+            Back to sign in
+          </Button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className={cn("space-y-4", mode === "reset" && "mt-6")}>
+          {mode === "signup" && (
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="name">Name</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground-2" />
+                <User className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground-2" />
                 <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@company.com"
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name"
                   className="pl-9"
                   required
                 />
               </div>
             </div>
+          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground-2" />
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                className="pl-9"
+                required
+              />
+            </div>
+          </div>
+          {mode !== "reset" && (
             <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                {mode === "signin" && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode("reset")}
+                    className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground-2" />
                 <Input
@@ -195,36 +179,50 @@ export default function LoginPage() {
                 />
               </div>
             </div>
+          )}
 
-            {error && (
-              <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
+          {error && (
+            <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
+          )}
+
+          <Button type="submit" className="w-full gap-1.5" disabled={submitting}>
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <>
+                {mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
+                <ArrowRight className="size-4" />
+              </>
             )}
+          </Button>
+        </form>
+      )}
 
-            <Button type="submit" className="w-full gap-1.5" disabled={submitting}>
-              {submitting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <>
-                  {mode === "signin" ? "Sign in" : "Create account"}
-                  <ArrowRight className="size-4" />
-                </>
-              )}
-            </Button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        {mode === "reset" ? (
+          !resetSent && (
+            <button
+              type="button"
+              onClick={() => switchMode("signin")}
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Back to sign in
+            </button>
+          )
+        ) : (
+          <>
             {mode === "signin" ? "New to FounderOS?" : "Already have a workspace?"}{" "}
             <button
               type="button"
-              onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+              onClick={() => switchMode(mode === "signin" ? "signup" : "signin")}
               className={cn("font-medium text-foreground underline-offset-4 hover:underline")}
             >
               {mode === "signin" ? "Create an account" : "Sign in"}
             </button>
-          </p>
-        </motion.div>
-      </div>
-    </div>
+          </>
+        )}
+      </p>
+    </AuthShell>
   );
 }
 

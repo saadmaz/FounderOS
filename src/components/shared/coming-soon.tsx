@@ -31,7 +31,7 @@ export function ComingSoon({
         <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
           In development
         </div>
-        <Button render={<Link href="/dashboard" />} variant="outline" className="mt-6">
+        <Button render={<Link href="/dashboard" />} nativeButton={false} variant="outline" className="mt-6">
           Back to dashboard
         </Button>
       </motion.div>

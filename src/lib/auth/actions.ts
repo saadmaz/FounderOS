@@ -5,6 +5,7 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   reauthenticateWithCredential,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -40,6 +41,17 @@ export async function signInWithGoogle() {
 
 export async function signOut() {
   await firebaseSignOut(auth);
+}
+
+/**
+ * Sends Firebase's built-in password-reset email. The "from" address, and
+ * whether it's routed through custom SMTP (e.g. Resend) instead of
+ * Firebase's default sender, is configured entirely in the Firebase Console
+ * (Authentication > Templates) - nothing to change here if that's updated.
+ */
+export async function resetPassword(email: string) {
+  await sendPasswordResetEmail(auth, email);
+  trackEvent("password_reset_requested");
 }
 
 /**
