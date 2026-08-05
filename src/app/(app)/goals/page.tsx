@@ -229,11 +229,11 @@ export default function GoalsPage() {
                           <MoreHorizontal className="size-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => setEditingGoal(g)}>
+                          <DropdownMenuItem onClick={() => setEditingGoal(g)}>
                             <Pencil className="size-4" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" onSelect={() => handleDelete(g)}>
+                          <DropdownMenuItem variant="destructive" onClick={() => handleDelete(g)}>
                             <Trash2 className="size-4" />
                             Delete
                           </DropdownMenuItem>

@@ -254,13 +254,13 @@ export default function CalendarPage() {
                                 <MoreHorizontal className="size-4" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onSelect={() => setEditing(e)}>
+                                <DropdownMenuItem onClick={() => setEditing(e)}>
                                   <Pencil className="size-4" />
                                   Edit
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="destructive"
-                                  onSelect={() => handleDelete(e)}
+                                  onClick={() => handleDelete(e)}
                                 >
                                   <Trash2 className="size-4" />
                                   Delete

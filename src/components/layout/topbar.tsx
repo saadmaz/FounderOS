@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -97,10 +98,12 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="font-normal">
-              <p className="text-sm font-medium">{user?.displayName ?? "Founder"}</p>
-              <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
-            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="font-normal">
+                <p className="text-sm font-medium">{user?.displayName ?? "Founder"}</p>
+                <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem render={<Link href="/profile" />}>
               <User className="size-4" />
@@ -111,7 +114,7 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => signOut()} variant="destructive">
+            <DropdownMenuItem onClick={() => signOut()} variant="destructive">
               <LogOut className="size-4" />
               Sign out
             </DropdownMenuItem>

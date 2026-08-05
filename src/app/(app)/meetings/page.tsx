@@ -143,24 +143,24 @@ export default function MeetingsPage() {
               <MoreHorizontal className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setEditing(meeting)}>
+              <DropdownMenuItem onClick={() => setEditing(meeting)}>
                 <Pencil className="size-4" />
                 Edit
               </DropdownMenuItem>
               {meeting.status !== "completed" && (
-                <DropdownMenuItem onSelect={() => handleStatus(meeting, "completed")}>
+                <DropdownMenuItem onClick={() => handleStatus(meeting, "completed")}>
                   <CalendarCheck className="size-4" />
                   Mark completed
                 </DropdownMenuItem>
               )}
               {meeting.status !== "cancelled" && (
-                <DropdownMenuItem onSelect={() => handleStatus(meeting, "cancelled")}>
+                <DropdownMenuItem onClick={() => handleStatus(meeting, "cancelled")}>
                   <CalendarX2 className="size-4" />
                   Mark cancelled
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onSelect={() => handleDelete(meeting)}>
+              <DropdownMenuItem variant="destructive" onClick={() => handleDelete(meeting)}>
                 <Trash2 className="size-4" />
                 Delete
               </DropdownMenuItem>

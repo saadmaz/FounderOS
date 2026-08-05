@@ -56,7 +56,7 @@ export default function CompaniesPage() {
     <>
       <PageHeader
         title="Companies"
-        description={`${active.length} active company${active.length === 1 ? "" : "ies"}`}
+        description={`${active.length} active ${active.length === 1 ? "company" : "companies"}`}
         actions={
           <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
             <Plus className="size-4" />
@@ -102,11 +102,11 @@ export default function CompaniesPage() {
                         <MoreHorizontal className="size-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setEditing(c)}>
+                        <DropdownMenuItem onClick={() => setEditing(c)}>
                           <Pencil className="size-4" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleArchive(c.id, c.name)}>
+                        <DropdownMenuItem onClick={() => handleArchive(c.id, c.name)}>
                           <Archive className="size-4" />
                           Archive
                         </DropdownMenuItem>

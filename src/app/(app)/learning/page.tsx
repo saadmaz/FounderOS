@@ -115,7 +115,7 @@ function LearningCard({ item, workspaceId }: { item: LearningItem; workspaceId: 
             <MoreHorizontal className="size-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem variant="destructive" onSelect={handleDelete}>
+            <DropdownMenuItem variant="destructive" onClick={handleDelete}>
               <Trash2 className="size-4" />
               Delete
             </DropdownMenuItem>

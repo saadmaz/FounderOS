@@ -218,11 +218,11 @@ export default function CrmPage() {
                                 <MoreHorizontal className="size-4" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onSelect={() => openEditContact(contact)}>
+                                <DropdownMenuItem onClick={() => openEditContact(contact)}>
                                   <Pencil className="size-4" />
                                   Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleDeleteContact(contact)}>
+                                <DropdownMenuItem onClick={() => handleDeleteContact(contact)}>
                                   <Trash2 className="size-4" />
                                   Delete
                                 </DropdownMenuItem>

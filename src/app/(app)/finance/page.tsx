@@ -363,7 +363,7 @@ export default function FinancePage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  onSelect={() => {
+                                  onClick={() => {
                                     setEditingExpense(e);
                                     setExpenseDialogOpen(true);
                                   }}
@@ -372,7 +372,7 @@ export default function FinancePage() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="destructive"
-                                  onSelect={() => handleDeleteExpense(e.id)}
+                                  onClick={() => handleDeleteExpense(e.id)}
                                 >
                                   Delete
                                 </DropdownMenuItem>
@@ -466,7 +466,7 @@ export default function FinancePage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  onSelect={() => {
+                                  onClick={() => {
                                     setEditingRevenue(r);
                                     setRevenueDialogOpen(true);
                                   }}
@@ -475,7 +475,7 @@ export default function FinancePage() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="destructive"
-                                  onSelect={() => handleDeleteRevenue(r.id)}
+                                  onClick={() => handleDeleteRevenue(r.id)}
                                 >
                                   Delete
                                 </DropdownMenuItem>
@@ -571,7 +571,7 @@ export default function FinancePage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  onSelect={() => {
+                                  onClick={() => {
                                     setEditingInvoice(inv);
                                     setInvoiceDialogOpen(true);
                                   }}
@@ -579,13 +579,13 @@ export default function FinancePage() {
                                   Edit
                                 </DropdownMenuItem>
                                 {inv.status !== "paid" && inv.status !== "cancelled" && (
-                                  <DropdownMenuItem onSelect={() => handleMarkPaid(inv.id)}>
+                                  <DropdownMenuItem onClick={() => handleMarkPaid(inv.id)}>
                                     Mark as paid
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem
                                   variant="destructive"
-                                  onSelect={() => handleDeleteInvoice(inv.id)}
+                                  onClick={() => handleDeleteInvoice(inv.id)}
                                 >
                                   Delete
                                 </DropdownMenuItem>
@@ -662,7 +662,7 @@ export default function FinancePage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onSelect={() => {
+                                onClick={() => {
                                   setEditingBudget(b);
                                   setBudgetDialogOpen(true);
                                 }}
@@ -671,7 +671,7 @@ export default function FinancePage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"
-                                onSelect={() => handleDeleteBudget(b.id)}
+                                onClick={() => handleDeleteBudget(b.id)}
                               >
                                 Delete
                               </DropdownMenuItem>
@@ -791,7 +791,7 @@ export default function FinancePage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  onSelect={() => {
+                                  onClick={() => {
                                     setEditingVendor(v);
                                     setVendorDialogOpen(true);
                                   }}
@@ -800,7 +800,7 @@ export default function FinancePage() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="destructive"
-                                  onSelect={() => handleDeleteVendor(v.id)}
+                                  onClick={() => handleDeleteVendor(v.id)}
                                 >
                                   Delete
                                 </DropdownMenuItem>
