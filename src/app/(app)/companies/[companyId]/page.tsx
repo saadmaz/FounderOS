@@ -1,16 +1,18 @@
 "use client";
 
-import { ArrowLeft, AtSign, Briefcase, Camera, CheckSquare, Clock, FileText, FolderKanban, Globe, Link2, Loader2, Pencil, Plus, Users } from "lucide-react";
+import { ArrowLeft, AtSign, Briefcase, Camera, CheckSquare, Clock, FolderKanban, Globe, Link2, Loader2, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ComingSoon } from "@/components/shared/coming-soon";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CompanyFormDialog } from "@/components/companies/company-form-dialog";
+import { CompanyCrmPanel } from "@/components/companies/company-crm-panel";
+import { CompanyDocumentsPanel } from "@/components/companies/company-documents-panel";
+import { CompanyFinancePanel } from "@/components/companies/company-finance-panel";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { ProjectList } from "@/components/projects/project-list";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
@@ -200,13 +202,13 @@ export default function CompanyDetailPage() {
         </TabsContent>
 
         <TabsContent value="finance" className="flex flex-1">
-          <ComingSoon icon={<FileText />} title="Finance" description={`Expenses, revenue, and P&L for ${company.name}.`} />
+          <CompanyFinancePanel company={company} />
         </TabsContent>
         <TabsContent value="crm" className="flex flex-1">
-          <ComingSoon icon={<Users />} title="CRM" description={`Clients and leads tied to ${company.name}.`} />
+          <CompanyCrmPanel company={company} />
         </TabsContent>
         <TabsContent value="documents" className="flex flex-1">
-          <ComingSoon icon={<FileText />} title="Documents" description={`Contracts and files for ${company.name}.`} />
+          <CompanyDocumentsPanel company={company} />
         </TabsContent>
       </Tabs>
 
