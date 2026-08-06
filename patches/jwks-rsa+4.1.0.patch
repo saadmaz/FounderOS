@@ -1,0 +1,28 @@
+diff --git a/node_modules/jwks-rsa/src/utils.js b/node_modules/jwks-rsa/src/utils.js
+index ef3ffb5..0c00c67 100644
+--- a/node_modules/jwks-rsa/src/utils.js
++++ b/node_modules/jwks-rsa/src/utils.js
+@@ -1,4 +1,13 @@
+-const jose = require('jose');
++// Patched (see patches/jwks-rsa+4.1.0.patch): jose@6 is ESM-only, and a
++// top-level `require('jose')` throws ERR_REQUIRE_ESM on any Node.js runtime
++// without native require(esm) support. Both call sites below are already
++// inside an async function, so a lazy, cached dynamic import works without
++// changing this file's own exported API.
++let josePromise;
++function loadJose() {
++  if (!josePromise) josePromise = import('jose');
++  return josePromise;
++}
+ const JwksError = require('./errors/JwksError');
+ 
+ function resolveAlg(jwk) {
+@@ -39,6 +48,8 @@ async function retrieveSigningKeys(jwks) {
+     .filter(({ use }) => use === 'sig' || use === undefined)
+     .filter(({ kty }) => kty === 'RSA' || kty === 'EC' || kty === 'OKP');
+ 
++  const jose = await loadJose();
++
+   for (const jwk of jwks) {
+     try {
+       const key = await jose.importJWK({ ...jwk, ext: true }, resolveAlg(jwk));
