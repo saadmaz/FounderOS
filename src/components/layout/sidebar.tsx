@@ -81,7 +81,7 @@ export function Sidebar() {
       <div className="space-y-1 border-t border-sidebar-border px-3 py-3">
         <NavLink item={SETTINGS_ITEM} collapsed={sidebarCollapsed} />
         <NavLink
-          item={{ label: "Help", href: "/help", icon: HelpCircle, ready: false }}
+          item={{ label: "Help", href: "/help", icon: HelpCircle, ready: true }}
           collapsed={sidebarCollapsed}
         />
         <button
