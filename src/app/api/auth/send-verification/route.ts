@@ -4,6 +4,10 @@ import { getAppUrl } from "@/lib/email/app-url";
 import { verifyEmailEmail } from "@/lib/email/messages";
 import { sendEmail } from "@/lib/email/send";
 
+// See the same declaration in ../reset-password/route.ts - firebase-admin
+// requires the Node.js runtime, not Edge.
+export const runtime = "nodejs";
+
 /**
  * Sends the "confirm your email" message via Resend after signup. Requires
  * the caller's own ID token (not just an email in the body) so this can't be

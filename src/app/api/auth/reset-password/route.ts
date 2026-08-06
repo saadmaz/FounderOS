@@ -4,6 +4,13 @@ import { getAppUrl } from "@/lib/email/app-url";
 import { passwordResetEmail } from "@/lib/email/messages";
 import { sendEmail } from "@/lib/email/send";
 
+// firebase-admin needs Node's crypto/fs/net at import time, none of which
+// exist on the Edge runtime - force Node.js explicitly rather than trust
+// the default, since a misdetected Edge deploy fails before this file's own
+// try/catch ever runs (that's what a bare "500: This page couldn't load"
+// with no JSON body means, vs. the {"error": "..."} this route returns).
+export const runtime = "nodejs";
+
 /**
  * Generates a password-reset action link via Firebase Admin and emails it
  * ourselves through Resend with our own branded template, instead of
