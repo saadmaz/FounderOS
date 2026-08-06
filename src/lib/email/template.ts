@@ -68,7 +68,7 @@ export function renderAuthEmail(opts: {
               </td>
             </tr>
             <tr>
-              <td style="padding:8px 32px 8px;">
+              <td style="padding:8px 32px 32px;">
                 <table role="presentation" cellpadding="0" cellspacing="0">
                   <tr>
                     <td style="border-radius:8px;background-color:${BRAND_PRIMARY};">
@@ -83,18 +83,8 @@ export function renderAuthEmail(opts: {
               </td>
             </tr>
             <tr>
-              <td style="padding:20px 32px 8px;">
-                <p style="margin:0 0 4px;font-size:12px;line-height:1.6;color:${TEXT_MUTED};">
-                  Button not working? Paste this link into your browser:
-                </p>
-                <p style="margin:0;font-size:12px;line-height:1.6;word-break:break-all;">
-                  <a href="${buttonUrl}" style="color:${BRAND_PRIMARY};text-decoration:underline;">${buttonUrl}</a>
-                </p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:20px 32px 32px;">
-                <p style="margin:0;font-size:12px;line-height:1.6;color:${TEXT_MUTED};">${escapeHtml(footnote)}</p>
+              <td style="padding:0 32px 32px;border-top:1px solid ${BORDER};">
+                <p style="margin:20px 0 0;font-size:12px;line-height:1.6;color:${TEXT_MUTED};">${escapeHtml(footnote)}</p>
               </td>
             </tr>
           </table>
