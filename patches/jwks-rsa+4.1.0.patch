@@ -1,3 +1,30 @@
+diff --git a/node_modules/jwks-rsa/src/integrations/passport.js b/node_modules/jwks-rsa/src/integrations/passport.js
+index 79d75da..32c21a9 100644
+--- a/node_modules/jwks-rsa/src/integrations/passport.js
++++ b/node_modules/jwks-rsa/src/integrations/passport.js
+@@ -1,4 +1,13 @@
+-const jose = require('jose');
++// Patched (see patches/jwks-rsa+4.1.0.patch): jose@6 is ESM-only, and a
++// top-level `require('jose')` throws ERR_REQUIRE_ESM. This file (Passport.js
++// integration) isn't used by this app at all, but jwks-rsa's own index.js
++// eagerly requires it just by being imported, so it still has to load
++// without crashing. Kick the import off in the background instead of
++// blocking synchronously - secretProvider below is only reachable via
++// Passport middleware this app never wires up, so the near-instant async
++// load finishing before first use isn't a real-world concern here.
++let jose;
++import('jose').then((m) => { jose = m; }).catch(() => {});
+ const { ArgumentError } = require('../errors');
+ const { JwksClient } = require('../JwksClient');
+ const supportedAlg = require('./config');
+@@ -30,6 +39,7 @@ module.exports.passportJwtSecret = function (options) {
+   return function secretProvider(req, rawJwtToken, cb) {
+     let decoded;
+     try {
++      if (!jose) throw new Error('jose not loaded yet');
+       decoded = {
+         payload: jose.decodeJwt(rawJwtToken),
+         header: jose.decodeProtectedHeader(rawJwtToken)
 diff --git a/node_modules/jwks-rsa/src/utils.js b/node_modules/jwks-rsa/src/utils.js
 index ef3ffb5..0c00c67 100644
 --- a/node_modules/jwks-rsa/src/utils.js
