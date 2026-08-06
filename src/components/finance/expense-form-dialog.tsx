@@ -23,9 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AttachmentField } from "@/components/finance/attachment-field";
+import { deleteCloudinaryAsset, uploadDocumentToCloudinary } from "@/lib/cloudinary";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createExpense, updateExpense } from "@/lib/data/expenses";
-import { EXPENSE_CATEGORIES, EXPENSE_STATUSES, type Company, type Expense } from "@/lib/types";
+import { EXPENSE_CATEGORIES, EXPENSE_STATUSES, type Company, type Expense, type FinanceAttachment } from "@/lib/types";
 
 const schema = z.object({
   companyId: z.string().min(1, "Pick a company"),
@@ -59,6 +61,8 @@ export function ExpenseFormDialog({
   expense?: Expense | null;
 }) {
   const [submitting, setSubmitting] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [removeReceipt, setRemoveReceipt] = useState(false);
   const isEditing = Boolean(expense);
   const {
     register,
@@ -83,6 +87,8 @@ export function ExpenseFormDialog({
 
   useEffect(() => {
     if (!open) return;
+    setReceiptFile(null);
+    setRemoveReceipt(false);
     if (expense) {
       reset({
         companyId: expense.companyId,
@@ -109,10 +115,36 @@ export function ExpenseFormDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, expense]);
 
+  async function resolveReceipt(): Promise<FinanceAttachment | null | undefined> {
+    if (receiptFile) {
+      const uploaded = await uploadDocumentToCloudinary(receiptFile, `founderos/${workspaceId}/receipts`);
+      if (expense?.receipt) {
+        deleteCloudinaryAsset(expense.receipt.publicId, expense.receipt.resourceType).catch(() => {});
+      }
+      return {
+        url: uploaded.url,
+        publicId: uploaded.publicId,
+        resourceType: uploaded.resourceType as FinanceAttachment["resourceType"],
+        name: receiptFile.name,
+        size: receiptFile.size,
+      };
+    }
+    if (removeReceipt) {
+      if (expense?.receipt) {
+        deleteCloudinaryAsset(expense.receipt.publicId, expense.receipt.resourceType).catch(() => {});
+      }
+      // null (not undefined) so the update actually clears the field in
+      // Firestore instead of omitUndefined silently dropping the key.
+      return null;
+    }
+    return expense?.receipt;
+  }
+
   async function onSubmit(values: FormValues) {
     setSubmitting(true);
     try {
       const date = new Date(`${values.date}T00:00:00`).getTime();
+      const receipt = await resolveReceipt();
       if (isEditing && expense) {
         await updateExpense(workspaceId, expense.id, omitUndefined({
           companyId: values.companyId,
@@ -123,6 +155,7 @@ export function ExpenseFormDialog({
           date,
           billable: values.billable,
           description: values.description || undefined,
+          receipt,
         }));
         toast.success("Expense updated");
       } else {
@@ -135,6 +168,7 @@ export function ExpenseFormDialog({
           date,
           billable: values.billable,
           description: values.description || undefined,
+          receipt,
           createdBy: memberId,
         }));
         toast.success("Expense added");
@@ -248,6 +282,14 @@ export function ExpenseFormDialog({
             <Label htmlFor="description">Description (optional)</Label>
             <Input id="description" placeholder="What was this for?" {...register("description")} />
           </div>
+
+          <AttachmentField
+            label="Receipt (optional)"
+            existing={removeReceipt ? null : expense?.receipt}
+            onRemoveExisting={() => setRemoveReceipt(true)}
+            file={receiptFile}
+            onFileChange={setReceiptFile}
+          />
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

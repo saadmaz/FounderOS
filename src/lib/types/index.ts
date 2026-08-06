@@ -173,6 +173,17 @@ export const EXPENSE_STATUSES: { value: ExpenseStatus; label: string }[] = [
   { value: "rejected", label: "Rejected" },
 ];
 
+/** A receipt/invoice/bill uploaded to Cloudinary and attached to a finance
+ * record. publicId + resourceType are kept (not just the url) because
+ * deleting a Cloudinary asset later needs both. */
+export interface FinanceAttachment {
+  url: string;
+  publicId: string;
+  resourceType: "image" | "video" | "raw";
+  name: string;
+  size: number;
+}
+
 export interface Expense {
   id: string;
   workspaceId: string;
@@ -185,7 +196,7 @@ export interface Expense {
   description?: string;
   status: ExpenseStatus;
   billable: boolean;
-  receiptPath?: string; // Storage path, workspaces/{workspaceId}/receipts/...
+  receipt?: FinanceAttachment | null;
   createdBy: string; // WorkspaceMember id
   createdAt: number;
   updatedAt: number;
@@ -245,6 +256,7 @@ export interface Invoice {
   dueDate: number;
   paidDate?: number | null;
   note?: string;
+  attachment?: FinanceAttachment | null;
   createdAt: number;
   updatedAt: number;
 }

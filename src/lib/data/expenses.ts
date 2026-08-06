@@ -1,6 +1,7 @@
 "use client";
 
 import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
+import { deleteCloudinaryAsset } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase/client";
 import type { Expense, ExpenseStatus } from "@/lib/types";
 import { now } from "./firestore-helpers";
@@ -43,6 +44,11 @@ export async function setExpenseStatus(workspaceId: string, expenseId: string, s
   return updateExpense(workspaceId, expenseId, { status });
 }
 
-export async function deleteExpense(workspaceId: string, expenseId: string) {
+/** Deletes the expense and, best-effort, its receipt - a Cloudinary hiccup
+ * shouldn't block someone from deleting the underlying expense record. */
+export async function deleteExpense(workspaceId: string, expenseId: string, receipt?: Expense["receipt"]) {
+  if (receipt) {
+    await deleteCloudinaryAsset(receipt.publicId, receipt.resourceType).catch(() => {});
+  }
   return deleteDoc(doc(db, path(workspaceId), expenseId));
 }

@@ -2,7 +2,7 @@
 
 import { addDoc, collection, deleteDoc, doc, orderBy, where } from "firebase/firestore";
 import { trackEvent } from "@/lib/analytics";
-import { uploadDocumentToCloudinary } from "@/lib/cloudinary";
+import { deleteCloudinaryAsset, uploadDocumentToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase/client";
 import type { DocumentFile } from "@/lib/types";
 import { now } from "./firestore-helpers";
@@ -55,14 +55,7 @@ export async function uploadDocument(
  * delete fails, rather than silently deleting only the metadata - fetch()
  * doesn't reject on a non-2xx response, so that check has to be explicit. */
 export async function deleteDocument(workspaceId: string, document: DocumentFile) {
-  const res = await fetch("/api/documents/delete", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ publicId: document.publicId, resourceType: document.resourceType }),
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to delete Cloudinary asset (${res.status})`);
-  }
+  await deleteCloudinaryAsset(document.publicId, document.resourceType);
   const result = await deleteDoc(doc(db, path(workspaceId), document.id));
   trackEvent("document_deleted");
   return result;

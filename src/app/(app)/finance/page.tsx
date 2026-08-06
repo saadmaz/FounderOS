@@ -4,6 +4,7 @@ import {
   DollarSign,
   FileText,
   MoreHorizontal,
+  Paperclip,
   PiggyBank,
   Plus,
   TrendingDown,
@@ -173,9 +174,9 @@ export default function FinancePage() {
     [filteredInvoices]
   );
 
-  async function handleDeleteExpense(id: string) {
+  async function handleDeleteExpense(expense: Expense) {
     if (!workspaceId) return;
-    await deleteExpense(workspaceId, id);
+    await deleteExpense(workspaceId, expense.id, expense.receipt);
     toast.success("Expense deleted");
   }
   async function handleDeleteRevenue(id: string) {
@@ -183,9 +184,9 @@ export default function FinancePage() {
     await deleteRevenueEntry(workspaceId, id);
     toast.success("Revenue entry deleted");
   }
-  async function handleDeleteInvoice(id: string) {
+  async function handleDeleteInvoice(invoice: Invoice) {
     if (!workspaceId) return;
-    await deleteInvoice(workspaceId, id);
+    await deleteInvoice(workspaceId, invoice.id, invoice.attachment);
     toast.success("Invoice deleted");
   }
   async function handleMarkPaid(id: string) {
@@ -344,8 +345,21 @@ export default function FinancePage() {
                         <TableCell className="py-2 text-sm capitalize text-muted-foreground">
                           {EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category}
                         </TableCell>
-                        <TableCell className="max-w-56 truncate py-2 text-sm text-muted-foreground">
-                          {e.description ?? "—"}
+                        <TableCell className="max-w-56 py-2 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate">{e.description ?? "—"}</span>
+                            {e.receipt && (
+                              <a
+                                href={e.receipt.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={`View receipt: ${e.receipt.name}`}
+                                className="shrink-0 text-muted-foreground-2 hover:text-foreground"
+                              >
+                                <Paperclip className="size-3.5" />
+                              </a>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="py-2">
                           <ExpenseStatusBadge status={e.status} />
@@ -372,7 +386,7 @@ export default function FinancePage() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="destructive"
-                                  onClick={() => handleDeleteExpense(e.id)}
+                                  onClick={() => handleDeleteExpense(e)}
                                 >
                                   Delete
                                 </DropdownMenuItem>
@@ -539,7 +553,22 @@ export default function FinancePage() {
                   <TableBody>
                     {filteredInvoices.map((inv) => (
                       <TableRow key={inv.id} className="hover:bg-secondary/40">
-                        <TableCell className="py-2 text-sm font-medium">{inv.invoiceNumber}</TableCell>
+                        <TableCell className="py-2 text-sm font-medium">
+                          <div className="flex items-center gap-1.5">
+                            <span>{inv.invoiceNumber}</span>
+                            {inv.attachment && (
+                              <a
+                                href={inv.attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={`View attachment: ${inv.attachment.name}`}
+                                className="shrink-0 text-muted-foreground-2 hover:text-foreground"
+                              >
+                                <Paperclip className="size-3.5" />
+                              </a>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="py-2 text-sm">{inv.clientName}</TableCell>
                         <TableCell className="py-2">
                           <div className="flex items-center gap-2">
@@ -585,7 +614,7 @@ export default function FinancePage() {
                                 )}
                                 <DropdownMenuItem
                                   variant="destructive"
-                                  onClick={() => handleDeleteInvoice(inv.id)}
+                                  onClick={() => handleDeleteInvoice(inv)}
                                 >
                                   Delete
                                 </DropdownMenuItem>

@@ -56,3 +56,22 @@ export async function uploadDocumentToCloudinary(file: File, folder?: string) {
   }
   return uploadToCloudinary(file, { preset, endpoint: "auto", folder });
 }
+
+/**
+ * Deletes a previously-uploaded Cloudinary asset via the server route (that's
+ * the one place the API secret can be used - see src/app/api/documents/delete).
+ * Throws on failure; it's up to the caller whether that should block their
+ * own delete. Documents let it throw (the file *is* the record); Expense/
+ * Invoice attachments are best-effort, so a Cloudinary hiccup never strands
+ * someone from deleting the underlying financial record.
+ */
+export async function deleteCloudinaryAsset(publicId: string, resourceType: string) {
+  const res = await fetch("/api/documents/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ publicId, resourceType }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to delete Cloudinary asset (${res.status})`);
+  }
+}

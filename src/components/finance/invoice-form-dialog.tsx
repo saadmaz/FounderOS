@@ -24,10 +24,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { AttachmentField } from "@/components/finance/attachment-field";
+import { deleteCloudinaryAsset, uploadDocumentToCloudinary } from "@/lib/cloudinary";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createInvoice, updateInvoice } from "@/lib/data/invoices";
 import { formatCurrency } from "@/lib/format";
-import { INVOICE_STATUSES, type Company, type Invoice } from "@/lib/types";
+import { INVOICE_STATUSES, type Company, type FinanceAttachment, type Invoice } from "@/lib/types";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Required"),
@@ -73,6 +75,8 @@ export function InvoiceFormDialog({
   invoice?: Invoice | null;
 }) {
   const [submitting, setSubmitting] = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [removeAttachment, setRemoveAttachment] = useState(false);
   const isEditing = Boolean(invoice);
 
   const {
@@ -107,6 +111,8 @@ export function InvoiceFormDialog({
 
   useEffect(() => {
     if (!open) return;
+    setAttachmentFile(null);
+    setRemoveAttachment(false);
     if (invoice) {
       reset({
         companyId: invoice.companyId,
@@ -141,6 +147,31 @@ export function InvoiceFormDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, invoice]);
 
+  async function resolveAttachment(): Promise<FinanceAttachment | null | undefined> {
+    if (attachmentFile) {
+      const uploaded = await uploadDocumentToCloudinary(attachmentFile, `founderos/${workspaceId}/invoices`);
+      if (invoice?.attachment) {
+        deleteCloudinaryAsset(invoice.attachment.publicId, invoice.attachment.resourceType).catch(() => {});
+      }
+      return {
+        url: uploaded.url,
+        publicId: uploaded.publicId,
+        resourceType: uploaded.resourceType as FinanceAttachment["resourceType"],
+        name: attachmentFile.name,
+        size: attachmentFile.size,
+      };
+    }
+    if (removeAttachment) {
+      if (invoice?.attachment) {
+        deleteCloudinaryAsset(invoice.attachment.publicId, invoice.attachment.resourceType).catch(() => {});
+      }
+      // null (not undefined) so the update actually clears the field in
+      // Firestore instead of omitUndefined silently dropping the key.
+      return null;
+    }
+    return invoice?.attachment;
+  }
+
   async function onSubmit(values: FormValues) {
     setSubmitting(true);
     try {
@@ -152,6 +183,7 @@ export function InvoiceFormDialog({
         unitPrice: Number(li.unitPrice),
       }));
       const amount = lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice, 0);
+      const attachment = await resolveAttachment();
       if (isEditing && invoice) {
         await updateInvoice(workspaceId, invoice.id, omitUndefined({
           companyId: values.companyId,
@@ -164,6 +196,7 @@ export function InvoiceFormDialog({
           issuedDate,
           dueDate,
           note: values.note || undefined,
+          attachment,
         }));
         toast.success("Invoice updated");
       } else {
@@ -178,6 +211,7 @@ export function InvoiceFormDialog({
           issuedDate,
           dueDate,
           note: values.note || undefined,
+          attachment,
         }));
         toast.success("Invoice created");
       }
@@ -327,6 +361,14 @@ export function InvoiceFormDialog({
             <Label htmlFor="note">Note (optional)</Label>
             <Textarea id="note" placeholder="Payment terms, thank-you note…" {...register("note")} />
           </div>
+
+          <AttachmentField
+            label="Attachment (optional)"
+            existing={removeAttachment ? null : invoice?.attachment}
+            onRemoveExisting={() => setRemoveAttachment(true)}
+            file={attachmentFile}
+            onFileChange={setAttachmentFile}
+          />
 
           <DialogFooter className="sticky bottom-0">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

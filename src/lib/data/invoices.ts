@@ -1,6 +1,7 @@
 "use client";
 
 import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
+import { deleteCloudinaryAsset } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase/client";
 import type { Invoice, InvoiceLineItem, InvoiceStatus } from "@/lib/types";
 import { now } from "./firestore-helpers";
@@ -57,6 +58,11 @@ export async function markInvoicePaid(workspaceId: string, invoiceId: string) {
   return setInvoiceStatus(workspaceId, invoiceId, "paid");
 }
 
-export async function deleteInvoice(workspaceId: string, invoiceId: string) {
+/** Deletes the invoice and, best-effort, its attached bill/invoice file - a
+ * Cloudinary hiccup shouldn't block someone from deleting the record. */
+export async function deleteInvoice(workspaceId: string, invoiceId: string, attachment?: Invoice["attachment"]) {
+  if (attachment) {
+    await deleteCloudinaryAsset(attachment.publicId, attachment.resourceType).catch(() => {});
+  }
   return deleteDoc(doc(db, path(workspaceId), invoiceId));
 }

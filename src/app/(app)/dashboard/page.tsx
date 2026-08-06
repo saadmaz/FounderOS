@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import { PriorityBadge, StatusBadge } from "@/components/shared/status-badge";
@@ -276,12 +277,15 @@ export default function DashboardPage() {
                         href={`/companies/${company.id}`}
                         className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/50"
                       >
-                        <span
-                          className="flex size-7 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold text-white"
-                          style={{ backgroundColor: company.color }}
-                        >
-                          {company.name[0]}
-                        </span>
+                        <Avatar size="sm" className="shrink-0 rounded-md">
+                          <AvatarImage src={company.logoUrl} className="rounded-md" />
+                          <AvatarFallback
+                            className="rounded-md text-[11px] font-semibold text-white"
+                            style={{ backgroundColor: company.color }}
+                          >
+                            {company.name[0]}
+                          </AvatarFallback>
+                        </Avatar>
                         <span className="flex-1 truncate text-sm font-medium">{company.name}</span>
                         <span className="text-xs text-muted-foreground">{open} open</span>
                         <span className="w-12 shrink-0 text-right text-xs font-medium">
