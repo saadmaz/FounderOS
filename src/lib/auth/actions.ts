@@ -5,7 +5,6 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   reauthenticateWithCredential,
-  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -23,7 +22,23 @@ export async function signUpWithEmail(name: string, email: string, password: str
     await updateProfile(cred.user, { displayName: name });
   }
   trackEvent("sign_up", { method: "password" });
+  // Best-effort: a hiccup sending the verification email shouldn't block
+  // account creation - the user can still use the app unverified.
+  sendVerificationEmail(cred.user).catch(() => {});
   return cred.user;
+}
+
+/** Sends our own branded "confirm your email" message (see
+ * src/app/api/auth/send-verification) instead of Firebase's built-in one. */
+export async function sendVerificationEmail(user: { getIdToken: () => Promise<string> }) {
+  const idToken = await user.getIdToken();
+  const res = await fetch("/api/auth/send-verification", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to send verification email (${res.status})`);
+  }
 }
 
 export async function signInWithEmail(email: string, password: string) {
@@ -44,13 +59,22 @@ export async function signOut() {
 }
 
 /**
- * Sends Firebase's built-in password-reset email. The "from" address, and
- * whether it's routed through custom SMTP (e.g. Resend) instead of
- * Firebase's default sender, is configured entirely in the Firebase Console
- * (Authentication > Templates) - nothing to change here if that's updated.
+ * Sends our own branded password-reset email (see
+ * src/app/api/auth/reset-password) instead of Firebase Auth's built-in one -
+ * Firebase's Console template editor can't produce a real styled button, so
+ * the link is generated via Firebase Admin and delivered through Resend.
+ * Always resolves, even for an unknown email - the API route intentionally
+ * doesn't reveal whether the account exists.
  */
 export async function resetPassword(email: string) {
-  await sendPasswordResetEmail(auth, email);
+  const res = await fetch("/api/auth/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to send reset email (${res.status})`);
+  }
   trackEvent("password_reset_requested");
 }
 
