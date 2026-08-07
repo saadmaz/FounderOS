@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Building2, Sparkles, Zap } from "lucide-react";
+import { Logo } from "@/components/shared/logo";
 
 const PITCH_POINTS = [
   { icon: Building2, text: "Every company you run, in one workspace" },
@@ -27,9 +28,10 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           }}
         />
         <div className="relative flex items-center gap-2 text-white">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
-            <Zap className="size-4.5 text-white" fill="currentColor" />
-          </div>
+          {/* This panel is always dark regardless of the site theme toggle,
+           * so the logo variant is pinned to white rather than following
+           * dark:/light: like Logo's default "auto" mode does elsewhere. */}
+          <Logo variant="white" className="size-8 shrink-0" />
           <span className="text-lg font-semibold tracking-tight">FounderOS</span>
         </div>
 
@@ -67,9 +69,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           className="w-full max-w-sm"
         >
           <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
-              <Zap className="size-4.5 text-white" fill="currentColor" />
-            </div>
+            <Logo className="size-8 shrink-0" />
             <span className="text-lg font-semibold tracking-tight">FounderOS</span>
           </div>
           {children}

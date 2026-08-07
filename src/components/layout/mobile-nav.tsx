@@ -1,8 +1,8 @@
 "use client";
 
-import { Zap } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Logo } from "@/components/shared/logo";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { NAV_SECTIONS, SETTINGS_ITEM } from "./nav-config";
@@ -15,9 +15,7 @@ export function MobileNav({ open, onOpenChange }: { open: boolean; onOpenChange:
       <SheetContent side="left" className="w-64 p-0">
         <SheetHeader className="border-b border-border">
           <SheetTitle className="flex items-center gap-2 text-left">
-            <div className="flex size-7 items-center justify-center rounded-md bg-primary">
-              <Zap className="size-4 text-white" fill="currentColor" />
-            </div>
+            <Logo className="size-7 shrink-0" />
             FounderOS
           </SheetTitle>
         </SheetHeader>

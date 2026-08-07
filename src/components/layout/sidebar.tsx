@@ -1,8 +1,9 @@
 "use client";
 
-import { ChevronsLeft, ChevronsRight, HelpCircle, Zap } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, HelpCircle } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Logo } from "@/components/shared/logo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useUIStore } from "@/lib/store/ui-store";
 import { cn } from "@/lib/utils";
@@ -57,9 +58,7 @@ export function Sidebar() {
       )}
     >
       <div className={cn("flex h-14 items-center gap-2 px-4", sidebarCollapsed && "justify-center px-0")}>
-        <div className="flex size-7 items-center justify-center rounded-md bg-primary">
-          <Zap className="size-4 text-white" fill="currentColor" />
-        </div>
+        <Logo className="size-7 shrink-0" />
         {!sidebarCollapsed && <span className="text-sm font-semibold tracking-tight">FounderOS</span>}
       </div>
 
