@@ -183,7 +183,7 @@ async function main() {
   let order = 0;
   for (const t of taskDefs) {
     const ref = tasksCol.doc();
-    taskIds.push({ id: ref.id, company: t.company });
+    taskIds.push({ id: ref.id, company: t.company, project: t.project, title: t.title });
     await ref.set({
       workspaceId,
       companyId: companyIds[t.company],
@@ -209,8 +209,10 @@ async function main() {
     await timeCol.add({
       workspaceId,
       companyId: companyIds[t.company],
+      projectId: t.project ? projectIds[t.project] : null,
       taskId: t.id,
       memberId: user.uid,
+      subjectLabel: t.title,
       startedAt,
       endedAt,
       billable: true,
