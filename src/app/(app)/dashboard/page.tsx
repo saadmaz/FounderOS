@@ -20,10 +20,11 @@ import { StatCard } from "@/components/shared/stat-card";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
+import { useMeetings } from "@/lib/data/meetings";
 import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatHours, sumHours } from "@/lib/format";
+import { formatHours, sumHours, sumMeetingHours } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +55,7 @@ export default function DashboardPage() {
   const { data: projects, loading: projectsLoading } = useProjects(workspace?.id ?? null);
   const { data: tasks, loading: tasksLoading } = useTasks(workspace?.id ?? null);
   const { data: timeEntries } = useTimeEntries(workspace?.id ?? null);
+  const { data: meetings } = useMeetings(workspace?.id ?? null);
   const [createOpen, setCreateOpen] = useState(false);
 
   const today = startOfDay(new Date());
@@ -92,8 +94,10 @@ export default function DashboardPage() {
     [projects]
   );
   const hoursThisWeek = useMemo(
-    () => sumHours(timeEntries.filter((e) => e.startedAt >= weekStart)),
-    [timeEntries, weekStart]
+    () =>
+      sumHours(timeEntries.filter((e) => e.startedAt >= weekStart)) +
+      sumMeetingHours(meetings.filter((m) => m.scheduledAt >= weekStart)),
+    [timeEntries, meetings, weekStart]
   );
 
   const recentActivity = useMemo(
@@ -105,14 +109,16 @@ export default function DashboardPage() {
     return companies
       .filter((c) => c.status === "active")
       .map((c) => {
-        const hours = sumHours(timeEntries.filter((e) => e.companyId === c.id));
+        const hours =
+          sumHours(timeEntries.filter((e) => e.companyId === c.id)) +
+          sumMeetingHours(meetings.filter((m) => m.companyId === c.id));
         const open = tasks.filter(
           (t) => t.companyId === c.id && t.status !== "completed" && t.status !== "cancelled"
         ).length;
         return { company: c, hours, open };
       })
       .sort((a, b) => b.hours - a.hours);
-  }, [companies, timeEntries, tasks]);
+  }, [companies, timeEntries, meetings, tasks]);
 
   const firstName = user?.displayName?.split(" ")[0];
 

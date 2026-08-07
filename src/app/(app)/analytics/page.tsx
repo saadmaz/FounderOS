@@ -17,10 +17,11 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { useCompanies } from "@/lib/data/companies";
 import { useExpenses } from "@/lib/data/expenses";
+import { useMeetings } from "@/lib/data/meetings";
 import { useRevenue } from "@/lib/data/revenue";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatCurrency, formatHours, sumHours } from "@/lib/format";
+import { formatCurrency, formatHours, sumHours, sumMeetingHours } from "@/lib/format";
 import type { TaskStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -85,6 +86,7 @@ export default function AnalyticsPage() {
   const { data: companies, loading: companiesLoading } = useCompanies(workspace?.id ?? null);
   const { data: tasks, loading: tasksLoading } = useTasks(workspace?.id ?? null);
   const { data: timeEntries } = useTimeEntries(workspace?.id ?? null);
+  const { data: meetings } = useMeetings(workspace?.id ?? null);
   const { data: revenue, loading: revenueLoading } = useRevenue(workspace?.id ?? null);
   const { data: expenses, loading: expensesLoading } = useExpenses(workspace?.id ?? null);
 
@@ -93,7 +95,10 @@ export default function AnalyticsPage() {
   const totalRevenue = useMemo(() => revenue.reduce((s, r) => s + r.amount, 0), [revenue]);
   const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
   const net = totalRevenue - totalExpenses;
-  const totalHours = useMemo(() => sumHours(timeEntries), [timeEntries]);
+  const totalHours = useMemo(
+    () => sumHours(timeEntries) + sumMeetingHours(meetings),
+    [timeEntries, meetings]
+  );
 
   const monthlyTrend = useMemo(() => {
     const keys = lastNMonthKeys(6);
@@ -115,12 +120,17 @@ export default function AnalyticsPage() {
       .filter((c) => c.status !== "archived")
       .map((c) => ({
         name: c.name,
-        hours: Math.round(sumHours(timeEntries.filter((e) => e.companyId === c.id)) * 10) / 10,
+        hours:
+          Math.round(
+            (sumHours(timeEntries.filter((e) => e.companyId === c.id)) +
+              sumMeetingHours(meetings.filter((m) => m.companyId === c.id))) *
+              10
+          ) / 10,
       }))
       .filter((c) => c.hours > 0)
       .sort((a, b) => b.hours - a.hours)
       .slice(0, 8);
-  }, [companies, timeEntries]);
+  }, [companies, timeEntries, meetings]);
 
   const companyRevenue = useMemo(() => {
     return companies

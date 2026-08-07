@@ -13,15 +13,17 @@ import { CompanyFormDialog } from "@/components/companies/company-form-dialog";
 import { CompanyCrmPanel } from "@/components/companies/company-crm-panel";
 import { CompanyDocumentsPanel } from "@/components/companies/company-documents-panel";
 import { CompanyFinancePanel } from "@/components/companies/company-finance-panel";
+import { CompanyMeetingsPanel } from "@/components/companies/company-meetings-panel";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { ProjectList } from "@/components/projects/project-list";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { TaskTable } from "@/components/tasks/task-table";
 import { useCompanies } from "@/lib/data/companies";
+import { useMeetings } from "@/lib/data/meetings";
 import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatHours, sumHours } from "@/lib/format";
+import { formatHours, sumHours, sumMeetingHours } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const LINK_ICONS = {
@@ -39,15 +41,18 @@ export default function CompanyDetailPage() {
   const { data: projects } = useProjects(workspace?.id ?? null, companyId);
   const { data: tasks } = useTasks(workspace?.id ?? null, companyId);
   const { data: timeEntries } = useTimeEntries(workspace?.id ?? null);
+  const { data: meetings } = useMeetings(workspace?.id ?? null, companyId);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const company = companies.find((c) => c.id === companyId);
 
+  // Hours logged = timer/manual entries + completed meetings - a meeting is
+  // time spent same as any other session, so it counts toward the total.
   const hours = useMemo(
-    () => sumHours(timeEntries.filter((e) => e.companyId === companyId)),
-    [timeEntries, companyId]
+    () => sumHours(timeEntries.filter((e) => e.companyId === companyId)) + sumMeetingHours(meetings),
+    [timeEntries, meetings, companyId]
   );
   const openTasks = tasks.filter((t) => t.status !== "completed" && t.status !== "cancelled").length;
   const activeProjects = projects.filter(
@@ -137,7 +142,7 @@ export default function CompanyDetailPage() {
       <Tabs defaultValue="overview" className="flex flex-1 flex-col gap-0">
         <div className="border-b border-border px-4 lg:px-6">
           <TabsList className="h-11 bg-transparent p-0">
-            {["overview", "projects", "tasks", "finance", "crm", "documents"].map((v) => (
+            {["overview", "projects", "tasks", "meetings", "finance", "crm", "documents"].map((v) => (
               <TabsTrigger
                 key={v}
                 value={v}
@@ -201,6 +206,9 @@ export default function CompanyDetailPage() {
           <TaskTable tasks={tasks} companies={companies} workspaceId={workspace!.id} showCompany={false} />
         </TabsContent>
 
+        <TabsContent value="meetings" className="flex flex-1">
+          <CompanyMeetingsPanel company={company} />
+        </TabsContent>
         <TabsContent value="finance" className="flex flex-1">
           <CompanyFinancePanel company={company} />
         </TabsContent>

@@ -1,0 +1,178 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { Calendar, CalendarCheck, CalendarX2, MapPin, MoreHorizontal, Pencil, Trash2, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { formatDateTime, initials } from "@/lib/format";
+import type { Company, Meeting, MeetingStatus, WorkspaceMember } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+const MEETING_STATUS_STYLES: Record<MeetingStatus, string> = {
+  scheduled: "bg-primary/10 text-primary",
+  completed: "bg-success/10 text-success",
+  cancelled: "bg-muted text-muted-foreground",
+};
+
+const MEETING_STATUS_LABELS: Record<MeetingStatus, string> = {
+  scheduled: "Scheduled",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+export function MeetingStatusBadge({ status }: { status: MeetingStatus }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex w-fit items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
+        MEETING_STATUS_STYLES[status]
+      )}
+    >
+      {MEETING_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+export function formatDuration(minutes: number) {
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
+}
+
+// `Date.now()` is read impurely in exactly this one place (mirrors the
+// convention in src/lib/format.ts's sumHours) so components don't call it
+// directly during render.
+export function isUpcoming(meeting: Meeting) {
+  return meeting.status === "scheduled" && meeting.scheduledAt >= Date.now();
+}
+
+export function MeetingCard({
+  meeting,
+  index,
+  company,
+  showCompany = true,
+  members,
+  onEdit,
+  onStatusChange,
+  onDelete,
+}: {
+  meeting: Meeting;
+  index: number;
+  company?: Company;
+  showCompany?: boolean;
+  members: WorkspaceMember[];
+  onEdit: (meeting: Meeting) => void;
+  onStatusChange: (meeting: Meeting, status: MeetingStatus) => void;
+  onDelete: (meeting: Meeting) => void;
+}) {
+  function memberFor(memberId: string) {
+    return members.find((m) => m.id === memberId);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: index * 0.03 }}
+      className="group relative rounded-xl border border-border bg-card p-4"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            {showCompany && company && (
+              <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: company.color }} />
+            )}
+            <p className="truncate text-sm font-semibold">{meeting.title}</p>
+          </div>
+          {showCompany && (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {company?.name ?? "Unknown company"}
+            </p>
+          )}
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7 shrink-0" />}>
+            <MoreHorizontal className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit(meeting)}>
+              <Pencil className="size-4" />
+              Edit
+            </DropdownMenuItem>
+            {meeting.status !== "completed" && (
+              <DropdownMenuItem onClick={() => onStatusChange(meeting, "completed")}>
+                <CalendarCheck className="size-4" />
+                Mark completed
+              </DropdownMenuItem>
+            )}
+            {meeting.status !== "cancelled" && (
+              <DropdownMenuItem onClick={() => onStatusChange(meeting, "cancelled")}>
+                <CalendarX2 className="size-4" />
+                Mark cancelled
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={() => onDelete(meeting)}>
+              <Trash2 className="size-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <Calendar className="size-3.5" />
+          {formatDateTime(meeting.scheduledAt)} · {formatDuration(meeting.durationMinutes)}
+        </span>
+        {meeting.location && (
+          <span className="flex items-center gap-1.5 truncate">
+            <MapPin className="size-3.5 shrink-0" />
+            <span className="truncate">{meeting.location}</span>
+          </span>
+        )}
+      </div>
+
+      {meeting.agenda && <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{meeting.agenda}</p>}
+
+      <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+        <div className="flex items-center gap-1.5">
+          {meeting.attendeeIds.length === 0 ? (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground-2">
+              <Users className="size-3.5" />
+              No attendees
+            </span>
+          ) : (
+            <div className="flex -space-x-2">
+              {meeting.attendeeIds.slice(0, 5).map((id) => {
+                const member = memberFor(id);
+                return (
+                  <span
+                    key={id}
+                    title={member?.displayName ?? member?.email ?? id}
+                    className="flex size-6 items-center justify-center rounded-full border-2 border-card bg-secondary text-[10px] font-medium text-secondary-foreground"
+                  >
+                    {member ? initials(member.displayName || member.email) : "?"}
+                  </span>
+                );
+              })}
+              {meeting.attendeeIds.length > 5 && (
+                <span className="flex size-6 items-center justify-center rounded-full border-2 border-card bg-muted text-[10px] font-medium text-muted-foreground">
+                  +{meeting.attendeeIds.length - 5}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        <MeetingStatusBadge status={meeting.status} />
+      </div>
+    </motion.div>
+  );
+}

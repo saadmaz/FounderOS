@@ -17,9 +17,10 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { archiveCompany, restoreCompany, useCompanies } from "@/lib/data/companies";
+import { useMeetings } from "@/lib/data/meetings";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatHours, sumHours } from "@/lib/format";
+import { formatHours, sumHours, sumMeetingHours } from "@/lib/format";
 import type { Company } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { toast } from "sonner";
@@ -29,6 +30,7 @@ export default function CompaniesPage() {
   const { data: companies, loading } = useCompanies(workspace?.id ?? null);
   const { data: tasks } = useTasks(workspace?.id ?? null);
   const { data: timeEntries } = useTimeEntries(workspace?.id ?? null);
+  const { data: meetings } = useMeetings(workspace?.id ?? null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Company | null>(null);
 
@@ -39,7 +41,9 @@ export default function CompaniesPage() {
     const open = tasks.filter(
       (t) => t.companyId === companyId && t.status !== "completed" && t.status !== "cancelled"
     ).length;
-    const hours = sumHours(timeEntries.filter((e) => e.companyId === companyId));
+    const hours =
+      sumHours(timeEntries.filter((e) => e.companyId === companyId)) +
+      sumMeetingHours(meetings.filter((m) => m.companyId === companyId));
     return { open, hours };
   }
 

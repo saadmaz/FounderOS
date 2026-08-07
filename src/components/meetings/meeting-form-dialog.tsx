@@ -66,10 +66,12 @@ export function MeetingFormDialog({
   open,
   onOpenChange,
   meeting,
+  defaultCompanyId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   meeting?: Meeting | null;
+  defaultCompanyId?: string;
 }) {
   const { workspace } = useWorkspace();
   const { data: companies } = useCompanies(workspace?.id ?? null);
@@ -112,7 +114,7 @@ export function MeetingFormDialog({
     } else {
       reset({
         title: "",
-        companyId: companies[0]?.id ?? "",
+        companyId: defaultCompanyId ?? companies[0]?.id ?? "",
         scheduledAt: defaultScheduledAt(),
         durationMinutes: "30",
         location: "",
@@ -121,7 +123,7 @@ export function MeetingFormDialog({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, meeting]);
+  }, [open, meeting, defaultCompanyId]);
 
   const attendeeIds = watch("attendeeIds");
 

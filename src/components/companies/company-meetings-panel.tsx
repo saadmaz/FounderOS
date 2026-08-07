@@ -4,20 +4,22 @@ import { Calendar, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { MeetingCard, isUpcoming } from "@/components/meetings/meeting-card";
+import { isUpcoming, MeetingCard } from "@/components/meetings/meeting-card";
 import { MeetingFormDialog } from "@/components/meetings/meeting-form-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
-import { PageHeader } from "@/components/shared/page-header";
-import { useCompanies } from "@/lib/data/companies";
 import { deleteMeeting, setMeetingStatus, useMeetings } from "@/lib/data/meetings";
 import { useMembers } from "@/lib/data/members";
-import type { Meeting, MeetingStatus } from "@/lib/types";
+import type { Company, Meeting, MeetingStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
-export default function MeetingsPage() {
+/**
+ * Meetings tab for a single company's detail page. Mirrors the
+ * workspace-wide Meetings page but pre-scoped to one company - no company
+ * picker or badge, and new meetings default to this company.
+ */
+export function CompanyMeetingsPanel({ company }: { company: Company }) {
   const { workspace } = useWorkspace();
-  const { data: meetings, loading } = useMeetings(workspace?.id ?? null);
-  const { data: companies } = useCompanies(workspace?.id ?? null);
+  const { data: meetings, loading } = useMeetings(workspace?.id ?? null, company.id);
   const { data: members } = useMembers(workspace?.id ?? null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Meeting | null>(null);
@@ -34,9 +36,7 @@ export default function MeetingsPage() {
   async function handleStatus(meeting: Meeting, status: MeetingStatus) {
     if (!workspace) return;
     await setMeetingStatus(workspace.id, meeting.id, status);
-    toast.success(
-      status === "completed" ? "Meeting marked completed" : "Meeting cancelled"
-    );
+    toast.success(status === "completed" ? "Meeting marked completed" : "Meeting cancelled");
   }
 
   async function handleDelete(meeting: Meeting) {
@@ -47,17 +47,16 @@ export default function MeetingsPage() {
   }
 
   return (
-    <>
-      <PageHeader
-        title="Meetings"
-        description={`${upcoming.length} upcoming meeting${upcoming.length === 1 ? "" : "s"}`}
-        actions={
-          <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
-            <Plus className="size-4" />
-            New meeting
-          </Button>
-        }
-      />
+    <div className="flex flex-1 flex-col">
+      <div className="flex items-center justify-between px-4 pt-4 lg:px-6">
+        <p className="text-sm text-muted-foreground">
+          {upcoming.length} upcoming meeting{upcoming.length === 1 ? "" : "s"}
+        </p>
+        <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
+          <Plus className="size-4" />
+          New meeting
+        </Button>
+      </div>
 
       <div className="flex-1 p-4 lg:p-6">
         {loading ? (
@@ -70,7 +69,7 @@ export default function MeetingsPage() {
           <EmptyState
             icon={Calendar}
             title="No meetings yet"
-            description="Schedule your first meeting to keep agendas, attendees, and notes in one place."
+            description={`Schedule your first meeting for ${company.name}.`}
             action={
               <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
                 <Plus className="size-4" />
@@ -93,7 +92,7 @@ export default function MeetingsPage() {
                       key={m.id}
                       meeting={m}
                       index={i}
-                      company={companies.find((c) => c.id === m.companyId)}
+                      showCompany={false}
                       members={members}
                       onEdit={setEditing}
                       onStatusChange={handleStatus}
@@ -115,7 +114,7 @@ export default function MeetingsPage() {
                       key={m.id}
                       meeting={m}
                       index={i}
-                      company={companies.find((c) => c.id === m.companyId)}
+                      showCompany={false}
                       members={members}
                       onEdit={setEditing}
                       onStatusChange={handleStatus}
@@ -129,12 +128,13 @@ export default function MeetingsPage() {
         )}
       </div>
 
-      <MeetingFormDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <MeetingFormDialog open={createOpen} onOpenChange={setCreateOpen} defaultCompanyId={company.id} />
       <MeetingFormDialog
         open={Boolean(editing)}
         onOpenChange={(v) => !v && setEditing(null)}
         meeting={editing}
+        defaultCompanyId={company.id}
       />
-    </>
+    </div>
   );
 }

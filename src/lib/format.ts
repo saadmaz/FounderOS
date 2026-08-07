@@ -1,4 +1,4 @@
-import type { TimeEntry } from "./types";
+import type { Meeting, TimeEntry } from "./types";
 
 /**
  * Sums time entries to hours. A still-running entry (endedAt: null) counts
@@ -8,6 +8,21 @@ import type { TimeEntry } from "./types";
 export function sumHours(entries: TimeEntry[]): number {
   const now = Date.now();
   return entries.reduce((sum, e) => sum + ((e.endedAt ?? now) - e.startedAt), 0) / 3_600_000;
+}
+
+/**
+ * Sums completed meetings' durations to hours. Only "completed" meetings
+ * count - a scheduled meeting hasn't consumed anyone's time yet, and a
+ * cancelled one never did, so neither belongs in an "hours logged" total.
+ * Every "hours logged" figure that's scoped to a company should add this
+ * to sumHours(timeEntries) for that company - meetings are time spent too.
+ */
+export function sumMeetingHours(meetings: Meeting[]): number {
+  return (
+    meetings
+      .filter((m) => m.status === "completed")
+      .reduce((sum, m) => sum + m.durationMinutes, 0) / 60
+  );
 }
 
 export function formatCurrency(amount: number, currency = "USD") {
