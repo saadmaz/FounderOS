@@ -45,14 +45,19 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4 lg:px-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="lg:hidden" onClick={onOpenMobileNav}>
+      <div className="flex min-w-0 items-center gap-3">
+        <Button variant="ghost" size="icon" className="shrink-0 lg:hidden" onClick={onOpenMobileNav}>
           <Menu className="size-4" />
         </Button>
-        <span className="text-sm font-medium text-foreground">{breadcrumb}</span>
+        {/* Redundant with the page's own title on mobile (PageHeader renders
+         * it right below) - dropped there to leave room for the timer
+         * indicator and action icons instead of forcing horizontal overflow. */}
+        <span className="hidden truncate text-sm font-medium text-foreground sm:inline-block">
+          {breadcrumb}
+        </span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <RunningTimerIndicator />
 
         <button

@@ -176,14 +176,16 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
   return (
     <div className="flex-1 space-y-6 p-4 lg:p-6">
       <Tabs defaultValue="overview">
-        <TabsList className="w-full sm:w-fit">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
-          <TabsTrigger value="revenue">Revenue</TabsTrigger>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="budgets">Budgets</TabsTrigger>
-          <TabsTrigger value="vendors">Vendors</TabsTrigger>
-        </TabsList>
+        <div className="-mx-4 overflow-x-auto px-4 scrollbar-thin lg:mx-0 lg:px-0">
+          <TabsList className="w-max sm:w-fit">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="expenses">Expenses</TabsTrigger>
+            <TabsTrigger value="revenue">Revenue</TabsTrigger>
+            <TabsTrigger value="invoices">Invoices</TabsTrigger>
+            <TabsTrigger value="budgets">Budgets</TabsTrigger>
+            <TabsTrigger value="vendors">Vendors</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ---------------- Overview ---------------- */}
         <TabsContent value="overview" className="mt-4 space-y-4">

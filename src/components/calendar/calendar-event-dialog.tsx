@@ -248,7 +248,7 @@ export function CalendarEventDialog({
             <Switch id="allDay" checked={allDay} onCheckedChange={(v) => setValue("allDay", v)} />
           </div>
 
-          <div className={cn("grid gap-3", allDay ? "grid-cols-1" : "grid-cols-3")}>
+          <div className={cn("grid grid-cols-1 gap-3", !allDay && "sm:grid-cols-3")}>
             <div className="space-y-1.5">
               <Label htmlFor="date">Date</Label>
               <Input id="date" type="date" {...register("date")} />

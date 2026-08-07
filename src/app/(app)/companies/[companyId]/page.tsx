@@ -140,13 +140,13 @@ export default function CompanyDetailPage() {
       </div>
 
       <Tabs defaultValue="overview" className="flex flex-1 flex-col gap-0">
-        <div className="border-b border-border px-4 lg:px-6">
-          <TabsList className="h-11 bg-transparent p-0">
+        <div className="overflow-x-auto border-b border-border px-4 scrollbar-thin lg:px-6">
+          <TabsList className="h-11 w-max bg-transparent p-0">
             {["overview", "projects", "tasks", "meetings", "finance", "crm", "documents"].map((v) => (
               <TabsTrigger
                 key={v}
                 value={v}
-                className="rounded-none border-b-2 border-transparent px-3 capitalize data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                className="shrink-0 rounded-none border-b-2 border-transparent px-3 capitalize data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
               >
                 {v}
               </TabsTrigger>

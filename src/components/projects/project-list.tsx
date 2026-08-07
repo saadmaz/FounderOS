@@ -55,9 +55,9 @@ export function ProjectList({
               )}
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <PriorityBadge priority={p.priority} />
-              <div className="flex w-32 items-center gap-2">
+              <div className="flex w-24 items-center gap-2 sm:w-32">
                 <Progress value={pct} className="h-1.5" />
                 <span className="w-8 shrink-0 text-right text-xs text-muted-foreground">{pct}%</span>
               </div>
@@ -66,7 +66,7 @@ export function ProjectList({
                   value={p.status}
                   onValueChange={(v) => v && updateProject(workspaceId, p.id, { status: v as ProjectStatus })}
                 >
-                  <SelectTrigger size="sm" className="h-7 w-[130px]">
+                  <SelectTrigger size="sm" className="h-7 w-32.5">
                     <SelectValue>{(v: ProjectStatus) => projectStatusLabel(v)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>

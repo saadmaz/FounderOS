@@ -98,7 +98,7 @@ export default function SettingsPage() {
                   <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                 </div>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${ROLE_STYLES[m.role]}`}
+                  className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium capitalize ${ROLE_STYLES[m.role]}`}
                 >
                   {m.role}
                 </span>
