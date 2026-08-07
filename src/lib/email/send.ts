@@ -26,7 +26,7 @@ function getResend(): Resend {
  */
 export async function sendEmail(to: string, message: EmailMessage) {
   const resend = getResend();
-  const from = process.env.RESEND_FROM_EMAIL || "FounderOS <onboarding@resend.dev>";
+  const from = process.env.RESEND_FROM_EMAIL || "FounderOS <noreply@work.saadmaz.com>";
   const replyTo = process.env.RESEND_REPLY_TO || undefined;
   const { error } = await resend.emails.send({
     from,

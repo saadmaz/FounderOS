@@ -1,9 +1,10 @@
 "use client";
 
 import { Play, Square } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -11,7 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { startTimer, stopTimer } from "@/lib/data/time-entries";
+import { useProjects } from "@/lib/data/projects";
+import { useTasks } from "@/lib/data/tasks";
+import { stopTimer, switchTimer } from "@/lib/data/time-entries";
+import { timeEntrySubjectLabel } from "@/lib/labels";
 import type { Company, TimeEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -35,8 +39,18 @@ export function TimerBar({
   runningEntry: TimeEntry | null;
 }) {
   const [companyId, setCompanyId] = useState(companies[0]?.id ?? "");
+  const [projectId, setProjectId] = useState("");
+  const [taskId, setTaskId] = useState("");
+  const [note, setNote] = useState("");
   const [elapsed, setElapsed] = useState(0);
   const [busy, setBusy] = useState(false);
+
+  const { data: projects } = useProjects(workspaceId, companyId || undefined);
+  const { data: tasksInCompany } = useTasks(workspaceId, companyId || undefined);
+  const tasks = useMemo(
+    () => (projectId ? tasksInCompany.filter((t) => t.projectId === projectId) : tasksInCompany),
+    [tasksInCompany, projectId]
+  );
 
   useEffect(() => {
     if (!runningEntry) return;
@@ -51,9 +65,26 @@ export function TimerBar({
       toast.error("Pick a company first");
       return;
     }
+    const company = companies.find((c) => c.id === companyId);
+    const project = projects.find((p) => p.id === projectId);
+    const task = tasks.find((t) => t.id === taskId);
     setBusy(true);
     try {
-      await startTimer(workspaceId, { memberId, companyId });
+      await switchTimer(
+        workspaceId,
+        {
+          memberId,
+          companyId,
+          projectId: projectId || undefined,
+          taskId: taskId || undefined,
+          note: note.trim() || undefined,
+          subjectLabel: timeEntrySubjectLabel({ company, project, task, note }),
+        },
+        runningEntry?.id
+      );
+      setNote("");
+      setProjectId("");
+      setTaskId("");
     } finally {
       setBusy(false);
     }
@@ -93,9 +124,13 @@ export function TimerBar({
 
       {runningEntry ? (
         <>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground">Tracking time on</p>
-            <p className="text-sm font-medium">{activeCompany?.name ?? "—"}</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">
+              {runningEntry.subjectLabel ?? activeCompany?.name ?? "—"}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {activeCompany?.name ?? "No company"}
+            </p>
           </div>
           <span className="font-mono text-xl font-semibold tabular-nums">{elapsedLabel(elapsed)}</span>
           <Button onClick={handleStop} disabled={busy} variant="destructive" className="gap-1.5">
@@ -105,10 +140,17 @@ export function TimerBar({
         </>
       ) : (
         <>
-          <div className="flex-1">
-            <Select value={companyId} onValueChange={(v) => setCompanyId(v ?? "")}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Select company">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <Select
+              value={companyId}
+              onValueChange={(v) => {
+                setCompanyId(v ?? "");
+                setProjectId("");
+                setTaskId("");
+              }}
+            >
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Company">
                   {(v: string) => companies.find((c) => c.id === v)?.name ?? "Select company"}
                 </SelectValue>
               </SelectTrigger>
@@ -120,6 +162,50 @@ export function TimerBar({
                 ))}
               </SelectContent>
             </Select>
+
+            <Select
+              value={projectId}
+              onValueChange={(v) => {
+                setProjectId(v ?? "");
+                setTaskId("");
+              }}
+              disabled={!companyId}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Project (optional)">
+                  {(v: string) => projects.find((p) => p.id === v)?.name ?? "No project"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={taskId} onValueChange={(v) => setTaskId(v ?? "")} disabled={!companyId}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Task (optional)">
+                  {(v: string) => tasks.find((t) => t.id === v)?.title ?? "No task"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {tasks.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Or just say what you're doing…"
+              className="w-48"
+            />
           </div>
           <Button onClick={handleStart} disabled={busy} className="gap-1.5">
             <Play className="size-3.5 fill-current" />

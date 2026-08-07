@@ -95,11 +95,11 @@ export default function TimeTrackingPage() {
             <Table>
               <TableHeader className="bg-surface">
                 <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-xs font-medium text-muted-foreground">Logged for</TableHead>
                   <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
                   <TableHead className="text-xs font-medium text-muted-foreground">Started</TableHead>
                   <TableHead className="text-xs font-medium text-muted-foreground">Duration</TableHead>
                   <TableHead className="text-xs font-medium text-muted-foreground">Billable</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground">Note</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -110,12 +110,15 @@ export default function TimeTrackingPage() {
                   return (
                     <TableRow key={e.id} className="hover:bg-secondary/40">
                       <TableCell className="py-2">
+                        <span className="text-sm">{e.subjectLabel ?? e.note ?? "—"}</span>
+                      </TableCell>
+                      <TableCell className="py-2">
                         <div className="flex items-center gap-2">
                           <span
                             className="size-2 rounded-full"
                             style={{ backgroundColor: company?.color ?? "#71717A" }}
                           />
-                          <span className="text-sm">{company?.name ?? "—"}</span>
+                          <span className="text-sm text-muted-foreground">{company?.name ?? "—"}</span>
                         </div>
                       </TableCell>
                       <TableCell className="py-2 text-sm text-muted-foreground">
@@ -129,7 +132,6 @@ export default function TimeTrackingPage() {
                           {e.billable ? "Billable" : "Non-billable"}
                         </span>
                       </TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">{e.note ?? "—"}</TableCell>
                       <TableCell className="py-2 text-right">
                         <Button
                           variant="ghost"

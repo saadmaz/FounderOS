@@ -134,8 +134,14 @@ export interface TimeEntry {
   id: string;
   workspaceId: string;
   companyId: string;
+  projectId?: string;
   taskId?: string;
   memberId: string;
+  /** What this entry reads as at a glance (task title, project name, company
+   * name, or a freeform note) - denormalized at write time so anything that
+   * lists entries (topbar, tables) can show it without joining three more
+   * collections. */
+  subjectLabel?: string;
   startedAt: number;
   endedAt: number | null; // null while a timer is running
   billable: boolean;

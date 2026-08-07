@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RunningTimerIndicator } from "@/components/time/running-timer-indicator";
 import { signOut } from "@/lib/auth/actions";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { ALL_NAV_ITEMS } from "./nav-config";
@@ -52,6 +53,8 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
       </div>
 
       <div className="flex items-center gap-2">
+        <RunningTimerIndicator />
+
         <button
           onClick={() => setCommandPaletteOpen(true)}
           className="flex h-8 items-center gap-2 rounded-lg border border-border bg-surface px-2.5 text-xs text-muted-foreground transition-colors hover:bg-secondary"
