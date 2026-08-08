@@ -26,10 +26,15 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { createCalendarEvent, updateCalendarEvent } from "@/lib/data/calendar-events";
+import {
+  createCalendarEvent,
+  createRecurringCalendarEvents,
+  updateCalendarEvent,
+} from "@/lib/data/calendar-events";
 import { useCompanies } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
-import type { CalendarEvent, CalendarEventType } from "@/lib/types";
+import { expandRecurrence, MAX_RECURRENCE_INSTANCES } from "@/lib/recurrence";
+import { RECURRENCE_FREQUENCIES, type CalendarEvent, type CalendarEventType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -51,6 +56,12 @@ export const CALENDAR_EVENT_TYPE_STYLES: Record<CalendarEventType, string> = {
   reminder: "bg-warning/10 text-warning",
 };
 
+const RECURRENCE_UNIT: Record<"daily" | "weekly" | "monthly", string> = {
+  daily: "day(s)",
+  weekly: "week(s)",
+  monthly: "month(s)",
+};
+
 const NO_COMPANY = "none";
 
 const schema = z
@@ -63,6 +74,11 @@ const schema = z
     endTime: z.string().optional(),
     companyId: z.string(),
     notes: z.string().optional(),
+    recurrenceFreq: z.enum(["none", "daily", "weekly", "monthly"]),
+    recurrenceInterval: z.string(),
+    recurrenceEndMode: z.enum(["count", "until"]),
+    recurrenceCount: z.string(),
+    recurrenceUntil: z.string(),
   })
   .refine((v) => v.allDay || !!v.startTime, {
     message: "Start time is required",
@@ -78,8 +94,19 @@ function toTimeInput(ms: number) {
   return format(ms, "HH:mm");
 }
 
+const RECURRENCE_DEFAULTS = {
+  recurrenceFreq: "none" as const,
+  recurrenceInterval: "1",
+  recurrenceEndMode: "count" as const,
+  recurrenceCount: "5",
+  recurrenceUntil: "",
+};
+
 function defaultsFor(event?: CalendarEvent | null, defaultDate?: number): FormValues {
   if (event) {
+    // Recurrence is a create-time-only decision (see the Repeat field
+    // below, hidden entirely while editing) - always reset to "none" here
+    // regardless of whether this instance belongs to a series.
     return {
       title: event.title,
       type: event.type,
@@ -89,6 +116,7 @@ function defaultsFor(event?: CalendarEvent | null, defaultDate?: number): FormVa
       endTime: !event.allDay && event.endsAt ? toTimeInput(event.endsAt) : "",
       companyId: event.companyId ?? NO_COMPANY,
       notes: event.notes ?? "",
+      ...RECURRENCE_DEFAULTS,
     };
   }
   const base = defaultDate ?? Date.now();
@@ -101,6 +129,7 @@ function defaultsFor(event?: CalendarEvent | null, defaultDate?: number): FormVa
     endTime: "",
     companyId: NO_COMPANY,
     notes: "",
+    ...RECURRENCE_DEFAULTS,
   };
 }
 
@@ -139,6 +168,8 @@ export function CalendarEventDialog({
 
   const allDay = watch("allDay");
   const companyId = watch("companyId");
+  const recurrenceFreq = watch("recurrenceFreq");
+  const recurrenceEndMode = watch("recurrenceEndMode");
 
   async function onSubmit(values: FormValues) {
     if (!workspace || !user) return;
@@ -165,12 +196,30 @@ export function CalendarEventDialog({
       if (event) {
         await updateCalendarEvent(workspace.id, event.id, payload);
         toast.success("Event updated");
-      } else {
+      } else if (values.recurrenceFreq === "none") {
         await createCalendarEvent(workspace.id, {
           ...payload,
           createdBy: user.uid,
         });
         toast.success("Event created");
+      } else {
+        const dates = expandRecurrence(startsAt, {
+          frequency: values.recurrenceFreq,
+          interval: Number(values.recurrenceInterval) || 1,
+          endMode: values.recurrenceEndMode,
+          count: Number(values.recurrenceCount) || 1,
+          until: values.recurrenceUntil
+            ? new Date(`${values.recurrenceUntil}T23:59:59`).getTime()
+            : undefined,
+        });
+        await createRecurringCalendarEvents(
+          workspace.id,
+          { ...payload, createdBy: user.uid },
+          dates,
+          endsAt != null ? endsAt - startsAt : null,
+          { frequency: values.recurrenceFreq, interval: Number(values.recurrenceInterval) || 1 }
+        );
+        toast.success(`${dates.length} events created`);
       }
       reset();
       onOpenChange(false);
@@ -275,6 +324,85 @@ export function CalendarEventDialog({
             <Label htmlFor="notes">Notes (optional)</Label>
             <Textarea id="notes" rows={3} {...register("notes")} />
           </div>
+
+          {!event && (
+            <div className="space-y-1.5">
+              <Label>Repeat</Label>
+              <Select
+                value={recurrenceFreq}
+                onValueChange={(v) =>
+                  setValue("recurrenceFreq", (v as FormValues["recurrenceFreq"]) ?? "none")
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {(v: FormValues["recurrenceFreq"]) =>
+                      v === "none"
+                        ? "Does not repeat"
+                        : (RECURRENCE_FREQUENCIES.find((f) => f.value === v)?.label ?? v)
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Does not repeat</SelectItem>
+                  {RECURRENCE_FREQUENCIES.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {recurrenceFreq !== "none" && (
+                <div className="space-y-3 rounded-lg border border-border p-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Every</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      className="w-16"
+                      {...register("recurrenceInterval")}
+                    />
+                    <span className="text-muted-foreground">{RECURRENCE_UNIT[recurrenceFreq]}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Ends</span>
+                    <Select
+                      value={recurrenceEndMode}
+                      onValueChange={(v) =>
+                        setValue("recurrenceEndMode", (v as FormValues["recurrenceEndMode"]) ?? "count")
+                      }
+                    >
+                      <SelectTrigger size="sm" className="w-28">
+                        <SelectValue>{(v: string) => (v === "count" ? "After" : "On date")}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="count">After</SelectItem>
+                        <SelectItem value="until">On date</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {recurrenceEndMode === "count" ? (
+                      <>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={MAX_RECURRENCE_INSTANCES}
+                          className="w-16"
+                          {...register("recurrenceCount")}
+                        />
+                        <span className="text-muted-foreground">events</span>
+                      </>
+                    ) : (
+                      <Input type="date" className="w-40" {...register("recurrenceUntil")} />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground-2">
+                    Creates up to {MAX_RECURRENCE_INSTANCES} events in the series.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

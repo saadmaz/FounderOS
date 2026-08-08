@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { isUpcoming, MeetingCard } from "@/components/meetings/meeting-card";
 import { MeetingFormDialog } from "@/components/meetings/meeting-form-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
-import { deleteMeeting, setMeetingStatus, useMeetings } from "@/lib/data/meetings";
+import { deleteMeeting, deleteMeetingSeries, setMeetingStatus, useMeetings } from "@/lib/data/meetings";
 import { useMembers } from "@/lib/data/members";
 import type { Company, Meeting, MeetingStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -44,6 +44,18 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
     if (!window.confirm(`Delete "${meeting.title}"? This can't be undone.`)) return;
     await deleteMeeting(workspace.id, meeting.id);
     toast.success("Meeting deleted");
+  }
+
+  async function handleDeleteSeries(meeting: Meeting) {
+    if (!workspace || !meeting.recurrence) return;
+    if (
+      !window.confirm(
+        `Delete all ${meeting.recurrence.count} meetings in "${meeting.title}"'s series? This can't be undone.`
+      )
+    )
+      return;
+    await deleteMeetingSeries(workspace.id, meeting.recurrence.groupId);
+    toast.success("Series deleted");
   }
 
   return (
@@ -97,6 +109,7 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
                       onEdit={setEditing}
                       onStatusChange={handleStatus}
                       onDelete={handleDelete}
+                      onDeleteSeries={handleDeleteSeries}
                     />
                   ))}
                 </div>
@@ -119,6 +132,7 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
                       onEdit={setEditing}
                       onStatusChange={handleStatus}
                       onDelete={handleDelete}
+                      onDeleteSeries={handleDeleteSeries}
                     />
                   ))}
                 </div>

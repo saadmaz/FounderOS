@@ -2,6 +2,7 @@
 
 import {
   Calendar as CalendarIcon,
+  CalendarSync,
   CheckSquare,
   Clock,
   MoreHorizontal,
@@ -28,10 +29,15 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { deleteCalendarEvent, useCalendarEvents } from "@/lib/data/calendar-events";
+import {
+  deleteCalendarEvent,
+  deleteCalendarEventSeries,
+  useCalendarEvents,
+} from "@/lib/data/calendar-events";
 import { useCompanies } from "@/lib/data/companies";
 import { useTasks } from "@/lib/data/tasks";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { recurrenceSummary } from "@/lib/recurrence";
 import type { CalendarEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -131,6 +137,18 @@ export default function CalendarPage() {
     toast.success("Event deleted");
   }
 
+  async function handleDeleteSeries(event: CalendarEvent) {
+    if (!workspace || !event.recurrence) return;
+    if (
+      !window.confirm(
+        `Delete all ${event.recurrence.count} events in "${event.title}"'s series? This can't be undone.`
+      )
+    )
+      return;
+    await deleteCalendarEventSeries(workspace.id, event.recurrence.groupId);
+    toast.success("Series deleted");
+  }
+
   return (
     <>
       <PageHeader
@@ -228,7 +246,15 @@ export default function CalendarPage() {
                             <span className="size-2 shrink-0 rounded-full bg-muted-foreground-2" />
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm">{e.title}</p>
+                            <p className="flex items-center gap-1.5 truncate text-sm">
+                              {e.recurrence && (
+                                <CalendarSync
+                                  className="size-3 shrink-0 text-muted-foreground-2"
+                                  aria-label={recurrenceSummary(e.recurrence.frequency, e.recurrence.interval)}
+                                />
+                              )}
+                              <span className="truncate">{e.title}</span>
+                            </p>
                             {e.notes && (
                               <p className="truncate text-xs text-muted-foreground">{e.notes}</p>
                             )}
@@ -263,8 +289,17 @@ export default function CalendarPage() {
                                   onClick={() => handleDelete(e)}
                                 >
                                   <Trash2 className="size-4" />
-                                  Delete
+                                  Delete{e.recurrence ? " this event" : ""}
                                 </DropdownMenuItem>
+                                {e.recurrence && (
+                                  <DropdownMenuItem
+                                    variant="destructive"
+                                    onClick={() => handleDeleteSeries(e)}
+                                  >
+                                    <Trash2 className="size-4" />
+                                    Delete entire series
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}

@@ -26,10 +26,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
-import { createMeeting, updateMeeting } from "@/lib/data/meetings";
+import { createMeeting, createRecurringMeetings, updateMeeting } from "@/lib/data/meetings";
 import { useMembers } from "@/lib/data/members";
-import type { Meeting } from "@/lib/types";
+import { expandRecurrence, MAX_RECURRENCE_INSTANCES } from "@/lib/recurrence";
+import { RECURRENCE_FREQUENCIES, type Meeting } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
+
+const RECURRENCE_UNIT: Record<"daily" | "weekly" | "monthly", string> = {
+  daily: "day(s)",
+  weekly: "week(s)",
+  monthly: "month(s)",
+};
 
 const schema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -44,6 +51,11 @@ const schema = z.object({
   location: z.string().optional(),
   agenda: z.string().optional(),
   attendeeIds: z.array(z.string()),
+  recurrenceFreq: z.enum(["none", "daily", "weekly", "monthly"]),
+  recurrenceInterval: z.string(),
+  recurrenceEndMode: z.enum(["count", "until"]),
+  recurrenceCount: z.string(),
+  recurrenceUntil: z.string(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -61,6 +73,14 @@ function defaultScheduledAt() {
   d.setMinutes(d.getMinutes() - (d.getMinutes() % 30) + 30, 0, 0);
   return toDatetimeLocalValue(d.getTime());
 }
+
+const RECURRENCE_DEFAULTS = {
+  recurrenceFreq: "none" as const,
+  recurrenceInterval: "1",
+  recurrenceEndMode: "count" as const,
+  recurrenceCount: "5",
+  recurrenceUntil: "",
+};
 
 export function MeetingFormDialog({
   open,
@@ -96,12 +116,16 @@ export function MeetingFormDialog({
       location: "",
       agenda: "",
       attendeeIds: [],
+      ...RECURRENCE_DEFAULTS,
     },
   });
 
   useEffect(() => {
     if (!open) return;
     if (meeting) {
+      // Recurrence is a create-time-only decision (see the Repeat field
+      // below, hidden entirely while editing) - always reset to "none"
+      // here regardless of whether this instance belongs to a series.
       reset({
         title: meeting.title,
         companyId: meeting.companyId,
@@ -110,6 +134,7 @@ export function MeetingFormDialog({
         location: meeting.location ?? "",
         agenda: meeting.agenda ?? "",
         attendeeIds: meeting.attendeeIds ?? [],
+        ...RECURRENCE_DEFAULTS,
       });
     } else {
       reset({
@@ -120,12 +145,15 @@ export function MeetingFormDialog({
         location: "",
         agenda: "",
         attendeeIds: [],
+        ...RECURRENCE_DEFAULTS,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, meeting, defaultCompanyId]);
 
   const attendeeIds = watch("attendeeIds");
+  const recurrenceFreq = watch("recurrenceFreq");
+  const recurrenceEndMode = watch("recurrenceEndMode");
 
   function toggleAttendee(id: string) {
     setValue(
@@ -152,17 +180,35 @@ export function MeetingFormDialog({
         }));
         toast.success("Meeting updated");
       } else {
-        await createMeeting(workspace.id, omitUndefined({
-          title: values.title,
+        const base = omitUndefined({
           companyId: values.companyId,
-          scheduledAt,
+          title: values.title,
           durationMinutes,
           location: values.location || undefined,
           agenda: values.agenda || undefined,
           attendeeIds: values.attendeeIds,
-          status: "scheduled",
-        }));
-        toast.success("Meeting scheduled");
+          status: "scheduled" as const,
+        });
+
+        if (values.recurrenceFreq === "none") {
+          await createMeeting(workspace.id, { ...base, scheduledAt });
+          toast.success("Meeting scheduled");
+        } else {
+          const dates = expandRecurrence(scheduledAt, {
+            frequency: values.recurrenceFreq,
+            interval: Number(values.recurrenceInterval) || 1,
+            endMode: values.recurrenceEndMode,
+            count: Number(values.recurrenceCount) || 1,
+            until: values.recurrenceUntil
+              ? new Date(`${values.recurrenceUntil}T23:59:59`).getTime()
+              : undefined,
+          });
+          await createRecurringMeetings(workspace.id, base, dates, {
+            frequency: values.recurrenceFreq,
+            interval: Number(values.recurrenceInterval) || 1,
+          });
+          toast.success(`${dates.length} meetings scheduled`);
+        }
       }
       onOpenChange(false);
     } catch {
@@ -262,6 +308,85 @@ export function MeetingFormDialog({
               </div>
             )}
           </div>
+
+          {!isEditing && (
+            <div className="space-y-1.5">
+              <Label>Repeat</Label>
+              <Select
+                value={recurrenceFreq}
+                onValueChange={(v) =>
+                  setValue("recurrenceFreq", (v as FormValues["recurrenceFreq"]) ?? "none")
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {(v: FormValues["recurrenceFreq"]) =>
+                      v === "none"
+                        ? "Does not repeat"
+                        : (RECURRENCE_FREQUENCIES.find((f) => f.value === v)?.label ?? v)
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Does not repeat</SelectItem>
+                  {RECURRENCE_FREQUENCIES.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {recurrenceFreq !== "none" && (
+                <div className="space-y-3 rounded-lg border border-border p-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Every</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      className="w-16"
+                      {...register("recurrenceInterval")}
+                    />
+                    <span className="text-muted-foreground">{RECURRENCE_UNIT[recurrenceFreq]}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Ends</span>
+                    <Select
+                      value={recurrenceEndMode}
+                      onValueChange={(v) =>
+                        setValue("recurrenceEndMode", (v as FormValues["recurrenceEndMode"]) ?? "count")
+                      }
+                    >
+                      <SelectTrigger size="sm" className="w-28">
+                        <SelectValue>{(v: string) => (v === "count" ? "After" : "On date")}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="count">After</SelectItem>
+                        <SelectItem value="until">On date</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {recurrenceEndMode === "count" ? (
+                      <>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={MAX_RECURRENCE_INSTANCES}
+                          className="w-16"
+                          {...register("recurrenceCount")}
+                        />
+                        <span className="text-muted-foreground">meetings</span>
+                      </>
+                    ) : (
+                      <Input type="date" className="w-40" {...register("recurrenceUntil")} />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground-2">
+                    Creates up to {MAX_RECURRENCE_INSTANCES} meetings in the series.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

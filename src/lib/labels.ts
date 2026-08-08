@@ -1,4 +1,4 @@
-import { PRIORITIES, PROJECT_STATUSES, TASK_STATUSES } from "@/lib/types";
+import { COMPANY_TYPES, PRIORITIES, PROJECT_STATUSES, TASK_STATUSES } from "@/lib/types";
 import type { Company, Project, Task } from "@/lib/types";
 
 /**
@@ -16,6 +16,7 @@ function buildLookup<T extends string>(options: { value: T; label: string }[]) {
 export const taskStatusLabel = buildLookup(TASK_STATUSES);
 export const projectStatusLabel = buildLookup(PROJECT_STATUSES);
 export const priorityLabel = buildLookup(PRIORITIES);
+export const companyTypeLabel = buildLookup(COMPANY_TYPES);
 
 /**
  * What a time entry reads as: the most specific thing picked (task, then

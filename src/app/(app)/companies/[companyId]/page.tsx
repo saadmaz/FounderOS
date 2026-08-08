@@ -24,6 +24,7 @@ import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
 import { formatHours, sumHours, sumMeetingHours } from "@/lib/format";
+import { companyTypeLabel } from "@/lib/labels";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const LINK_ICONS = {
@@ -95,7 +96,7 @@ export default function CompanyDetailPage() {
                 <StatusBadge status={company.status} />
               </div>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {company.industry ?? "—"} · <span className="capitalize">{company.type}</span> ·{" "}
+                {company.industry ?? "—"} · {companyTypeLabel(company.type)} ·{" "}
                 <span className="capitalize">{company.stage.replace("-", " ")}</span>
               </p>
             </div>

@@ -1,8 +1,19 @@
 "use client";
 
-import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  updateDoc,
+  where,
+  writeBatch,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
-import type { Meeting, MeetingStatus } from "@/lib/types";
+import type { Meeting, MeetingStatus, RecurrenceFrequency } from "@/lib/types";
 import { now } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
@@ -35,6 +46,43 @@ export async function createMeeting(
   });
 }
 
+/**
+ * Materializes a recurring series as N real meeting documents, one per date
+ * in `dates` (see src/lib/recurrence.ts for how those are generated) - this
+ * app has no background job to expand a recurrence rule lazily, so every
+ * occurrence is a normal Meeting doc from the moment it's created, which is
+ * what lets every existing meetings query/view show them with no changes.
+ */
+export async function createRecurringMeetings(
+  workspaceId: string,
+  base: Pick<Meeting, "companyId" | "title" | "durationMinutes" | "attendeeIds" | "status"> &
+    Partial<Meeting>,
+  dates: number[],
+  recurrence: { frequency: RecurrenceFrequency; interval: number }
+) {
+  const ts = now();
+  const groupId = doc(collection(db, path(workspaceId))).id;
+  const batch = writeBatch(db);
+  dates.forEach((scheduledAt, index) => {
+    const ref = doc(collection(db, path(workspaceId)));
+    batch.set(ref, {
+      ...base,
+      workspaceId,
+      scheduledAt,
+      recurrence: {
+        frequency: recurrence.frequency,
+        interval: recurrence.interval,
+        groupId,
+        index,
+        count: dates.length,
+      },
+      createdAt: ts,
+      updatedAt: ts,
+    });
+  });
+  await batch.commit();
+}
+
 export async function updateMeeting(
   workspaceId: string,
   meetingId: string,
@@ -56,4 +104,15 @@ export async function setMeetingStatus(
 
 export async function deleteMeeting(workspaceId: string, meetingId: string) {
   return deleteDoc(doc(db, path(workspaceId), meetingId));
+}
+
+/** Deletes every meeting in a recurring series (all instances sharing
+ * `groupId`), not just one occurrence. */
+export async function deleteMeetingSeries(workspaceId: string, groupId: string) {
+  const snap = await getDocs(
+    query(collection(db, path(workspaceId)), where("recurrence.groupId", "==", groupId))
+  );
+  const batch = writeBatch(db);
+  snap.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
 }

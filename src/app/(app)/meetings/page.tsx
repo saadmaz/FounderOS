@@ -9,7 +9,7 @@ import { MeetingFormDialog } from "@/components/meetings/meeting-form-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { useCompanies } from "@/lib/data/companies";
-import { deleteMeeting, setMeetingStatus, useMeetings } from "@/lib/data/meetings";
+import { deleteMeeting, deleteMeetingSeries, setMeetingStatus, useMeetings } from "@/lib/data/meetings";
 import { useMembers } from "@/lib/data/members";
 import type { Meeting, MeetingStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -44,6 +44,18 @@ export default function MeetingsPage() {
     if (!window.confirm(`Delete "${meeting.title}"? This can't be undone.`)) return;
     await deleteMeeting(workspace.id, meeting.id);
     toast.success("Meeting deleted");
+  }
+
+  async function handleDeleteSeries(meeting: Meeting) {
+    if (!workspace || !meeting.recurrence) return;
+    if (
+      !window.confirm(
+        `Delete all ${meeting.recurrence.count} meetings in "${meeting.title}"'s series? This can't be undone.`
+      )
+    )
+      return;
+    await deleteMeetingSeries(workspace.id, meeting.recurrence.groupId);
+    toast.success("Series deleted");
   }
 
   return (
@@ -98,6 +110,7 @@ export default function MeetingsPage() {
                       onEdit={setEditing}
                       onStatusChange={handleStatus}
                       onDelete={handleDelete}
+                      onDeleteSeries={handleDeleteSeries}
                     />
                   ))}
                 </div>
@@ -120,6 +133,7 @@ export default function MeetingsPage() {
                       onEdit={setEditing}
                       onStatusChange={handleStatus}
                       onDelete={handleDelete}
+                      onDeleteSeries={handleDeleteSeries}
                     />
                   ))}
                 </div>

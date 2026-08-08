@@ -1,7 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calendar, CalendarCheck, CalendarX2, MapPin, MoreHorizontal, Pencil, Trash2, Users } from "lucide-react";
+import {
+  Calendar,
+  CalendarCheck,
+  CalendarSync,
+  CalendarX2,
+  MapPin,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDateTime, initials } from "@/lib/format";
+import { recurrenceSummary } from "@/lib/recurrence";
 import type { Company, Meeting, MeetingStatus, WorkspaceMember } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +73,7 @@ export function MeetingCard({
   onEdit,
   onStatusChange,
   onDelete,
+  onDeleteSeries,
 }: {
   meeting: Meeting;
   index: number;
@@ -71,6 +83,7 @@ export function MeetingCard({
   onEdit: (meeting: Meeting) => void;
   onStatusChange: (meeting: Meeting, status: MeetingStatus) => void;
   onDelete: (meeting: Meeting) => void;
+  onDeleteSeries?: (meeting: Meeting) => void;
 }) {
   function memberFor(memberId: string) {
     return members.find((m) => m.id === memberId);
@@ -121,8 +134,14 @@ export function MeetingCard({
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={() => onDelete(meeting)}>
               <Trash2 className="size-4" />
-              Delete
+              Delete{meeting.recurrence ? " this meeting" : ""}
             </DropdownMenuItem>
+            {meeting.recurrence && onDeleteSeries && (
+              <DropdownMenuItem variant="destructive" onClick={() => onDeleteSeries(meeting)}>
+                <Trash2 className="size-4" />
+                Delete entire series
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -132,6 +151,12 @@ export function MeetingCard({
           <Calendar className="size-3.5" />
           {formatDateTime(meeting.scheduledAt)} · {formatDuration(meeting.durationMinutes)}
         </span>
+        {meeting.recurrence && (
+          <span className="flex items-center gap-1.5" title={`${meeting.recurrence.index + 1} of ${meeting.recurrence.count}`}>
+            <CalendarSync className="size-3.5" />
+            {recurrenceSummary(meeting.recurrence.frequency, meeting.recurrence.interval)}
+          </span>
+        )}
         {meeting.location && (
           <span className="flex items-center gap-1.5 truncate">
             <MapPin className="size-3.5 shrink-0" />

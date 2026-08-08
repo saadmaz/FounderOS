@@ -26,7 +26,29 @@ export interface WorkspaceMember {
 
 export type CompanyStatus = "active" | "paused" | "archived" | "exploring";
 export type CompanyStage = "idea" | "pre-launch" | "launched" | "growth" | "scaling" | "mature";
-export type CompanyType = "startup" | "client" | "agency" | "personal" | "investment";
+
+export type CompanyType =
+  | "startup"
+  | "company"
+  | "agency"
+  | "client"
+  | "work"
+  | "side_project"
+  | "nonprofit"
+  | "investment"
+  | "personal";
+
+export const COMPANY_TYPES: { value: CompanyType; label: string; description: string }[] = [
+  { value: "startup", label: "Startup", description: "A new venture built for high growth." },
+  { value: "company", label: "Company", description: "An established, steady-state business." },
+  { value: "agency", label: "Agency", description: "A service business you run for clients." },
+  { value: "client", label: "Client", description: "Someone you do paid work for, not your own venture." },
+  { value: "work", label: "Work", description: "Your day job or employer." },
+  { value: "side_project", label: "Side Project", description: "Something you're building on the side." },
+  { value: "nonprofit", label: "Nonprofit", description: "A nonprofit or foundation." },
+  { value: "investment", label: "Investment", description: "A company you've invested in or advise." },
+  { value: "personal", label: "Personal", description: "Personal projects and life admin." },
+];
 
 export interface CompanyLinks {
   website?: string;
@@ -365,6 +387,29 @@ export interface DocumentFile {
   createdAt: number;
 }
 
+// ===================== Recurrence =====================
+// Shared by calendar events and meetings. There's no background job in this
+// app to expand a recurrence rule lazily, so a recurring series is
+// materialized as N real documents up front (see src/lib/recurrence.ts) -
+// each one denormalizes this so it can say "I'm 3 of 12, weekly" and so
+// deleting the whole series can find its siblings via groupId.
+
+export type RecurrenceFrequency = "daily" | "weekly" | "monthly";
+
+export const RECURRENCE_FREQUENCIES: { value: RecurrenceFrequency; label: string }[] = [
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+];
+
+export interface Recurrence {
+  frequency: RecurrenceFrequency;
+  interval: number; // every N days/weeks/months
+  groupId: string; // shared across every instance in the series
+  index: number; // 0-based position of this instance within the series
+  count: number; // total instances generated for the series
+}
+
 // ===================== Calendar =====================
 
 export type CalendarEventType = "event" | "deadline" | "reminder";
@@ -379,6 +424,7 @@ export interface CalendarEvent {
   endsAt?: number | null;
   allDay: boolean;
   notes?: string;
+  recurrence?: Recurrence;
   createdBy: string;
   createdAt: number;
 }
@@ -405,6 +451,7 @@ export interface Meeting {
   agenda?: string;
   notes?: string;
   status: MeetingStatus;
+  recurrence?: Recurrence;
   createdAt: number;
   updatedAt: number;
 }

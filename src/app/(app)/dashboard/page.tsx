@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import { PriorityBadge, StatusBadge } from "@/components/shared/status-badge";
 import { StatCard } from "@/components/shared/stat-card";
+import { CompanyFormDialog } from "@/components/companies/company-form-dialog";
+import { OnboardingWelcome } from "@/components/companies/onboarding-welcome";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
@@ -25,6 +27,7 @@ import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
 import { formatHours, sumHours, sumMeetingHours } from "@/lib/format";
+import type { CompanyType } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +60,8 @@ export default function DashboardPage() {
   const { data: timeEntries } = useTimeEntries(workspace?.id ?? null);
   const { data: meetings } = useMeetings(workspace?.id ?? null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
+  const [quickType, setQuickType] = useState<CompanyType>("startup");
 
   const today = startOfDay(new Date());
   const weekStart = startOfWeek(new Date());
@@ -122,6 +127,32 @@ export default function DashboardPage() {
 
   const firstName = user?.displayName?.split(" ")[0];
 
+  // A brand-new workspace has zero companies - the rest of this page is
+  // widgets full of "No X yet" for something that doesn't exist yet, with
+  // no obvious next step. Replace it with a direct question instead.
+  if (!companiesLoading && companies.length === 0) {
+    return (
+      <>
+        <PageHeader
+          title={`${greeting()}${firstName ? `, ${firstName}` : ""}`}
+          description="Let's get your first company set up."
+        />
+        <OnboardingWelcome
+          displayName={user?.displayName}
+          onPickType={(type) => {
+            setQuickType(type);
+            setCompanyDialogOpen(true);
+          }}
+        />
+        <CompanyFormDialog
+          open={companyDialogOpen}
+          onOpenChange={setCompanyDialogOpen}
+          defaultType={quickType}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -132,10 +163,12 @@ export default function DashboardPage() {
           day: "numeric",
         }).format(new Date())}
         actions={
-          <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
-            <Plus className="size-4" />
-            New task
-          </Button>
+          companies.length > 0 && (
+            <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
+              <Plus className="size-4" />
+              New task
+            </Button>
+          )
         }
       />
 

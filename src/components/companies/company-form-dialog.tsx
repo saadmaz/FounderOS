@@ -29,7 +29,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { createCompany, updateCompany } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
-import type { Company } from "@/lib/types";
+import { COMPANY_TYPE_ICONS } from "@/lib/company-type-icons";
+import { COMPANY_TYPES, type Company, type CompanyType } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const COLORS = ["#2563EB", "#8B5CF6", "#06B6D4", "#EC4899", "#F97316", "#22C55E", "#F59E0B", "#71717A"];
@@ -44,7 +45,17 @@ const schema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   legalName: z.string().max(150).optional(),
   industry: z.string().optional(),
-  type: z.enum(["startup", "client", "agency", "personal", "investment"]),
+  type: z.enum([
+    "startup",
+    "company",
+    "agency",
+    "client",
+    "work",
+    "side_project",
+    "nonprofit",
+    "investment",
+    "personal",
+  ]),
   stage: z.enum(["idea", "pre-launch", "launched", "growth", "scaling", "mature"]),
   currency: z.string().min(1, "Currency is required").max(3),
   // Step 2 — branding
@@ -82,12 +93,12 @@ const STEPS: { title: string; description: string; fields: (keyof FormValues)[] 
   },
 ];
 
-function defaultsFor(company?: Company | null): FormValues {
+function defaultsFor(company?: Company | null, defaultType?: CompanyType): FormValues {
   return {
     name: company?.name ?? "",
     legalName: company?.legalName ?? "",
     industry: company?.industry ?? "",
-    type: company?.type ?? "startup",
+    type: company?.type ?? defaultType ?? "startup",
     stage: company?.stage ?? "idea",
     currency: company?.currency ?? "USD",
     logoUrl: company?.logoUrl ?? "",
@@ -108,10 +119,14 @@ export function CompanyFormDialog({
   open,
   onOpenChange,
   company,
+  defaultType,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   company?: Company | null;
+  /** Pre-seeds the Type field - used by the onboarding quick-picks so
+   * "I have a day job" opens straight into a form already set to "Work". */
+  defaultType?: CompanyType;
 }) {
   const { workspace } = useWorkspace();
   const isEditing = Boolean(company);
@@ -130,15 +145,15 @@ export function CompanyFormDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: defaultsFor(company),
+    defaultValues: defaultsFor(company, defaultType),
   });
 
   useEffect(() => {
     if (!open) return;
-    reset(defaultsFor(company));
+    reset(defaultsFor(company, defaultType));
     setStep(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, company]);
+  }, [open, company, defaultType]);
 
   const lastStep = STEPS.length - 1;
 
@@ -272,14 +287,30 @@ export function CompanyFormDialog({
                   <Label>Type</Label>
                   <Select value={watch("type")} onValueChange={(v) => setValue("type", v as FormValues["type"])}>
                     <SelectTrigger className="w-full">
-                      <SelectValue>{(v: string) => <span className="capitalize">{v}</span>}</SelectValue>
+                      <SelectValue>
+                        {(v: FormValues["type"]) => {
+                          const Icon = COMPANY_TYPE_ICONS[v];
+                          return (
+                            <span className="flex items-center gap-1.5">
+                              <Icon className="size-3.5 text-muted-foreground" />
+                              {COMPANY_TYPES.find((t) => t.value === v)?.label ?? v}
+                            </span>
+                          );
+                        }}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {["startup", "client", "agency", "personal", "investment"].map((t) => (
-                        <SelectItem key={t} value={t} className="capitalize">
-                          {t}
-                        </SelectItem>
-                      ))}
+                      {COMPANY_TYPES.map((t) => {
+                        const Icon = COMPANY_TYPE_ICONS[t.value];
+                        return (
+                          <SelectItem key={t.value} value={t.value}>
+                            <span className="flex items-center gap-1.5">
+                              <Icon className="size-3.5 text-muted-foreground" />
+                              {t.label}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -299,6 +330,9 @@ export function CompanyFormDialog({
                   </Select>
                 </div>
               </div>
+              <p className="-mt-2 text-xs text-muted-foreground">
+                {COMPANY_TYPES.find((t) => t.value === watch("type"))?.description}
+              </p>
 
               <div className="space-y-1.5">
                 <Label htmlFor="currency">Currency</Label>

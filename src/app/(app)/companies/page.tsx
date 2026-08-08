@@ -21,6 +21,7 @@ import { useMeetings } from "@/lib/data/meetings";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
 import { formatHours, sumHours, sumMeetingHours } from "@/lib/format";
+import { companyTypeLabel } from "@/lib/labels";
 import type { Company } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { toast } from "sonner";
@@ -140,8 +141,8 @@ export default function CompaniesPage() {
                     )}
                     <div className="mt-4 flex items-center gap-2">
                       <StatusBadge status={c.status} />
-                      <span className="rounded-full bg-secondary px-2 py-0.5 text-xs capitalize text-muted-foreground">
-                        {c.type}
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+                        {companyTypeLabel(c.type)}
                       </span>
                     </div>
                     <div className="mt-4 flex items-center gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
