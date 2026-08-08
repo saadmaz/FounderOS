@@ -42,6 +42,11 @@ function daysAgo(n) {
 function daysFromNow(n) {
   return Date.now() + n * 86400000;
 }
+function atTime(ms, hour, minute = 0) {
+  const d = new Date(ms);
+  d.setHours(hour, minute, 0, 0);
+  return d.getTime();
+}
 
 async function main() {
   const user = await getOrCreateDemoUser();
@@ -221,6 +226,155 @@ async function main() {
     logged++;
   }
   console.log(`Seeded ${logged} time entries`);
+
+  // ----- Meetings: a few one-offs (two already completed, with minutes
+  // filled in so "add notes after the meeting" has something to show), plus
+  // a weekly recurring series spanning past and future occurrences. -----
+  const meetingsCol = db.collection(`workspaces/${workspaceId}/meetings`);
+  let meetingCount = 0;
+
+  const meetingDefs = [
+    {
+      company: "nimbus",
+      title: "Design review: onboarding flow",
+      when: daysFromNow(2),
+      duration: 45,
+      location: "Zoom",
+      agenda: "Walk through the new self-serve signup wireframes before dev starts.",
+      status: "scheduled",
+    },
+    {
+      company: "kiln",
+      title: "Winter launch kickoff",
+      when: daysAgo(6),
+      duration: 60,
+      location: "Office",
+      agenda: "Align on launch date, marketing assets, and supplier timeline.",
+      status: "completed",
+      notes:
+        "Launch date locked for Nov 15. Marketing to have lookbook shots by Nov 1. Supplier confirmed glaze materials ship by Oct 20 - following up if that slips.",
+    },
+    {
+      company: "pathlight",
+      title: "Investor update call",
+      when: daysFromNow(9),
+      duration: 30,
+      location: "Google Meet",
+      agenda: "Monthly update - MVP progress, tutor interview findings, runway.",
+      status: "scheduled",
+    },
+    {
+      company: "nimbus",
+      title: "Postgres migration retro",
+      when: daysAgo(3),
+      duration: 30,
+      location: "Zoom",
+      agenda: "What went well / what didn't on the partitioning rollout.",
+      status: "completed",
+      notes:
+        "Rollout took 2 days longer than planned - missed index on the events table. Next time: dry-run against a prod snapshot first. No data loss, no customer-facing downtime.",
+    },
+  ];
+
+  for (const m of meetingDefs) {
+    await meetingsCol.add({
+      workspaceId,
+      companyId: companyIds[m.company],
+      title: m.title,
+      scheduledAt: m.when,
+      durationMinutes: m.duration,
+      attendeeIds: [user.uid],
+      location: m.location,
+      agenda: m.agenda,
+      notes: m.notes ?? null,
+      status: m.status,
+      createdAt: ts,
+      updatedAt: ts,
+    });
+    meetingCount++;
+  }
+
+  // Weekly recurring series - matches the shape src/lib/data/meetings.ts's
+  // createRecurringMeetings writes, so it renders exactly like a real one
+  // (grouped by recurrence.groupId, "Repeats weekly" badge, deletable as a
+  // series). Three occurrences already happened, two are still ahead.
+  const syncGroupId = meetingsCol.doc().id;
+  const syncAnchor = atTime(Date.now(), 10, 0);
+  const syncWeekOffsets = [-2, -1, 0, 1, 2];
+  for (const [index, weekOffset] of syncWeekOffsets.entries()) {
+    const scheduledAt = syncAnchor + weekOffset * 7 * 86400000;
+    await meetingsCol.add({
+      workspaceId,
+      companyId: companyIds.nimbus,
+      title: "Weekly product sync",
+      scheduledAt,
+      durationMinutes: 30,
+      attendeeIds: [user.uid],
+      location: "Zoom",
+      agenda: "Roadmap check-in, blockers, what shipped this week.",
+      notes:
+        index === 1
+          ? "Shipped the caching layer. Blocked on the Postgres partitioning review - unblock by Friday."
+          : null,
+      status: scheduledAt < Date.now() ? "completed" : "scheduled",
+      recurrence: {
+        frequency: "weekly",
+        interval: 1,
+        groupId: syncGroupId,
+        index,
+        count: syncWeekOffsets.length,
+      },
+      createdAt: ts,
+      updatedAt: ts,
+    });
+    meetingCount++;
+  }
+  console.log(`Seeded ${meetingCount} meetings`);
+
+  // ----- Calendar events: deadlines, a reminder, and two timed events -----
+  const eventsCol = db.collection(`workspaces/${workspaceId}/calendarEvents`);
+  const eventDefs = [
+    { company: "nimbus", title: "SOC 2 audit deadline", type: "deadline", when: daysFromNow(20), allDay: true },
+    { company: "kiln", title: "Winter collection ships", type: "deadline", when: daysFromNow(15), allDay: true },
+    { company: null, title: "Renew business insurance", type: "reminder", when: daysFromNow(4), allDay: true },
+    {
+      company: "pathlight",
+      title: "Demo day rehearsal",
+      type: "event",
+      when: daysFromNow(9),
+      allDay: false,
+      startHour: 14,
+      endHour: 15,
+      notes: "Run through the pitch deck and live product demo before the real thing.",
+    },
+    {
+      company: "nimbus",
+      title: "Q3 board prep",
+      type: "event",
+      when: daysFromNow(1),
+      allDay: false,
+      startHour: 11,
+      endHour: 12.5,
+    },
+  ];
+
+  for (const e of eventDefs) {
+    await eventsCol.add({
+      workspaceId,
+      companyId: e.company ? companyIds[e.company] : null,
+      title: e.title,
+      type: e.type,
+      startsAt: e.allDay ? atTime(e.when, 0, 0) : atTime(e.when, Math.floor(e.startHour), (e.startHour % 1) * 60),
+      endsAt: e.allDay
+        ? null
+        : atTime(e.when, Math.floor(e.endHour), (e.endHour % 1) * 60),
+      allDay: e.allDay,
+      notes: e.notes ?? null,
+      createdBy: user.uid,
+      createdAt: ts,
+    });
+  }
+  console.log(`Seeded ${eventDefs.length} calendar events`);
 
   console.log(`\nDemo login: ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
 }
