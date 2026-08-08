@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -295,8 +296,11 @@ export function DealFormDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="expectedCloseDate">Expected close</Label>
-              <Input id="expectedCloseDate" type="date" {...register("expectedCloseDate")} />
+              <Label>Expected close</Label>
+              <DatePicker
+                value={watch("expectedCloseDate")}
+                onChange={(v) => setValue("expectedCloseDate", v)}
+              />
             </div>
           </div>
 

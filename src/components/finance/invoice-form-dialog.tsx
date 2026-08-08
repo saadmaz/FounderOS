@@ -7,6 +7,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -286,12 +287,16 @@ export function InvoiceFormDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="issuedDate">Issued</Label>
-              <Input id="issuedDate" type="date" {...register("issuedDate")} />
+              <Label>Issued</Label>
+              <DatePicker value={watch("issuedDate")} onChange={(v) => setValue("issuedDate", v)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="dueDate">Due</Label>
-              <Input id="dueDate" type="date" {...register("dueDate")} />
+              <Label>Due</Label>
+              <DatePicker
+                value={watch("dueDate")}
+                onChange={(v) => setValue("dueDate", v)}
+                fromDate={watch("issuedDate") ? new Date(watch("issuedDate")) : undefined}
+              />
             </div>
           </div>
 

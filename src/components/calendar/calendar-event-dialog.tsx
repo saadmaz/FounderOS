@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { TimePicker } from "@/components/ui/time-picker";
 import { useAuth } from "@/lib/auth/auth-provider";
 import {
   createCalendarEvent,
@@ -299,22 +301,26 @@ export function CalendarEventDialog({
 
           <div className={cn("grid grid-cols-1 gap-3", !allDay && "sm:grid-cols-3")}>
             <div className="space-y-1.5">
-              <Label htmlFor="date">Date</Label>
-              <Input id="date" type="date" {...register("date")} />
+              <Label>Date</Label>
+              <DatePicker value={watch("date")} onChange={(v) => setValue("date", v)} />
               {errors.date && <p className="text-xs text-danger">{errors.date.message}</p>}
             </div>
             {!allDay && (
               <>
                 <div className="space-y-1.5">
-                  <Label htmlFor="startTime">Start</Label>
-                  <Input id="startTime" type="time" {...register("startTime")} />
+                  <Label>Start</Label>
+                  <TimePicker value={watch("startTime")} onChange={(v) => setValue("startTime", v)} />
                   {errors.startTime && (
                     <p className="text-xs text-danger">{errors.startTime.message}</p>
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="endTime">End (optional)</Label>
-                  <Input id="endTime" type="time" {...register("endTime")} />
+                  <Label>End (optional)</Label>
+                  <TimePicker
+                    value={watch("endTime")}
+                    onChange={(v) => setValue("endTime", v)}
+                    placeholder="No end time"
+                  />
                 </div>
               </>
             )}
@@ -393,7 +399,11 @@ export function CalendarEventDialog({
                         <span className="text-muted-foreground">events</span>
                       </>
                     ) : (
-                      <Input type="date" className="w-40" {...register("recurrenceUntil")} />
+                      <DatePicker
+                        className="w-40"
+                        value={watch("recurrenceUntil")}
+                        onChange={(v) => setValue("recurrenceUntil", v)}
+                      />
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground-2">

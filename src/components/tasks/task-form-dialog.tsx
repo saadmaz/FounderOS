@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -197,8 +198,8 @@ export function TaskFormDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="dueDate">Due date</Label>
-              <Input id="dueDate" type="date" {...register("dueDate")} />
+              <Label>Due date</Label>
+              <DatePicker value={watch("dueDate")} onChange={(v) => setValue("dueDate", v)} />
             </div>
           </div>
 

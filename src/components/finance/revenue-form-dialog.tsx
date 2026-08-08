@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -197,8 +198,8 @@ export function RevenueFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="date">Date</Label>
-            <Input id="date" type="date" {...register("date")} />
+            <Label>Date</Label>
+            <DatePicker value={watch("date")} onChange={(v) => setValue("date", v)} />
           </div>
 
           <div className="space-y-1.5">

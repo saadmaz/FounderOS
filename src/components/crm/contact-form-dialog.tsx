@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -229,8 +230,8 @@ export function ContactFormDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="lastContactedAt">Last contacted (optional)</Label>
-              <Input id="lastContactedAt" type="date" {...register("lastContactedAt")} />
+              <Label>Last contacted (optional)</Label>
+              <DatePicker value={watch("lastContactedAt")} onChange={(v) => setValue("lastContactedAt", v)} />
             </div>
           </div>
 

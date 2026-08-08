@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TimePicker } from "@/components/ui/time-picker";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
@@ -208,18 +210,18 @@ export function ManualEntryDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="date">Date</Label>
-            <Input id="date" type="date" {...register("date")} />
+            <Label>Date</Label>
+            <DatePicker value={watch("date")} onChange={(v) => setValue("date", v)} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="startTime">Start</Label>
-              <Input id="startTime" type="time" {...register("startTime")} />
+              <Label>Start</Label>
+              <TimePicker value={watch("startTime")} onChange={(v) => setValue("startTime", v)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="endTime">End</Label>
-              <Input id="endTime" type="time" {...register("endTime")} />
+              <Label>End</Label>
+              <TimePicker value={watch("endTime")} onChange={(v) => setValue("endTime", v)} />
               {errors.endTime && <p className="text-xs text-danger">{errors.endTime.message}</p>}
             </div>
           </div>

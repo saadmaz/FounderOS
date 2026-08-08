@@ -266,14 +266,14 @@ export default function CalendarPage() {
               {view === "month" && (
                 <>
                   <section className="rounded-xl border border-border bg-card p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
                       <h2 className="text-sm font-semibold">Month view</h2>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1.5">
-                          <span className="size-1.5 rounded-full bg-primary" /> Scheduled
+                          <span className="size-2 rounded-full bg-primary" /> Scheduled
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className="size-1.5 rounded-full bg-warning" /> Task due
+                          <span className="size-2 rounded-full bg-warning" /> Task due
                         </span>
                       </div>
                     </div>
@@ -290,12 +290,28 @@ export default function CalendarPage() {
                       }}
                       modifiersClassNames={{
                         taskOnly:
-                          "after:absolute after:bottom-1 after:left-1/2 after:size-1 after:-translate-x-1/2 after:rounded-full after:bg-warning after:content-['']",
+                          "after:absolute after:bottom-1.5 after:left-1/2 after:size-1.5 after:-translate-x-1/2 after:rounded-full after:bg-warning after:content-['']",
                         eventOnly:
-                          "after:absolute after:bottom-1 after:left-1/2 after:size-1 after:-translate-x-1/2 after:rounded-full after:bg-primary after:content-['']",
-                        both: "before:absolute before:bottom-1 before:left-[calc(50%-4px)] before:size-1 before:rounded-full before:bg-warning before:content-[''] after:absolute after:bottom-1 after:left-[calc(50%+2px)] after:size-1 after:rounded-full after:bg-primary after:content-['']",
+                          "after:absolute after:bottom-1.5 after:left-1/2 after:size-1.5 after:-translate-x-1/2 after:rounded-full after:bg-primary after:content-['']",
+                        both: "before:absolute before:bottom-1.5 before:left-[calc(50%-5px)] before:size-1.5 before:rounded-full before:bg-warning before:content-[''] after:absolute after:bottom-1.5 after:left-[calc(50%+3px)] after:size-1.5 after:rounded-full after:bg-primary after:content-['']",
                       }}
-                      className="mx-auto"
+                      // The page's own Today/</> nav (above) already drives
+                      // the visible month, so the grid's built-in caption +
+                      // arrows would just be a second, redundant set of the
+                      // same controls - hidden here. `root`/`month`/`months`
+                      // go full-width so the grid actually fills this card
+                      // instead of sitting tiny and centered in a sea of
+                      // whitespace (each day column is an equal-width flex
+                      // child, so this alone is what makes the cells bigger).
+                      classNames={{
+                        root: "w-full",
+                        months: "w-full",
+                        month: "w-full",
+                        nav: "hidden",
+                        month_caption: "hidden",
+                        weekday: "flex-1 rounded-md pb-2 text-xs font-medium text-muted-foreground select-none",
+                      }}
+                      className="[--cell-size:--spacing(11)]"
                     />
                   </section>
 

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -458,8 +459,8 @@ export function CompanyFormDialog({
                   <Input id="founder" placeholder="Jane Doe" {...register("founder")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="startedAt">Started (optional)</Label>
-                  <Input id="startedAt" type="date" {...register("startedAt")} />
+                  <Label>Started (optional)</Label>
+                  <DatePicker value={watch("startedAt")} onChange={(v) => setValue("startedAt", v)} />
                 </div>
               </div>
 

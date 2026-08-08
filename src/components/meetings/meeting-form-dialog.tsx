@@ -1,12 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { TimePicker } from "@/components/ui/time-picker";
 import { useCompanies } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createMeeting, createRecurringMeetings, updateMeeting } from "@/lib/data/meetings";
@@ -41,7 +44,8 @@ const RECURRENCE_UNIT: Record<"daily" | "weekly" | "monthly", string> = {
 const schema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   companyId: z.string().min(1, "Pick a company"),
-  scheduledAt: z.string().min(1, "Pick a date and time"),
+  date: z.string().min(1, "Pick a date"),
+  time: z.string().min(1, "Pick a time"),
   durationMinutes: z
     .string()
     .min(1, "Required")
@@ -60,18 +64,10 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-function toDatetimeLocalValue(ms: number) {
-  const d = new Date(ms);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}`;
-}
-
-function defaultScheduledAt() {
+function defaultDateTime() {
   const d = new Date();
   d.setMinutes(d.getMinutes() - (d.getMinutes() % 30) + 30, 0, 0);
-  return toDatetimeLocalValue(d.getTime());
+  return { date: format(d, "yyyy-MM-dd"), time: format(d, "HH:mm") };
 }
 
 const RECURRENCE_DEFAULTS = {
@@ -111,7 +107,7 @@ export function MeetingFormDialog({
     defaultValues: {
       title: "",
       companyId: "",
-      scheduledAt: defaultScheduledAt(),
+      ...defaultDateTime(),
       durationMinutes: "30",
       location: "",
       agenda: "",
@@ -129,7 +125,8 @@ export function MeetingFormDialog({
       reset({
         title: meeting.title,
         companyId: meeting.companyId,
-        scheduledAt: toDatetimeLocalValue(meeting.scheduledAt),
+        date: format(meeting.scheduledAt, "yyyy-MM-dd"),
+        time: format(meeting.scheduledAt, "HH:mm"),
         durationMinutes: String(meeting.durationMinutes),
         location: meeting.location ?? "",
         agenda: meeting.agenda ?? "",
@@ -140,7 +137,7 @@ export function MeetingFormDialog({
       reset({
         title: "",
         companyId: defaultCompanyId ?? companies[0]?.id ?? "",
-        scheduledAt: defaultScheduledAt(),
+        ...defaultDateTime(),
         durationMinutes: "30",
         location: "",
         agenda: "",
@@ -166,7 +163,7 @@ export function MeetingFormDialog({
     if (!workspace) return;
     setSubmitting(true);
     try {
-      const scheduledAt = new Date(values.scheduledAt).getTime();
+      const scheduledAt = new Date(`${values.date}T${values.time}`).getTime();
       const durationMinutes = Number(values.durationMinutes);
       if (isEditing && meeting) {
         await updateMeeting(workspace.id, meeting.id, omitUndefined({
@@ -252,13 +249,16 @@ export function MeetingFormDialog({
             {errors.companyId && <p className="text-xs text-danger">{errors.companyId.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label htmlFor="scheduledAt">Date &amp; time</Label>
-              <Input id="scheduledAt" type="datetime-local" {...register("scheduledAt")} />
-              {errors.scheduledAt && (
-                <p className="text-xs text-danger">{errors.scheduledAt.message}</p>
-              )}
+              <Label>Date</Label>
+              <DatePicker value={watch("date")} onChange={(v) => setValue("date", v)} />
+              {errors.date && <p className="text-xs text-danger">{errors.date.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Time</Label>
+              <TimePicker value={watch("time")} onChange={(v) => setValue("time", v)} />
+              {errors.time && <p className="text-xs text-danger">{errors.time.message}</p>}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="durationMinutes">Duration (min)</Label>
@@ -377,7 +377,11 @@ export function MeetingFormDialog({
                         <span className="text-muted-foreground">meetings</span>
                       </>
                     ) : (
-                      <Input type="date" className="w-40" {...register("recurrenceUntil")} />
+                      <DatePicker
+                        className="w-40"
+                        value={watch("recurrenceUntil")}
+                        onChange={(v) => setValue("recurrenceUntil", v)}
+                      />
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground-2">
