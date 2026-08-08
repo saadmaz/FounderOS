@@ -8,6 +8,7 @@ import {
   CalendarX2,
   MapPin,
   MoreHorizontal,
+  NotebookPen,
   Pencil,
   Trash2,
   Users,
@@ -74,6 +75,7 @@ export function MeetingCard({
   onStatusChange,
   onDelete,
   onDeleteSeries,
+  onOpenNotes,
 }: {
   meeting: Meeting;
   index: number;
@@ -84,6 +86,7 @@ export function MeetingCard({
   onStatusChange: (meeting: Meeting, status: MeetingStatus) => void;
   onDelete: (meeting: Meeting) => void;
   onDeleteSeries?: (meeting: Meeting) => void;
+  onOpenNotes: (meeting: Meeting) => void;
 }) {
   function memberFor(memberId: string) {
     return members.find((m) => m.id === memberId);
@@ -118,6 +121,10 @@ export function MeetingCard({
             <DropdownMenuItem onClick={() => onEdit(meeting)}>
               <Pencil className="size-4" />
               Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onOpenNotes(meeting)}>
+              <NotebookPen className="size-4" />
+              {meeting.notes ? "Edit notes" : "Add notes"}
             </DropdownMenuItem>
             {meeting.status !== "completed" && (
               <DropdownMenuItem onClick={() => onStatusChange(meeting, "completed")}>
@@ -166,6 +173,17 @@ export function MeetingCard({
       </div>
 
       {meeting.agenda && <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{meeting.agenda}</p>}
+
+      {meeting.notes && (
+        <button
+          type="button"
+          onClick={() => onOpenNotes(meeting)}
+          className="mt-2 flex w-full items-start gap-1.5 rounded-lg bg-secondary/60 p-2 text-left transition-colors hover:bg-secondary"
+        >
+          <NotebookPen className="mt-0.5 size-3 shrink-0 text-muted-foreground-2" />
+          <span className="line-clamp-2 text-xs text-muted-foreground">{meeting.notes}</span>
+        </button>
+      )}
 
       <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
         <div className="flex items-center gap-1.5">

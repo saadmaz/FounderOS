@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { MeetingCard, isUpcoming } from "@/components/meetings/meeting-card";
 import { MeetingFormDialog } from "@/components/meetings/meeting-form-dialog";
+import { MeetingNotesDialog } from "@/components/meetings/meeting-notes-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { useCompanies } from "@/lib/data/companies";
@@ -21,6 +22,7 @@ export default function MeetingsPage() {
   const { data: members } = useMembers(workspace?.id ?? null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Meeting | null>(null);
+  const [notesFor, setNotesFor] = useState<Meeting | null>(null);
 
   const upcoming = useMemo(
     () => meetings.filter(isUpcoming).sort((a, b) => a.scheduledAt - b.scheduledAt),
@@ -111,6 +113,7 @@ export default function MeetingsPage() {
                       onStatusChange={handleStatus}
                       onDelete={handleDelete}
                       onDeleteSeries={handleDeleteSeries}
+                      onOpenNotes={setNotesFor}
                     />
                   ))}
                 </div>
@@ -134,6 +137,7 @@ export default function MeetingsPage() {
                       onStatusChange={handleStatus}
                       onDelete={handleDelete}
                       onDeleteSeries={handleDeleteSeries}
+                      onOpenNotes={setNotesFor}
                     />
                   ))}
                 </div>
@@ -149,6 +153,14 @@ export default function MeetingsPage() {
         onOpenChange={(v) => !v && setEditing(null)}
         meeting={editing}
       />
+      {workspace && (
+        <MeetingNotesDialog
+          open={Boolean(notesFor)}
+          onOpenChange={(v) => !v && setNotesFor(null)}
+          meeting={notesFor}
+          workspaceId={workspace.id}
+        />
+      )}
     </>
   );
 }

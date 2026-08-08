@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { isUpcoming, MeetingCard } from "@/components/meetings/meeting-card";
 import { MeetingFormDialog } from "@/components/meetings/meeting-form-dialog";
+import { MeetingNotesDialog } from "@/components/meetings/meeting-notes-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { deleteMeeting, deleteMeetingSeries, setMeetingStatus, useMeetings } from "@/lib/data/meetings";
 import { useMembers } from "@/lib/data/members";
@@ -23,6 +24,7 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
   const { data: members } = useMembers(workspace?.id ?? null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Meeting | null>(null);
+  const [notesFor, setNotesFor] = useState<Meeting | null>(null);
 
   const upcoming = useMemo(
     () => meetings.filter(isUpcoming).sort((a, b) => a.scheduledAt - b.scheduledAt),
@@ -110,6 +112,7 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
                       onStatusChange={handleStatus}
                       onDelete={handleDelete}
                       onDeleteSeries={handleDeleteSeries}
+                      onOpenNotes={setNotesFor}
                     />
                   ))}
                 </div>
@@ -133,6 +136,7 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
                       onStatusChange={handleStatus}
                       onDelete={handleDelete}
                       onDeleteSeries={handleDeleteSeries}
+                      onOpenNotes={setNotesFor}
                     />
                   ))}
                 </div>
@@ -149,6 +153,14 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
         meeting={editing}
         defaultCompanyId={company.id}
       />
+      {workspace && (
+        <MeetingNotesDialog
+          open={Boolean(notesFor)}
+          onOpenChange={(v) => !v && setNotesFor(null)}
+          meeting={notesFor}
+          workspaceId={workspace.id}
+        />
+      )}
     </div>
   );
 }
