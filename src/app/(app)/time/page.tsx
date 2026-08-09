@@ -19,7 +19,7 @@ import { TimerBar } from "@/components/time/timer-bar";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
 import { deleteTimeEntry, findRunningEntry, useTimeEntries } from "@/lib/data/time-entries";
-import { formatDateTime, formatHours } from "@/lib/format";
+import { formatDateTime, formatHours, sumHours } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 export default function TimeTrackingPage() {
@@ -36,16 +36,14 @@ export default function TimeTrackingPage() {
     [entries]
   );
 
-  const totalHours = useMemo(
-    () => completedEntries.reduce((sum, e) => sum + (e.endedAt! - e.startedAt) / 3_600_000, 0),
-    [completedEntries]
-  );
+  // Uses every entry (not just completedEntries) via the shared sumHours
+  // helper, so a still-running timer counts toward these totals up to now -
+  // matching the Dashboard/Analytics/Company pages, which all add a running
+  // entry's elapsed time into their "hours" figures the same way.
+  const totalHours = useMemo(() => sumHours(entries), [entries]);
   const billableHours = useMemo(
-    () =>
-      completedEntries
-        .filter((e) => e.billable)
-        .reduce((sum, e) => sum + (e.endedAt! - e.startedAt) / 3_600_000, 0),
-    [completedEntries]
+    () => sumHours(entries.filter((e) => e.billable)),
+    [entries]
   );
 
   return (

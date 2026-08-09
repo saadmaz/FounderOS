@@ -40,8 +40,15 @@ export default function ProjectDetailPage() {
 
   const actualHours = useMemo(() => {
     const taskIds = new Set(tasks.map((t) => t.id));
-    return sumHours(timeEntries.filter((e) => e.taskId && taskIds.has(e.taskId)));
-  }, [timeEntries, tasks]);
+    // Time can be logged against this project two ways: against one of its
+    // tasks (taskId), or directly against the project with no task picked
+    // (projectId, timer/manual entry) - both count toward "Actual Hours".
+    return sumHours(
+      timeEntries.filter(
+        (e) => e.projectId === projectId || (e.taskId && taskIds.has(e.taskId))
+      )
+    );
+  }, [timeEntries, tasks, projectId]);
 
   const completed = tasks.filter((t) => t.status === "completed").length;
 
