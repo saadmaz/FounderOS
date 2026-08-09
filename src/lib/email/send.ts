@@ -23,6 +23,14 @@ function getResend(): Resend {
  * `RESEND_REPLY_TO`, if set, routes any reply back to a real inbox instead
  * of bouncing - the from address is a noreply@ sender by design and can't
  * receive mail itself.
+ *
+ * The `Auto-Submitted`/`X-Auto-Response-Suppress` headers tell the
+ * recipient's mail system this message is transactional, not a person
+ * writing to them - RFC 3834's signal for "don't auto-reply to this".
+ * Without it, a vacation responder / out-of-office on the recipient's side
+ * fires back at the From address, which is noreply@ and accepts no mail,
+ * so the auto-reply itself bounces and the recipient ends up staring at a
+ * "Delivery incomplete" notice for a message they never wrote.
  */
 export async function sendEmail(to: string, message: EmailMessage) {
   const resend = getResend();
@@ -35,6 +43,11 @@ export async function sendEmail(to: string, message: EmailMessage) {
     subject: message.subject,
     html: message.html,
     text: message.text,
+    headers: {
+      "Auto-Submitted": "auto-generated",
+      "X-Auto-Response-Suppress": "All",
+      Precedence: "bulk",
+    },
   });
   if (error) {
     throw new Error(`Failed to send email via Resend: ${error.message}`);

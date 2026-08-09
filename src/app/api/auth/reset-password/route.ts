@@ -12,6 +12,20 @@ import { sendEmail } from "@/lib/email/send";
 export const runtime = "nodejs";
 
 /**
+ * Per-email cooldown so this public, unauthenticated endpoint can't be used
+ * to repeatedly email someone a real reset link - nothing here requires
+ * proving you own the address, so without a throttle anyone (or a script)
+ * submitting it on the login form fires a fresh Resend send every time. An
+ * in-memory Map resets on cold start and isn't shared across instances,
+ * which is a real limitation for a multi-instance deploy, but it's what
+ * catches the common case (a form double-submit, or a script hammering one
+ * warm instance) with no extra infra. A proper fix needs a shared store
+ * (Redis/Firestore) keyed by email or IP.
+ */
+const RESET_COOLDOWN_MS = 60_000;
+const lastSentAt = new Map<string, number>();
+
+/**
  * Generates a password-reset action link via Firebase Admin and emails it
  * ourselves through Resend with our own branded template, instead of
  * letting the client SDK trigger Firebase Auth's built-in (plain-link,
@@ -23,11 +37,19 @@ export const runtime = "nodejs";
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
-  const email = typeof body?.email === "string" ? body.email.trim() : "";
+  const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
 
   if (!email) {
     return NextResponse.json({ error: "Email is required" }, { status: 400 });
   }
+
+  const last = lastSentAt.get(email);
+  if (last && Date.now() - last < RESET_COOLDOWN_MS) {
+    // Same non-enumerating 200 as every other outcome here - a cooldown hit
+    // shouldn't tell a caller anything about whether the address is real.
+    return NextResponse.json({ ok: true });
+  }
+  lastSentAt.set(email, Date.now());
 
   try {
     const link = await getAdminAuth().generatePasswordResetLink(email, {
