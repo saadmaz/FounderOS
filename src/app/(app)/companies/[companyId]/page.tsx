@@ -7,7 +7,14 @@ import { useMemo, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InstagramLogo, LinkedinLogo, XLogo } from "@/components/shared/brand-icons";
+import {
+  FacebookLogo,
+  InstagramLogo,
+  LinkedinLogo,
+  TiktokLogo,
+  XLogo,
+  YoutubeLogo,
+} from "@/components/shared/brand-icons";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CompanyFormDialog } from "@/components/companies/company-form-dialog";
@@ -33,8 +40,25 @@ const LINK_ICONS = {
   linkedin: LinkedinLogo,
   twitter: XLogo,
   instagram: InstagramLogo,
+  facebook: FacebookLogo,
+  tiktok: TiktokLogo,
+  youtube: YoutubeLogo,
   other: Link2,
 } as const;
+
+// Rendered next to each link pill's icon - hardcoded rather than
+// `capitalize`-ing the object key so "twitter" reads "X" and "tiktok"/
+// "youtube" get their proper brand casing instead of "Tiktok"/"Youtube".
+const LINK_LABELS: Record<keyof typeof LINK_ICONS, string> = {
+  website: "Website",
+  linkedin: "LinkedIn",
+  twitter: "X",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  other: "Other",
+};
 
 export default function CompanyDetailPage() {
   const { companyId } = useParams<{ companyId: string }>();
@@ -127,7 +151,7 @@ export default function CompanyDetailPage() {
                     className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
                   >
                     <Icon className="size-3.5" />
-                    <span className="capitalize">{key}</span>
+                    <span>{LINK_LABELS[key]}</span>
                   </a>
                 );
               })}

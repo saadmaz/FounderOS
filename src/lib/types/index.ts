@@ -55,6 +55,9 @@ export interface CompanyLinks {
   linkedin?: string;
   twitter?: string;
   instagram?: string;
+  facebook?: string;
+  tiktok?: string;
+  youtube?: string;
   other?: string;
 }
 

@@ -6,7 +6,14 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { InstagramLogo, LinkedinLogo, XLogo } from "@/components/shared/brand-icons";
+import {
+  FacebookLogo,
+  InstagramLogo,
+  LinkedinLogo,
+  TiktokLogo,
+  XLogo,
+  YoutubeLogo,
+} from "@/components/shared/brand-icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -69,6 +76,9 @@ const schema = z.object({
   linkedin: urlField,
   twitter: urlField,
   instagram: urlField,
+  facebook: urlField,
+  tiktok: urlField,
+  youtube: urlField,
   other: urlField,
   founder: z.string().max(100).optional(),
   startedAt: z.string().optional(),
@@ -91,7 +101,19 @@ const STEPS: { title: string; description: string; fields: (keyof FormValues)[] 
   {
     title: "Links & details",
     description: "Optional, but handy to have on file.",
-    fields: ["website", "linkedin", "twitter", "instagram", "other", "founder", "startedAt", "notes"],
+    fields: [
+      "website",
+      "linkedin",
+      "twitter",
+      "instagram",
+      "facebook",
+      "tiktok",
+      "youtube",
+      "other",
+      "founder",
+      "startedAt",
+      "notes",
+    ],
   },
 ];
 
@@ -110,6 +132,9 @@ function defaultsFor(company?: Company | null, defaultType?: CompanyType): FormV
     linkedin: company?.links?.linkedin ?? "",
     twitter: company?.links?.twitter ?? "",
     instagram: company?.links?.instagram ?? "",
+    facebook: company?.links?.facebook ?? "",
+    tiktok: company?.links?.tiktok ?? "",
+    youtube: company?.links?.youtube ?? "",
     other: company?.links?.other ?? "",
     founder: company?.founder ?? "",
     startedAt: company?.startedAt ? new Date(company.startedAt).toISOString().slice(0, 10) : "",
@@ -210,6 +235,9 @@ export function CompanyFormDialog({
         linkedin: values.linkedin || undefined,
         twitter: values.twitter || undefined,
         instagram: values.instagram || undefined,
+        facebook: values.facebook || undefined,
+        tiktok: values.tiktok || undefined,
+        youtube: values.youtube || undefined,
         other: values.other || undefined,
       });
 
@@ -444,6 +472,27 @@ export function CompanyFormDialog({
                   </Label>
                   <Input id="instagram" placeholder="https://instagram.com/…" {...register("instagram")} />
                   {errors.instagram && <p className="text-xs text-danger">{errors.instagram.message}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="facebook" className="flex items-center gap-1.5">
+                    <FacebookLogo className="size-3.5 text-muted-foreground" /> Facebook
+                  </Label>
+                  <Input id="facebook" placeholder="https://facebook.com/…" {...register("facebook")} />
+                  {errors.facebook && <p className="text-xs text-danger">{errors.facebook.message}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiktok" className="flex items-center gap-1.5">
+                    <TiktokLogo className="size-3.5 text-muted-foreground" /> TikTok
+                  </Label>
+                  <Input id="tiktok" placeholder="https://tiktok.com/@…" {...register("tiktok")} />
+                  {errors.tiktok && <p className="text-xs text-danger">{errors.tiktok.message}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="youtube" className="flex items-center gap-1.5">
+                    <YoutubeLogo className="size-3.5 text-muted-foreground" /> YouTube
+                  </Label>
+                  <Input id="youtube" placeholder="https://youtube.com/@…" {...register("youtube")} />
+                  {errors.youtube && <p className="text-xs text-danger">{errors.youtube.message}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="other" className="flex items-center gap-1.5">
