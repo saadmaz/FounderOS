@@ -46,7 +46,13 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4 lg:px-6">
       <div className="flex min-w-0 items-center gap-3">
-        <Button variant="ghost" size="icon" className="shrink-0 lg:hidden" onClick={onOpenMobileNav}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 lg:hidden"
+          onClick={onOpenMobileNav}
+          aria-label="Open menu"
+        >
           <Menu className="size-4" />
         </Button>
         {/* Redundant with the page's own title on mobile (PageHeader renders
@@ -63,6 +69,7 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
         <button
           onClick={() => setCommandPaletteOpen(true)}
           className="flex h-8 items-center gap-2 rounded-lg border border-border bg-surface px-2.5 text-xs text-muted-foreground transition-colors hover:bg-secondary"
+          aria-label="Search"
         >
           <Search className="size-3.5" />
           <span className="hidden sm:inline">Search…</span>
@@ -72,7 +79,9 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
         </button>
 
         <Popover>
-          <PopoverTrigger render={<Button variant="ghost" size="icon" className="relative" />}>
+          <PopoverTrigger
+            render={<Button variant="ghost" size="icon" className="relative" aria-label="Notifications" />}
+          >
             <Bell className="size-4" />
             <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
           </PopoverTrigger>
@@ -90,6 +99,7 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
           variant="ghost"
           size="icon"
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          aria-label={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         >
           {resolvedTheme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>

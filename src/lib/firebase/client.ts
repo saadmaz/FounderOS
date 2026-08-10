@@ -35,8 +35,14 @@ export const storage = getStorage(app);
 // - would otherwise race the async isSupported() check below and read
 // analytics as still-null, silently dropping the event. Awaiting this
 // promise instead makes every caller wait for the real answer.
+// Analytics/Installations always call the real Firebase backend - there's no
+// local emulator for them - so under the emulator they just fail every
+// request (Installations 403s, retried repeatedly) and spam the console
+// without ever collecting anything real. Skip entirely in that mode.
 export const analyticsReady: Promise<Analytics | null> =
-  typeof window !== "undefined" && firebaseConfig.measurementId
+  typeof window !== "undefined" &&
+  firebaseConfig.measurementId &&
+  process.env.NEXT_PUBLIC_USE_EMULATOR !== "true"
     ? isAnalyticsSupported()
         .then((supported) => (supported ? getAnalytics(app) : null))
         .catch(() => null)

@@ -309,7 +309,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                         <TableCell className="py-2 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger
-                              render={<Button variant="ghost" size="icon" className="size-7" />}
+                              render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
                             >
                               <MoreHorizontal className="size-4" />
                             </DropdownMenuTrigger>
@@ -395,7 +395,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                       <div className="absolute right-3 top-3">
                         <DropdownMenu>
                           <DropdownMenuTrigger
-                            render={<Button variant="ghost" size="icon" className="size-7" />}
+                            render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
                           >
                             <MoreHorizontal className="size-4" />
                           </DropdownMenuTrigger>
@@ -531,7 +531,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                           <TableCell className="py-2 text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger
-                                render={<Button variant="ghost" size="icon" className="size-7" />}
+                                render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
                               >
                                 <MoreHorizontal className="size-4" />
                               </DropdownMenuTrigger>
@@ -625,7 +625,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                         <TableCell className="py-2 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger
-                              render={<Button variant="ghost" size="icon" className="size-7" />}
+                              render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
                             >
                               <MoreHorizontal className="size-4" />
                             </DropdownMenuTrigger>

@@ -146,6 +146,7 @@ export function TaskTable({
           size="icon"
           className="size-7 text-muted-foreground-2 hover:text-danger"
           onClick={() => deleteTask(workspaceId, row.original.id)}
+          aria-label="Delete task"
         >
           <Trash2 className="size-3.5" />
         </Button>

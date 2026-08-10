@@ -136,6 +136,7 @@ export default function TimeTrackingPage() {
                           size="icon"
                           className="size-7 text-muted-foreground-2 hover:text-danger"
                           onClick={() => deleteTimeEntry(workspace!.id, e.id)}
+                          aria-label="Delete time entry"
                         >
                           <Trash2 className="size-3.5" />
                         </Button>

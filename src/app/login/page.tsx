@@ -22,10 +22,22 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
+  // Guards the submit/Google buttons until React has hydrated. The <form>
+  // has no `action`, so a click that lands before hydration falls through
+  // to the browser's native GET submit - reloading the page with the
+  // password sitting in the URL instead of calling handleSubmit.
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user) router.replace("/dashboard");
   }, [authLoading, user, router]);
+
+  useEffect(() => {
+    // Deliberately mount-only: this just flips the flag once React has
+    // taken over, it isn't synchronizing with any external system.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHydrated(true);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,7 +101,7 @@ export default function LoginPage() {
             variant="outline"
             className="mt-6 w-full gap-2"
             onClick={handleGoogle}
-            disabled={submitting}
+            disabled={submitting || !hydrated}
           >
             <GoogleIcon className="size-4" />
             Continue with Google
@@ -185,7 +197,7 @@ export default function LoginPage() {
             <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
           )}
 
-          <Button type="submit" className="w-full gap-1.5" disabled={submitting}>
+          <Button type="submit" className="w-full gap-1.5" disabled={submitting || !hydrated}>
             {submitting ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (

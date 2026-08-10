@@ -78,7 +78,13 @@
   --accent-foreground: #1D4ED8;
   --destructive: #EF4444;
   --border: rgba(9, 9, 11, 0.08);
-  --input: rgba(9, 9, 11, 0.12);
+  /* Kept distinct from --border: this outlines interactive form controls
+     (Input/Textarea/Select/Checkbox), so it needs ~3:1 contrast against
+     --card per WCAG 1.4.11 (non-text contrast) - 0.08-0.12 alpha measured
+     ~1.3:1 and made unfocused fields nearly invisible. --border stays subtle
+     since it's purely decorative (card/divider edges, not identifying a
+     control's hit area). */
+  --input: rgba(9, 9, 11, 0.4);
   --ring: #2563EB;
   --success: #16A34A;
   --warning: #D97706;
@@ -123,7 +129,7 @@
   --accent-foreground: #93C5FD;
   --destructive: #EF4444;
   --border: rgba(255, 255, 255, 0.06);
-  --input: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.35);
   --ring: #3B82F6;
   --success: #22C55E;
   --warning: #F59E0B;

@@ -58,6 +58,7 @@ export function RunningTimerIndicator() {
         size="icon"
         className="size-6 text-muted-foreground hover:text-danger"
         disabled={stopping}
+        aria-label="Stop timer"
         onClick={(e) => {
           e.preventDefault();
           handleStop();

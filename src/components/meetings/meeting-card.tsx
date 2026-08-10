@@ -136,7 +136,7 @@ export function MeetingCard({
           )}
         </div>
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7 shrink-0" />}>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7 shrink-0" aria-label="Meeting actions" />}>
             <MoreHorizontal className="size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

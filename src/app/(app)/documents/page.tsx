@@ -219,6 +219,7 @@ export default function DocumentsPage() {
                             size="icon"
                             className="size-7 text-muted-foreground-2 hover:text-foreground"
                             onClick={() => handleDownload(d)}
+                            aria-label="Download document"
                           >
                             <Download className="size-3.5" />
                           </Button>
@@ -228,6 +229,7 @@ export default function DocumentsPage() {
                             className="size-7 text-muted-foreground-2 hover:text-danger"
                             disabled={deletingId === d.id}
                             onClick={() => handleDelete(d)}
+                            aria-label="Delete document"
                           >
                             <Trash2 className="size-3.5" />
                           </Button>

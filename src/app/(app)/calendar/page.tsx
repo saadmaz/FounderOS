@@ -215,13 +215,13 @@ export default function CalendarPage() {
       <div className="flex-1 space-y-4 p-4 lg:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="size-8" onClick={goPrev}>
+            <Button variant="outline" size="icon" className="size-8" onClick={goPrev} aria-label="Previous">
               <ChevronLeft className="size-4" />
             </Button>
             <Button variant="outline" size="sm" onClick={goToday}>
               Today
             </Button>
-            <Button variant="outline" size="icon" className="size-8" onClick={goNext}>
+            <Button variant="outline" size="icon" className="size-8" onClick={goNext} aria-label="Next">
               <ChevronRight className="size-4" />
             </Button>
             <h2 className="ml-1 text-sm font-semibold">{headerLabel}</h2>
@@ -379,7 +379,12 @@ export default function CalendarPage() {
                                   <DropdownMenu>
                                     <DropdownMenuTrigger
                                       render={
-                                        <Button variant="ghost" size="icon" className="size-7 shrink-0" />
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="size-7 shrink-0"
+                                          aria-label="Event actions"
+                                        />
                                       }
                                     >
                                       <MoreHorizontal className="size-4" />

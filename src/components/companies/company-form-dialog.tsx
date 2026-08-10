@@ -66,7 +66,14 @@ const schema = z.object({
     "personal",
   ]),
   stage: z.enum(["idea", "pre-launch", "launched", "growth", "scaling", "mature"]),
-  currency: z.string().min(1, "Currency is required").max(3),
+  // 3-letter ISO 4217-shaped code (e.g. USD, LKR) - not validated against the
+  // real currency list, but this at least rejects stray text/punctuation
+  // that would otherwise render as a garbage currency symbol elsewhere.
+  currency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/, "Use a 3-letter currency code, e.g. USD"),
   // Step 2 — branding
   logoUrl: z.string().optional(),
   color: z.string(),

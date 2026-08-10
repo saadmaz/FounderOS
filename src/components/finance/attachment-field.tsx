@@ -63,6 +63,7 @@ export function AttachmentField({
                 size="icon"
                 className="size-6 shrink-0 text-muted-foreground-2 hover:text-danger"
                 onClick={() => onRemoveExisting(att)}
+                aria-label={`Remove ${att.name}`}
               >
                 <X className="size-3.5" />
               </Button>
@@ -83,6 +84,7 @@ export function AttachmentField({
                 size="icon"
                 className="size-6 shrink-0"
                 onClick={() => removeStagedFile(i)}
+                aria-label={`Remove ${file.name}`}
               >
                 <X className="size-3.5" />
               </Button>

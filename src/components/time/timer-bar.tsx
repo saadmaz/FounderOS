@@ -112,7 +112,7 @@ export function TimerBar({
     >
       <div
         className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-full",
+          "flex size-10 shrink-0 self-start items-center justify-center rounded-full",
           runningEntry ? "animate-pulse bg-primary/20" : "bg-secondary"
         )}
       >
@@ -149,7 +149,7 @@ export function TimerBar({
                 setTaskId("");
               }}
             >
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-full sm:w-44">
                 <SelectValue placeholder="Company">
                   {(v: string) => companies.find((c) => c.id === v)?.name ?? "Select company"}
                 </SelectValue>
@@ -171,7 +171,7 @@ export function TimerBar({
               }}
               disabled={!companyId}
             >
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Project (optional)">
                   {(v: string) => projects.find((p) => p.id === v)?.name ?? "No project"}
                 </SelectValue>
@@ -186,7 +186,7 @@ export function TimerBar({
             </Select>
 
             <Select value={taskId} onValueChange={(v) => setTaskId(v ?? "")} disabled={!companyId}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Task (optional)">
                   {(v: string) => tasks.find((t) => t.id === v)?.title ?? "No task"}
                 </SelectValue>
@@ -204,10 +204,10 @@ export function TimerBar({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Or just say what you're doing…"
-              className="w-48"
+              className="w-full sm:w-48"
             />
           </div>
-          <Button onClick={handleStart} disabled={busy} className="gap-1.5">
+          <Button onClick={handleStart} disabled={busy} className="w-full gap-1.5 sm:w-auto">
             <Play className="size-3.5 fill-current" />
             Start timer
           </Button>

@@ -225,7 +225,7 @@ export default function GoalsPage() {
                   {canEdit && (
                     <div className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
                       <DropdownMenu>
-                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" />}>
+                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" aria-label="Goal actions" />}>
                           <MoreHorizontal className="size-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
