@@ -19,7 +19,7 @@ export function MobileNav({ open, onOpenChange }: { open: boolean; onOpenChange:
             FounderOS
           </SheetTitle>
         </SheetHeader>
-        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-3">
+        <nav className="flex-1 space-y-5 overflow-x-hidden overflow-y-auto px-3 py-3">
           {[...NAV_SECTIONS, { title: "", items: [SETTINGS_ITEM] }].map((section, i) => (
             <div key={section.title || i} className="space-y-1">
               {section.title && (

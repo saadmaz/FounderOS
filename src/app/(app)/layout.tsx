@@ -37,7 +37,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <MobileNav open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenMobileNav={() => setMobileNavOpen(true)} />
-        <main className="flex flex-1 flex-col overflow-y-auto scrollbar-thin">
+        {/* overflow-x-hidden is load-bearing, not decorative: setting only
+         * overflow-y-auto makes the browser compute overflow-x as auto too
+         * (CSS's overflow used-value rule), so any child wider than the
+         * viewport - a horizontally-scrolling tab strip's `-mx-4` bleed, a
+         * wide table - made this WHOLE container pan sideways instead of
+         * just that child, dragging the header/tabs/everything off-screen
+         * with it. Clip x here; children that need to scroll horizontally
+         * already opt in with their own overflow-x-auto. */}
+        <main className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto scrollbar-thin">
           {/* Sidebar/topbar mount immediately above - only the page content
            * waits on the workspace, so opening the app doesn't look like
            * the whole screen popping in from a blank spinner. */}

@@ -62,7 +62,7 @@ export function Sidebar() {
         {!sidebarCollapsed && <span className="text-sm font-semibold tracking-tight">FounderOS</span>}
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-2 scrollbar-thin">
+      <nav className="flex-1 space-y-5 overflow-x-hidden overflow-y-auto px-3 py-2 scrollbar-thin">
         {NAV_SECTIONS.map((section) => (
           <div key={section.title} className="space-y-1">
             {!sidebarCollapsed && (

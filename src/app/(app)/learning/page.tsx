@@ -226,7 +226,7 @@ export default function LearningPage() {
           />
         </div>
       ) : (
-        <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 sm:grid-cols-3 lg:p-6">
+        <div className="grid flex-1 grid-cols-1 gap-4 overflow-x-hidden overflow-y-auto p-4 sm:grid-cols-3 lg:p-6">
           {COLUMNS.map((col) => {
             const colItems = filtered.filter((i) => i.status === col.status);
             return (

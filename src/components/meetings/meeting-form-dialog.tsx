@@ -290,7 +290,7 @@ export function MeetingFormDialog({
             {members.length === 0 ? (
               <p className="text-xs text-muted-foreground">No workspace members yet.</p>
             ) : (
-              <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
+              <div className="max-h-36 space-y-1 overflow-x-hidden overflow-y-auto rounded-lg border border-border p-2">
                 {members.map((m) => (
                   <label
                     key={m.id}

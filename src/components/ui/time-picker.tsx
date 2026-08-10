@@ -78,7 +78,7 @@ export function TimePicker({
         <span className="truncate">{value ? formatTimeLabel(value) : placeholder}</span>
       </PopoverTrigger>
       <PopoverContent className="w-36 p-1" align="start">
-        <div ref={listRef} className="max-h-64 overflow-y-auto scrollbar-thin">
+        <div ref={listRef} className="max-h-64 overflow-x-hidden overflow-y-auto scrollbar-thin">
           {TIME_OPTIONS.map((t) => (
             <button
               key={t}
