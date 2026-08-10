@@ -220,6 +220,10 @@ export interface Expense {
   id: string;
   workspaceId: string;
   companyId: string;
+  /** What the expense was for, e.g. "AWS hosting" - the scannable label a
+   * list of expenses is read by. Required: unlike `description` (extra
+   * detail), an expense with no name at all isn't useful in a list. */
+  title: string;
   vendorId?: string;
   category: ExpenseCategory;
   amount: number;

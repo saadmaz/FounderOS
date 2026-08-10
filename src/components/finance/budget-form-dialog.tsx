@@ -72,7 +72,7 @@ export function BudgetFormDialog({
       period: "monthly",
       periodStart: new Date().toISOString().slice(0, 10),
       allocatedAmount: "",
-      currency: companies[0]?.currency ?? "USD",
+      currency: companies[0]?.currency ?? "LKR",
       note: "",
     },
   });
@@ -96,7 +96,7 @@ export function BudgetFormDialog({
         period: "monthly",
         periodStart: new Date().toISOString().slice(0, 10),
         allocatedAmount: "",
-        currency: companies[0]?.currency ?? "USD",
+        currency: companies[0]?.currency ?? "LKR",
         note: "",
       });
     }

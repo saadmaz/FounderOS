@@ -238,7 +238,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <StatCard
               label="Total Revenue"
-              value={formatCurrency(totalRevenue)}
+              value={formatCurrency(totalRevenue, company.currency)}
               icon={DollarSign}
               accent="text-success"
               accentBg="bg-success/10"
@@ -246,7 +246,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             />
             <StatCard
               label="Total Expenses"
-              value={formatCurrency(totalExpenses)}
+              value={formatCurrency(totalExpenses, company.currency)}
               icon={Wallet}
               accent="text-danger"
               accentBg="bg-danger/10"
@@ -254,7 +254,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             />
             <StatCard
               label="Net"
-              value={formatCurrency(net)}
+              value={formatCurrency(net, company.currency)}
               icon={net >= 0 ? TrendingUp : TrendingDown}
               accent={net >= 0 ? "text-success" : "text-danger"}
               accentBg={net >= 0 ? "bg-success/10" : "bg-danger/10"}
@@ -262,7 +262,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             />
             <StatCard
               label="Outstanding Invoices"
-              value={formatCurrency(outstandingInvoices)}
+              value={formatCurrency(outstandingInvoices, company.currency)}
               icon={FileText}
               accent="text-warning"
               accentBg="bg-warning/10"
@@ -270,7 +270,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             />
             <StatCard
               label="Total Invested"
-              value={formatCurrency(totalInvested)}
+              value={formatCurrency(totalInvested, company.currency)}
               icon={Landmark}
               accent="text-analytics-purple"
               accentBg="bg-analytics-purple/10"
@@ -314,9 +314,9 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                 <TableHeader className="bg-surface">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="text-xs font-medium text-muted-foreground">Date</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground">Expense</TableHead>
                     <TableHead className="text-xs font-medium text-muted-foreground">Category</TableHead>
                     <TableHead className="text-xs font-medium text-muted-foreground">Vendor</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Description</TableHead>
                     <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
                     <TableHead className="text-right text-xs font-medium text-muted-foreground">
                       Amount
@@ -330,15 +330,16 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                       <TableCell className="py-2 text-sm text-muted-foreground">
                         {formatDate(e.date)}
                       </TableCell>
-                      <TableCell className="py-2 text-sm capitalize text-muted-foreground">
-                        {EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category}
-                      </TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">
-                        {vendors.find((v) => v.id === e.vendorId)?.name ?? "—"}
-                      </TableCell>
-                      <TableCell className="max-w-56 py-2 text-sm text-muted-foreground">
+                      <TableCell className="max-w-56 py-2">
                         <div className="flex items-center gap-1.5">
-                          <span className="truncate">{e.description ?? "—"}</span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {e.title || e.description || "Untitled expense"}
+                            </p>
+                            {e.description && e.title && (
+                              <p className="truncate text-xs text-muted-foreground">{e.description}</p>
+                            )}
+                          </div>
                           {e.billable && (
                             <span
                               title="Billable to client"
@@ -359,6 +360,12 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                             </a>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="py-2 text-sm capitalize text-muted-foreground">
+                        {EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category}
+                      </TableCell>
+                      <TableCell className="py-2 text-sm text-muted-foreground">
+                        {vendors.find((v) => v.id === e.vendorId)?.name ?? "—"}
                       </TableCell>
                       <TableCell className="py-2">
                         <ExpenseStatusBadge status={e.status} />
@@ -719,7 +726,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               {investments.length} investment{investments.length === 1 ? "" : "s"} ·{" "}
-              {formatCurrency(totalInvested)} invested
+              {formatCurrency(totalInvested, company.currency)} invested
             </p>
             {canEdit && (
               <Button

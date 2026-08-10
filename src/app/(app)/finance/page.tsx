@@ -55,7 +55,7 @@ import { deleteInvestment, useInvestments } from "@/lib/data/investments";
 import { deleteInvoice, markInvoicePaid, useInvoices } from "@/lib/data/invoices";
 import { deleteRevenueEntry, useRevenue } from "@/lib/data/revenue";
 import { deleteVendor, useVendors } from "@/lib/data/vendors";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { commonCurrency, formatCurrency, formatDate } from "@/lib/format";
 import type {
   Budget,
   Expense,
@@ -197,6 +197,16 @@ export default function FinancePage() {
     [investments, companyFilter]
   );
 
+  // A single selected company has one unambiguous currency; "All companies"
+  // only has one if every company here actually shares it - otherwise there's
+  // no honest single currency to sum into, so the stat cards fall back to
+  // the workspace default rather than mislabeling a mixed-currency total.
+  const displayCurrency = useMemo(
+    () =>
+      companyFilter === "all" ? commonCurrency(companies) : companyById.get(companyFilter)?.currency ?? "LKR",
+    [companyFilter, companies, companyById]
+  );
+
   const totalRevenue = useMemo(
     () => filteredRevenue.reduce((sum, r) => sum + r.amount, 0),
     [filteredRevenue]
@@ -304,7 +314,7 @@ export default function FinancePage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <StatCard
                 label="Total Revenue"
-                value={formatCurrency(totalRevenue)}
+                value={formatCurrency(totalRevenue, displayCurrency)}
                 icon={DollarSign}
                 accent="text-success"
                 accentBg="bg-success/10"
@@ -312,7 +322,7 @@ export default function FinancePage() {
               />
               <StatCard
                 label="Total Expenses"
-                value={formatCurrency(totalExpenses)}
+                value={formatCurrency(totalExpenses, displayCurrency)}
                 icon={Wallet}
                 accent="text-danger"
                 accentBg="bg-danger/10"
@@ -320,7 +330,7 @@ export default function FinancePage() {
               />
               <StatCard
                 label="Net"
-                value={formatCurrency(net)}
+                value={formatCurrency(net, displayCurrency)}
                 icon={net >= 0 ? TrendingUp : TrendingDown}
                 accent={net >= 0 ? "text-success" : "text-danger"}
                 accentBg={net >= 0 ? "bg-success/10" : "bg-danger/10"}
@@ -328,7 +338,7 @@ export default function FinancePage() {
               />
               <StatCard
                 label="Outstanding Invoices"
-                value={formatCurrency(outstandingInvoices)}
+                value={formatCurrency(outstandingInvoices, displayCurrency)}
                 icon={FileText}
                 accent="text-warning"
                 accentBg="bg-warning/10"
@@ -336,7 +346,7 @@ export default function FinancePage() {
               />
               <StatCard
                 label="Total Invested"
-                value={formatCurrency(totalInvested)}
+                value={formatCurrency(totalInvested, displayCurrency)}
                 icon={Landmark}
                 accent="text-analytics-purple"
                 accentBg="bg-analytics-purple/10"
@@ -381,9 +391,9 @@ export default function FinancePage() {
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="text-xs font-medium text-muted-foreground">Date</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Expense</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Category</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Vendor</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Description</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
                       <TableHead className="text-right text-xs font-medium text-muted-foreground">
                         Amount
@@ -406,15 +416,16 @@ export default function FinancePage() {
                             <span className="text-sm">{companyById.get(e.companyId)?.name ?? "—"}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="py-2 text-sm capitalize text-muted-foreground">
-                          {EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category}
-                        </TableCell>
-                        <TableCell className="py-2 text-sm text-muted-foreground">
-                          {vendors.find((v) => v.id === e.vendorId)?.name ?? "—"}
-                        </TableCell>
-                        <TableCell className="max-w-56 py-2 text-sm text-muted-foreground">
+                        <TableCell className="max-w-56 py-2">
                           <div className="flex items-center gap-1.5">
-                            <span className="truncate">{e.description ?? "—"}</span>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">
+                                {e.title || e.description || "Untitled expense"}
+                              </p>
+                              {e.description && e.title && (
+                                <p className="truncate text-xs text-muted-foreground">{e.description}</p>
+                              )}
+                            </div>
                             {e.billable && (
                               <span
                                 title="Billable to client"
@@ -435,6 +446,12 @@ export default function FinancePage() {
                               </a>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell className="py-2 text-sm capitalize text-muted-foreground">
+                          {EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category}
+                        </TableCell>
+                        <TableCell className="py-2 text-sm text-muted-foreground">
+                          {vendors.find((v) => v.id === e.vendorId)?.name ?? "—"}
                         </TableCell>
                         <TableCell className="py-2">
                           <ExpenseStatusBadge status={e.status} />
@@ -823,7 +840,7 @@ export default function FinancePage() {
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
                 {filteredInvestments.length} investment{filteredInvestments.length === 1 ? "" : "s"} ·{" "}
-                {formatCurrency(totalInvested)} invested
+                {formatCurrency(totalInvested, displayCurrency)} invested
               </p>
               {canEdit && (
                 <Button

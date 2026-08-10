@@ -91,7 +91,7 @@ export function DealFormDialog({
       companyId: defaultCompanyId ?? "",
       contactId: "",
       value: "0",
-      currency: "USD",
+      currency: "LKR",
       stage: defaultStage ?? "lead",
       probability: "",
       expectedCloseDate: "",
@@ -119,7 +119,7 @@ export function DealFormDialog({
         companyId: defaultCompanyId ?? "",
         contactId: "",
         value: "0",
-        currency: "USD",
+        currency: "LKR",
         stage: defaultStage ?? "lead",
         probability: "",
         expectedCloseDate: "",
@@ -253,7 +253,7 @@ export function DealFormDialog({
               <Label htmlFor="currency">Currency</Label>
               <Input
                 id="currency"
-                placeholder="USD"
+                placeholder="LKR"
                 maxLength={3}
                 className="uppercase"
                 {...register("currency")}

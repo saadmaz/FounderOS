@@ -124,7 +124,7 @@ function defaultsFor(company?: Company | null, defaultType?: CompanyType): FormV
     industry: company?.industry ?? "",
     type: company?.type ?? defaultType ?? "startup",
     stage: company?.stage ?? "idea",
-    currency: company?.currency ?? "USD",
+    currency: company?.currency ?? "LKR",
     logoUrl: company?.logoUrl ?? "",
     color: company?.color ?? COLORS[0],
     description: company?.description ?? "",
@@ -366,7 +366,7 @@ export function CompanyFormDialog({
 
               <div className="space-y-1.5">
                 <Label htmlFor="currency">Currency</Label>
-                <Input id="currency" placeholder="USD" maxLength={3} className="uppercase" {...register("currency")} />
+                <Input id="currency" placeholder="LKR" maxLength={3} className="uppercase" {...register("currency")} />
                 {errors.currency && <p className="text-xs text-danger">{errors.currency.message}</p>}
               </div>
             </>

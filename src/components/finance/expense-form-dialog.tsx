@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { AttachmentField } from "@/components/finance/attachment-field";
 import { deleteCloudinaryAsset, uploadDocumentToCloudinary } from "@/lib/cloudinary";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
@@ -41,8 +42,8 @@ const NO_VENDOR = "none";
 
 const schema = z.object({
   companyId: z.string().min(1, "Pick a company"),
+  title: z.string().min(1, "Give the expense a name").max(150),
   category: z.enum(["software", "payroll", "marketing", "office", "travel", "legal", "other"]),
-  status: z.enum(["pending", "approved", "paid", "reimbursed", "rejected"]),
   vendorId: z.string(),
   amount: z
     .string()
@@ -50,12 +51,34 @@ const schema = z.object({
     .refine((v) => !isNaN(Number(v)) && Number(v) > 0, "Amount must be greater than 0"),
   currency: z.string().min(1),
   date: z.string().min(1),
+  status: z.enum(["pending", "approved", "paid", "reimbursed", "rejected"]),
   billable: z.boolean(),
   description: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
+const emptyDefaults = (companies: Company[]): FormValues => ({
+  companyId: companies[0]?.id ?? "",
+  title: "",
+  category: "software",
+  vendorId: NO_VENDOR,
+  amount: "",
+  currency: companies[0]?.currency ?? "LKR",
+  date: new Date().toISOString().slice(0, 10),
+  status: "pending",
+  billable: false,
+  description: "",
+});
+
+/**
+ * Expense entry, laid out to follow how someone actually fills it in: which
+ * company this belongs to, what it was (a required name - the thing that
+ * makes a list of expenses scannable, previously missing entirely), how
+ * much and when, how it's classified, whether it's already settled, and
+ * finally any extra detail plus a receipt. Description is optional and
+ * separate from the name - a place for detail, not the label itself.
+ */
 export function ExpenseFormDialog({
   open,
   onOpenChange,
@@ -86,17 +109,7 @@ export function ExpenseFormDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      companyId: companies[0]?.id ?? "",
-      category: "software",
-      status: "pending",
-      vendorId: NO_VENDOR,
-      amount: "",
-      currency: companies[0]?.currency ?? "USD",
-      date: new Date().toISOString().slice(0, 10),
-      billable: false,
-      description: "",
-    },
+    defaultValues: emptyDefaults(companies),
   });
 
   useEffect(() => {
@@ -106,27 +119,18 @@ export function ExpenseFormDialog({
     if (expense) {
       reset({
         companyId: expense.companyId,
+        title: expense.title,
         category: expense.category,
-        status: expense.status,
         vendorId: expense.vendorId ?? NO_VENDOR,
         amount: String(expense.amount),
         currency: expense.currency,
         date: new Date(expense.date).toISOString().slice(0, 10),
+        status: expense.status,
         billable: expense.billable,
         description: expense.description ?? "",
       });
     } else {
-      reset({
-        companyId: companies[0]?.id ?? "",
-        category: "software",
-        status: "pending",
-        vendorId: NO_VENDOR,
-        amount: "",
-        currency: companies[0]?.currency ?? "USD",
-        date: new Date().toISOString().slice(0, 10),
-        billable: false,
-        description: "",
-      });
+      reset(emptyDefaults(companies));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, expense]);
@@ -182,12 +186,13 @@ export function ExpenseFormDialog({
       if (isEditing && expense) {
         await updateExpense(workspaceId, expense.id, omitUndefined({
           companyId: values.companyId,
+          title: values.title,
           category: values.category,
-          status: values.status,
           vendorId,
           amount: Number(values.amount),
           currency: values.currency,
           date,
+          status: values.status,
           billable: values.billable,
           description: values.description || undefined,
           receipt,
@@ -196,12 +201,13 @@ export function ExpenseFormDialog({
       } else {
         await createExpense(workspaceId, omitUndefined({
           companyId: values.companyId,
+          title: values.title,
           category: values.category,
-          status: values.status,
           vendorId,
           amount: Number(values.amount),
           currency: values.currency,
           date,
+          status: values.status,
           billable: values.billable,
           description: values.description || undefined,
           receipt,
@@ -244,24 +250,26 @@ export function ExpenseFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Vendor (optional)</Label>
-            <Select value={watch("vendorId")} onValueChange={(v) => setValue("vendorId", v ?? NO_VENDOR)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="No vendor">
-                  {(v: string) =>
-                    v === NO_VENDOR ? "No vendor" : companyVendors.find((ven) => ven.id === v)?.name ?? "No vendor"
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_VENDOR}>No vendor</SelectItem>
-                {companyVendors.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="title">What was it for?</Label>
+            <Input id="title" placeholder="AWS hosting, Office rent, Team lunch…" autoFocus {...register("title")} />
+            {errors.title && <p className="text-xs text-danger">{errors.title.message}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="amount">Amount</Label>
+              <Input id="amount" type="number" step="0.01" min="0" {...register("amount")} />
+              {errors.amount && <p className="text-xs text-danger">{errors.amount.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="currency">Currency</Label>
+              <Input id="currency" placeholder="LKR" maxLength={3} className="uppercase" {...register("currency")} />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Date</Label>
+            <DatePicker value={watch("date")} onChange={(v) => setValue("date", v)} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -286,20 +294,20 @@ export function ExpenseFormDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select
-                value={watch("status")}
-                onValueChange={(v) => setValue("status", v as FormValues["status"])}
-              >
+              <Label>Vendor (optional)</Label>
+              <Select value={watch("vendorId")} onValueChange={(v) => setValue("vendorId", v ?? NO_VENDOR)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue>
-                    {(v: string) => EXPENSE_STATUSES.find((s) => s.value === v)?.label ?? v}
+                  <SelectValue placeholder="No vendor">
+                    {(v: string) =>
+                      v === NO_VENDOR ? "No vendor" : companyVendors.find((ven) => ven.id === v)?.name ?? "No vendor"
+                    }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {EXPENSE_STATUSES.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>
-                      {s.label}
+                  <SelectItem value={NO_VENDOR}>No vendor</SelectItem>
+                  {companyVendors.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -307,21 +315,25 @@ export function ExpenseFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="amount">Amount</Label>
-              <Input id="amount" type="number" step="0.01" min="0" {...register("amount")} />
-              {errors.amount && <p className="text-xs text-danger">{errors.amount.message}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="currency">Currency</Label>
-              <Input id="currency" maxLength={3} className="uppercase" {...register("currency")} />
-            </div>
-          </div>
-
           <div className="space-y-1.5">
-            <Label>Date</Label>
-            <DatePicker value={watch("date")} onChange={(v) => setValue("date", v)} />
+            <Label>Status</Label>
+            <Select
+              value={watch("status")}
+              onValueChange={(v) => setValue("status", v as FormValues["status"])}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {(v: string) => EXPENSE_STATUSES.find((s) => s.value === v)?.label ?? v}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {EXPENSE_STATUSES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center gap-2">
@@ -337,7 +349,12 @@ export function ExpenseFormDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="description">Description (optional)</Label>
-            <Input id="description" placeholder="What was this for?" {...register("description")} />
+            <Textarea
+              id="description"
+              placeholder="Any extra detail - what it covered, why, who approved it…"
+              rows={2}
+              {...register("description")}
+            />
           </div>
 
           <AttachmentField

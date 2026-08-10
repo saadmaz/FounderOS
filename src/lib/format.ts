@@ -25,12 +25,35 @@ export function sumMeetingHours(meetings: Meeting[]): number {
   );
 }
 
-export function formatCurrency(amount: number, currency = "USD") {
+// This workspace tracks finances in Sri Lankan Rupees by default - every
+// currency field defaults to LKR (see company/expense/revenue/invoice/
+// budget/investment forms), so that's the fallback here too.
+export function formatCurrency(amount: number, currency = "LKR") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
+    // "narrowSymbol" over the default "symbol" so LKR renders as "Rs" -
+    // en-US has no localized LKR symbol, so plain "symbol" falls back to
+    // printing the ISO code ("LKR 1,000") instead of a currency mark.
+    // Doesn't change the look of USD/EUR/GBP, which already have a
+    // narrow-symbol form identical to their default one.
+    currencyDisplay: "narrowSymbol",
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+/**
+ * The currency to label a figure that's summed *across* companies (an
+ * Overview stat card, an analytics chart) - each company's `currency`
+ * field is authoritative, so if every company in view shares one, that's
+ * the honest answer. A workspace with genuinely mixed currencies has no
+ * single correct sum (there's no exchange-rate conversion here), so this
+ * falls back to the workspace default rather than mislabeling the total
+ * with whichever currency happened to be first.
+ */
+export function commonCurrency(companies: { currency: string }[], fallback = "LKR"): string {
+  const first = companies[0]?.currency;
+  return first && companies.every((c) => c.currency === first) ? first : fallback;
 }
 
 export function formatHours(hours: number) {

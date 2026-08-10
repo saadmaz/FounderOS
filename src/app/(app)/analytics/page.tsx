@@ -21,7 +21,7 @@ import { useMeetings } from "@/lib/data/meetings";
 import { useRevenue } from "@/lib/data/revenue";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatCurrency, formatHours, sumHours, sumMeetingHours } from "@/lib/format";
+import { commonCurrency, formatCurrency, formatHours, sumHours, sumMeetingHours } from "@/lib/format";
 import type { TaskStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -91,6 +91,11 @@ export default function AnalyticsPage() {
   const { data: expenses, loading: expensesLoading } = useExpenses(workspace?.id ?? null);
 
   const loading = companiesLoading || tasksLoading || revenueLoading || expensesLoading;
+
+  // This page has no per-company filter, so it's summing across every
+  // company at once - only label the total with a real currency if they
+  // all actually share one (see commonCurrency).
+  const displayCurrency = useMemo(() => commonCurrency(companies), [companies]);
 
   const totalRevenue = useMemo(() => revenue.reduce((s, r) => s + r.amount, 0), [revenue]);
   // Rejected expenses were never actually paid, so they shouldn't count as spend.
@@ -178,7 +183,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <StatCard
                 label="Total Revenue"
-                value={formatCurrency(totalRevenue)}
+                value={formatCurrency(totalRevenue, displayCurrency)}
                 icon={TrendingUp}
                 accent="text-success"
                 accentBg="bg-success/10"
@@ -186,7 +191,7 @@ export default function AnalyticsPage() {
               />
               <StatCard
                 label="Total Expenses"
-                value={formatCurrency(totalExpenses)}
+                value={formatCurrency(totalExpenses, displayCurrency)}
                 icon={TrendingDown}
                 accent="text-danger"
                 accentBg="bg-danger/10"
@@ -194,7 +199,7 @@ export default function AnalyticsPage() {
               />
               <StatCard
                 label="Net"
-                value={formatCurrency(net)}
+                value={formatCurrency(net, displayCurrency)}
                 icon={Wallet}
                 accent={net >= 0 ? "text-success" : "text-danger"}
                 accentBg={net >= 0 ? "bg-success/10" : "bg-danger/10"}
@@ -233,7 +238,7 @@ export default function AnalyticsPage() {
                         />
                         <Tooltip
                           contentStyle={chartTooltipStyle}
-                          formatter={(value) => formatCurrency(Number(value))}
+                          formatter={(value) => formatCurrency(Number(value), displayCurrency)}
                         />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Bar dataKey="Revenue" fill="var(--success)" radius={[4, 4, 0, 0]} maxBarSize={28} />
@@ -354,7 +359,7 @@ export default function AnalyticsPage() {
                         />
                         <Tooltip
                           contentStyle={chartTooltipStyle}
-                          formatter={(value) => formatCurrency(Number(value))}
+                          formatter={(value) => formatCurrency(Number(value), displayCurrency)}
                         />
                         <Bar
                           dataKey="revenue"

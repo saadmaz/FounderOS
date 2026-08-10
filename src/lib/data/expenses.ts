@@ -21,7 +21,10 @@ export function useExpenses(workspaceId: string | null, companyId?: string) {
 
 export async function createExpense(
   workspaceId: string,
-  input: Pick<Expense, "companyId" | "category" | "amount" | "currency" | "date" | "status" | "billable" | "createdBy"> &
+  input: Pick<
+    Expense,
+    "companyId" | "title" | "category" | "amount" | "currency" | "date" | "status" | "billable" | "createdBy"
+  > &
     Partial<Expense>
 ) {
   const ts = now();
