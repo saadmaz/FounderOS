@@ -137,10 +137,10 @@ export function CompanyCrmPanel({ company }: { company: Company }) {
                   <TableHeader className="bg-surface">
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="text-xs font-medium text-muted-foreground">Name</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Title</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Email</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Phone</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Last Contacted</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Title</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Email</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Phone</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Last Contacted</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
                       <TableHead />
                     </TableRow>
@@ -148,17 +148,22 @@ export function CompanyCrmPanel({ company }: { company: Company }) {
                   <TableBody>
                     {contacts.map((contact) => (
                       <TableRow key={contact.id} className="hover:bg-secondary/40">
-                        <TableCell className="py-2 text-sm font-medium">{contact.name}</TableCell>
-                        <TableCell className="py-2 text-sm text-muted-foreground">
+                        <TableCell className="max-w-36 py-2 text-sm font-medium sm:max-w-none">
+                          <span className="block truncate">{contact.name}</span>
+                          {contact.title && (
+                            <p className="truncate text-xs font-normal text-muted-foreground sm:hidden">{contact.title}</p>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
                           {contact.title ?? "—"}
                         </TableCell>
-                        <TableCell className="py-2 text-sm text-muted-foreground">
+                        <TableCell className="hidden py-2 text-sm text-muted-foreground md:table-cell">
                           {contact.email ?? "—"}
                         </TableCell>
-                        <TableCell className="py-2 text-sm text-muted-foreground">
+                        <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
                           {contact.phone ?? "—"}
                         </TableCell>
-                        <TableCell className="py-2 text-sm text-muted-foreground">
+                        <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
                           {formatDate(contact.lastContactedAt)}
                         </TableCell>
                         <TableCell className="py-2">

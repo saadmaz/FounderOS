@@ -55,6 +55,8 @@ export function TaskTable({
       cell: ({ row }) => {
         const t = row.original;
         const company = companyById.get(t.companyId);
+        const due = t.dueDate;
+        const overdue = due && due < today && t.status !== "completed";
         return (
           <div className="flex items-center gap-2.5">
             {showCompany && (
@@ -63,14 +65,22 @@ export function TaskTable({
                 style={{ backgroundColor: company?.color ?? "#71717A" }}
               />
             )}
-            <span
-              className={cn(
-                "truncate text-sm",
-                t.status === "completed" && "text-muted-foreground line-through"
-              )}
-            >
-              {t.title}
-            </span>
+            <div className="min-w-0">
+              <span
+                className={cn(
+                  "block truncate text-sm",
+                  t.status === "completed" && "text-muted-foreground line-through"
+                )}
+              >
+                {t.title}
+              </span>
+              {/* Priority/due date get their own columns from sm/md up - this
+               * mirrors them compactly so nothing's lost on a phone. */}
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground sm:hidden">
+                {showCompany && company && <span>{company.name}</span>}
+                <span className={cn(overdue && "font-medium text-danger")}>{formatDate(due)}</span>
+              </span>
+            </div>
           </div>
         );
       },
@@ -103,7 +113,7 @@ export function TaskTable({
             value={t.status}
             onValueChange={(v) => v && setTaskStatus(workspaceId, t.id, v as TaskStatus)}
           >
-            <SelectTrigger size="sm" className="h-7 w-[140px] border-none bg-transparent shadow-none">
+            <SelectTrigger size="sm" className="h-7 w-35 border-none bg-transparent shadow-none">
               <SelectValue>{(v: TaskStatus) => taskStatusLabel(v)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -163,6 +173,16 @@ export function TaskTable({
     getSortedRowModel: getSortedRowModel(),
   });
 
+  // Task (and Status/actions) always show; everything else steps in as the
+  // viewport grows, same responsive-column pattern used by the other
+  // tables - a phone-width table otherwise clips to 2-3 columns and the
+  // rest is only reachable by scrolling sideways.
+  const RESPONSIVE_COLUMN_CLASS: Record<string, string> = {
+    companyId: "hidden sm:table-cell",
+    priority: "hidden sm:table-cell",
+    dueDate: "hidden md:table-cell",
+  };
+
   return (
     <div className="overflow-hidden rounded-xl border border-border">
       <div className="scrollbar-thin overflow-x-auto">
@@ -171,7 +191,13 @@ export function TaskTable({
             {table.getHeaderGroups().map((hg) => (
               <TableRow key={hg.id} className="hover:bg-transparent">
                 {hg.headers.map((h) => (
-                  <TableHead key={h.id} className="text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    key={h.id}
+                    className={cn(
+                      "text-xs font-medium text-muted-foreground",
+                      RESPONSIVE_COLUMN_CLASS[h.column.id]
+                    )}
+                  >
                     {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
                   </TableHead>
                 ))}
@@ -182,7 +208,10 @@ export function TaskTable({
             {table.getRowModel().rows.map((row) => (
               <TableRow key={row.id} className="hover:bg-secondary/40">
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="py-2">
+                  <TableCell
+                    key={cell.id}
+                    className={cn("py-2", RESPONSIVE_COLUMN_CLASS[cell.column.id])}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}

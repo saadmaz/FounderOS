@@ -95,10 +95,10 @@ export default function TimeTrackingPage() {
               <TableHeader className="bg-surface">
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="text-xs font-medium text-muted-foreground">Logged for</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground">Started</TableHead>
+                  <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Company</TableHead>
+                  <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Started</TableHead>
                   <TableHead className="text-xs font-medium text-muted-foreground">Duration</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground">Billable</TableHead>
+                  <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Billable</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -108,10 +108,11 @@ export default function TimeTrackingPage() {
                   const hours = (e.endedAt! - e.startedAt) / 3_600_000;
                   return (
                     <TableRow key={e.id} className="hover:bg-secondary/40">
-                      <TableCell className="py-2">
-                        <span className="text-sm">{e.subjectLabel ?? e.note ?? "—"}</span>
+                      <TableCell className="max-w-40 py-2 sm:max-w-64">
+                        <span className="block truncate text-sm">{e.subjectLabel ?? e.note ?? "—"}</span>
+                        <p className="truncate text-xs text-muted-foreground sm:hidden">{company?.name ?? "—"}</p>
                       </TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="hidden py-2 sm:table-cell">
                         <div className="flex items-center gap-2">
                           <span
                             className="size-2 rounded-full"
@@ -120,11 +121,11 @@ export default function TimeTrackingPage() {
                           <span className="text-sm text-muted-foreground">{company?.name ?? "—"}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">
+                      <TableCell className="hidden py-2 text-sm text-muted-foreground md:table-cell">
                         {formatDateTime(e.startedAt)}
                       </TableCell>
                       <TableCell className="py-2 text-sm font-medium">{formatHours(hours)}</TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="hidden py-2 sm:table-cell">
                         <span
                           className={`text-xs ${e.billable ? "text-success" : "text-muted-foreground-2"}`}
                         >

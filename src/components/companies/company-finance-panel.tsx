@@ -254,10 +254,10 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
               <Table>
                 <TableHeader className="bg-surface">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-xs font-medium text-muted-foreground">Date</TableHead>
+                    <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Date</TableHead>
                     <TableHead className="text-xs font-medium text-muted-foreground">Expense</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Category</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Vendor</TableHead>
+                    <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Category</TableHead>
+                    <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Vendor</TableHead>
                     <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
                     <TableHead className="text-right text-xs font-medium text-muted-foreground">
                       Amount
@@ -268,7 +268,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                 <TableBody>
                   {expenses.map((e) => (
                     <TableRow key={e.id} className="hover:bg-secondary/40">
-                      <TableCell className="py-2 text-sm text-muted-foreground">
+                      <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
                         {formatDate(e.date)}
                       </TableCell>
                       <TableCell className="max-w-56 py-2">
@@ -277,8 +277,11 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                             <p className="truncate text-sm font-medium">
                               {e.title || e.description || "Untitled expense"}
                             </p>
+                            <p className="truncate text-xs text-muted-foreground sm:hidden">
+                              {formatDate(e.date)}
+                            </p>
                             {e.description && e.title && (
-                              <p className="truncate text-xs text-muted-foreground">{e.description}</p>
+                              <p className="hidden truncate text-xs text-muted-foreground sm:block">{e.description}</p>
                             )}
                           </div>
                           {e.receipts?.map((r) => (
@@ -295,10 +298,10 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell className="py-2 text-sm capitalize text-muted-foreground">
+                      <TableCell className="hidden py-2 text-sm capitalize text-muted-foreground lg:table-cell">
                         {EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category}
                       </TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">
+                      <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
                         {e.vendor || "—"}
                       </TableCell>
                       <TableCell className="py-2">
@@ -484,10 +487,10 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
               <Table>
                 <TableHeader className="bg-surface">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-xs font-medium text-muted-foreground">Date</TableHead>
+                    <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Date</TableHead>
                     <TableHead className="text-xs font-medium text-muted-foreground">Type</TableHead>
                     <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
-                    <TableHead className="text-right text-xs font-medium text-muted-foreground">
+                    <TableHead className="hidden text-right text-xs font-medium text-muted-foreground sm:table-cell">
                       Current Value
                     </TableHead>
                     <TableHead className="text-right text-xs font-medium text-muted-foreground">
@@ -502,16 +505,17 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                       inv.currentValue !== undefined ? inv.currentValue - inv.amount : undefined;
                     return (
                       <TableRow key={inv.id} className="hover:bg-secondary/40">
-                        <TableCell className="py-2 text-sm text-muted-foreground">
+                        <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
                           {formatDate(inv.date)}
                         </TableCell>
                         <TableCell className="py-2 text-sm text-muted-foreground">
                           {INVESTMENT_TYPES.find((t) => t.value === inv.type)?.label ?? inv.type}
+                          <p className="text-xs text-muted-foreground-2 sm:hidden">{formatDate(inv.date)}</p>
                         </TableCell>
                         <TableCell className="py-2">
                           <InvestmentStatusBadge status={inv.status} />
                         </TableCell>
-                        <TableCell className="py-2 text-right text-sm">
+                        <TableCell className="hidden py-2 text-right text-sm sm:table-cell">
                           {inv.currentValue !== undefined ? (
                             <span
                               className={cn(
@@ -600,27 +604,32 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                 <TableHeader className="bg-surface">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="text-xs font-medium text-muted-foreground">Name</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Category</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Email</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Phone</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Website</TableHead>
+                    <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Category</TableHead>
+                    <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Email</TableHead>
+                    <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Phone</TableHead>
+                    <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Website</TableHead>
                     {canEdit && <TableHead />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {vendors.map((v) => (
                     <TableRow key={v.id} className="hover:bg-secondary/40">
-                      <TableCell className="py-2 text-sm font-medium">{v.name}</TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">
+                      <TableCell className="max-w-36 py-2 text-sm font-medium sm:max-w-none">
+                        <span className="block truncate">{v.name}</span>
+                        {v.category && (
+                          <p className="truncate text-xs font-normal text-muted-foreground sm:hidden">{v.category}</p>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
                         {v.category ?? "—"}
                       </TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">
+                      <TableCell className="hidden py-2 text-sm text-muted-foreground md:table-cell">
                         {v.contactEmail ?? "—"}
                       </TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">
+                      <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
                         {v.contactPhone ?? "—"}
                       </TableCell>
-                      <TableCell className="max-w-40 truncate py-2 text-sm text-muted-foreground">
+                      <TableCell className="hidden max-w-40 truncate py-2 text-sm text-muted-foreground lg:table-cell">
                         {v.website ?? "—"}
                       </TableCell>
                       {canEdit && (

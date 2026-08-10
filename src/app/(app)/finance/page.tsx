@@ -320,11 +320,11 @@ export default function FinancePage() {
                 <Table>
                   <TableHeader className="bg-surface">
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-xs font-medium text-muted-foreground">Date</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Date</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Company</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Expense</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Category</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Vendor</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Category</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Vendor</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
                       <TableHead className="text-right text-xs font-medium text-muted-foreground">
                         Amount
@@ -335,10 +335,10 @@ export default function FinancePage() {
                   <TableBody>
                     {filteredExpenses.map((e) => (
                       <TableRow key={e.id} className="hover:bg-secondary/40">
-                        <TableCell className="py-2 text-sm text-muted-foreground">
+                        <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
                           {formatDate(e.date)}
                         </TableCell>
-                        <TableCell className="py-2">
+                        <TableCell className="hidden py-2 md:table-cell">
                           <div className="flex items-center gap-2">
                             <span
                               className="size-2 rounded-full"
@@ -353,8 +353,11 @@ export default function FinancePage() {
                               <p className="truncate text-sm font-medium">
                                 {e.title || e.description || "Untitled expense"}
                               </p>
+                              <p className="truncate text-xs text-muted-foreground sm:hidden">
+                                {formatDate(e.date)} · {companyById.get(e.companyId)?.name ?? "—"}
+                              </p>
                               {e.description && e.title && (
-                                <p className="truncate text-xs text-muted-foreground">{e.description}</p>
+                                <p className="hidden truncate text-xs text-muted-foreground sm:block">{e.description}</p>
                               )}
                             </div>
                             {e.receipts?.map((r) => (
@@ -371,10 +374,10 @@ export default function FinancePage() {
                             ))}
                           </div>
                         </TableCell>
-                        <TableCell className="py-2 text-sm capitalize text-muted-foreground">
+                        <TableCell className="hidden py-2 text-sm capitalize text-muted-foreground lg:table-cell">
                           {EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category}
                         </TableCell>
-                        <TableCell className="py-2 text-sm text-muted-foreground">
+                        <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
                           {e.vendor || "—"}
                         </TableCell>
                         <TableCell className="py-2">
@@ -566,11 +569,11 @@ export default function FinancePage() {
                 <Table>
                   <TableHeader className="bg-surface">
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-xs font-medium text-muted-foreground">Date</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Date</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Company</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Type</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
-                      <TableHead className="text-right text-xs font-medium text-muted-foreground">
+                      <TableHead className="hidden text-right text-xs font-medium text-muted-foreground sm:table-cell">
                         Current Value
                       </TableHead>
                       <TableHead className="text-right text-xs font-medium text-muted-foreground">
@@ -585,10 +588,10 @@ export default function FinancePage() {
                         inv.currentValue !== undefined ? inv.currentValue - inv.amount : undefined;
                       return (
                         <TableRow key={inv.id} className="hover:bg-secondary/40">
-                          <TableCell className="py-2 text-sm text-muted-foreground">
+                          <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
                             {formatDate(inv.date)}
                           </TableCell>
-                          <TableCell className="py-2">
+                          <TableCell className="hidden py-2 md:table-cell">
                             <div className="flex items-center gap-2">
                               <span
                                 className="size-2 rounded-full"
@@ -603,11 +606,14 @@ export default function FinancePage() {
                           </TableCell>
                           <TableCell className="py-2 text-sm text-muted-foreground">
                             {INVESTMENT_TYPES.find((t) => t.value === inv.type)?.label ?? inv.type}
+                            <p className="text-xs text-muted-foreground-2 sm:hidden">
+                              {formatDate(inv.date)} · {companyById.get(inv.companyId)?.name ?? "—"}
+                            </p>
                           </TableCell>
                           <TableCell className="py-2">
                             <InvestmentStatusBadge status={inv.status} />
                           </TableCell>
-                          <TableCell className="py-2 text-right text-sm">
+                          <TableCell className="hidden py-2 text-right text-sm sm:table-cell">
                             {inv.currentValue !== undefined ? (
                               <span
                                 className={cn(
@@ -696,19 +702,25 @@ export default function FinancePage() {
                   <TableHeader className="bg-surface">
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="text-xs font-medium text-muted-foreground">Name</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Category</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Email</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Phone</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Website</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Company</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Category</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Email</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Phone</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Website</TableHead>
                       {canEdit && <TableHead />}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredVendors.map((v) => (
                       <TableRow key={v.id} className="hover:bg-secondary/40">
-                        <TableCell className="py-2 text-sm font-medium">{v.name}</TableCell>
-                        <TableCell className="py-2">
+                        <TableCell className="max-w-36 py-2 text-sm font-medium sm:max-w-none">
+                          <span className="block truncate">{v.name}</span>
+                          <p className="truncate text-xs font-normal text-muted-foreground sm:hidden">
+                            {companyById.get(v.companyId)?.name ?? "—"}
+                            {v.category ? ` · ${v.category}` : ""}
+                          </p>
+                        </TableCell>
+                        <TableCell className="hidden py-2 sm:table-cell">
                           <div className="flex items-center gap-2">
                             <span
                               className="size-2 rounded-full"
@@ -717,16 +729,16 @@ export default function FinancePage() {
                             <span className="text-sm">{companyById.get(v.companyId)?.name ?? "—"}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="py-2 text-sm text-muted-foreground">
+                        <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
                           {v.category ?? "—"}
                         </TableCell>
-                        <TableCell className="py-2 text-sm text-muted-foreground">
+                        <TableCell className="hidden py-2 text-sm text-muted-foreground md:table-cell">
                           {v.contactEmail ?? "—"}
                         </TableCell>
-                        <TableCell className="py-2 text-sm text-muted-foreground">
+                        <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
                           {v.contactPhone ?? "—"}
                         </TableCell>
-                        <TableCell className="max-w-40 truncate py-2 text-sm text-muted-foreground">
+                        <TableCell className="hidden max-w-40 truncate py-2 text-sm text-muted-foreground lg:table-cell">
                           {v.website ?? "—"}
                         </TableCell>
                         {canEdit && (

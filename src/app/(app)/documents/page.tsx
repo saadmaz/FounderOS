@@ -162,10 +162,10 @@ export default function DocumentsPage() {
               <TableHeader className="bg-surface">
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="text-xs font-medium text-muted-foreground">Name</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground">Size</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground">Uploaded by</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground">Uploaded</TableHead>
+                  <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Company</TableHead>
+                  <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Size</TableHead>
+                  <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Uploaded by</TableHead>
+                  <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Uploaded</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -186,12 +186,17 @@ export default function DocumentsPage() {
                           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
                             <Icon className="size-4 text-muted-foreground" />
                           </span>
-                          <span className="max-w-64 truncate text-sm font-medium hover:underline">
-                            {d.name}
+                          <span className="min-w-0">
+                            <span className="block max-w-40 truncate text-sm font-medium hover:underline sm:max-w-64">
+                              {d.name}
+                            </span>
+                            <span className="block text-xs text-muted-foreground sm:hidden">
+                              {formatFileSize(d.size)} · {company?.name ?? formatDate(d.createdAt)}
+                            </span>
                           </span>
                         </a>
                       </TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="hidden py-2 sm:table-cell">
                         {company ? (
                           <div className="flex items-center gap-2">
                             <span
@@ -204,13 +209,13 @@ export default function DocumentsPage() {
                           <span className="text-sm text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">
+                      <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
                         {formatFileSize(d.size)}
                       </TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">
+                      <TableCell className="hidden py-2 text-sm text-muted-foreground md:table-cell">
                         {uploader?.displayName ?? "—"}
                       </TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">
+                      <TableCell className="hidden py-2 text-sm text-muted-foreground md:table-cell">
                         {formatDate(d.createdAt)}
                       </TableCell>
                       <TableCell className="py-2 text-right">

@@ -172,11 +172,11 @@ export default function CrmPage() {
                   <TableHeader className="bg-surface">
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="text-xs font-medium text-muted-foreground">Name</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Title</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Email</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Phone</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground">Last Contacted</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Title</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Company</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Email</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Phone</TableHead>
+                      <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Last Contacted</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
                       <TableHead />
                     </TableRow>
@@ -186,11 +186,16 @@ export default function CrmPage() {
                       const company = companyById.get(contact.companyId);
                       return (
                         <TableRow key={contact.id} className="hover:bg-secondary/40">
-                          <TableCell className="py-2 text-sm font-medium">{contact.name}</TableCell>
-                          <TableCell className="py-2 text-sm text-muted-foreground">
+                          <TableCell className="max-w-36 py-2 text-sm font-medium sm:max-w-none">
+                            <span className="block truncate">{contact.name}</span>
+                            <p className="truncate text-xs font-normal text-muted-foreground sm:hidden">
+                              {contact.title ?? company?.name ?? " "}
+                            </p>
+                          </TableCell>
+                          <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
                             {contact.title ?? "—"}
                           </TableCell>
-                          <TableCell className="py-2">
+                          <TableCell className="hidden py-2 sm:table-cell">
                             <div className="flex items-center gap-2">
                               {company && (
                                 <span
@@ -201,13 +206,13 @@ export default function CrmPage() {
                               <span className="text-sm">{company?.name ?? "—"}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="py-2 text-sm text-muted-foreground">
+                          <TableCell className="hidden py-2 text-sm text-muted-foreground md:table-cell">
                             {contact.email ?? "—"}
                           </TableCell>
-                          <TableCell className="py-2 text-sm text-muted-foreground">
+                          <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
                             {contact.phone ?? "—"}
                           </TableCell>
-                          <TableCell className="py-2 text-sm text-muted-foreground">
+                          <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
                             {formatDate(contact.lastContactedAt)}
                           </TableCell>
                           <TableCell className="py-2">
