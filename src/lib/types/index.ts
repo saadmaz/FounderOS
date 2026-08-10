@@ -192,11 +192,12 @@ export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-export type ExpenseStatus = "pending" | "approved" | "reimbursed" | "rejected";
+export type ExpenseStatus = "pending" | "approved" | "paid" | "reimbursed" | "rejected";
 
 export const EXPENSE_STATUSES: { value: ExpenseStatus; label: string }[] = [
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
+  { value: "paid", label: "Paid" },
   { value: "reimbursed", label: "Reimbursed" },
   { value: "rejected", label: "Rejected" },
 ];
@@ -321,6 +322,57 @@ export interface Vendor {
   contactPhone?: string;
   website?: string;
   notes?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type InvestmentType =
+  | "equity"
+  | "safe"
+  | "convertible_note"
+  | "debt"
+  | "real_estate"
+  | "stocks"
+  | "crypto"
+  | "fund"
+  | "other";
+
+export const INVESTMENT_TYPES: { value: InvestmentType; label: string }[] = [
+  { value: "equity", label: "Equity" },
+  { value: "safe", label: "SAFE" },
+  { value: "convertible_note", label: "Convertible Note" },
+  { value: "debt", label: "Debt" },
+  { value: "real_estate", label: "Real Estate" },
+  { value: "stocks", label: "Stocks" },
+  { value: "crypto", label: "Crypto" },
+  { value: "fund", label: "Fund" },
+  { value: "other", label: "Other" },
+];
+
+export type InvestmentStatus = "active" | "exited" | "written_off";
+
+export const INVESTMENT_STATUSES: { value: InvestmentStatus; label: string }[] = [
+  { value: "active", label: "Active" },
+  { value: "exited", label: "Exited" },
+  { value: "written_off", label: "Written Off" },
+];
+
+/** Capital put into a company/asset - as opposed to RevenueEntry's
+ * "investment" category, which is money *received* (e.g. a dividend or a
+ * funding round closing). `currentValue` is optional and separate from
+ * `amount` (what was put in) so gain/loss can be shown once it's known. */
+export interface Investment {
+  id: string;
+  workspaceId: string;
+  companyId: string;
+  type: InvestmentType;
+  status: InvestmentStatus;
+  amount: number;
+  currency: string;
+  date: number;
+  currentValue?: number;
+  ownershipPercent?: number;
+  note?: string;
   createdAt: number;
   updatedAt: number;
 }

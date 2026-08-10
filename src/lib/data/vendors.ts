@@ -3,7 +3,7 @@
 import { addDoc, collection, doc, orderBy, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import type { Vendor } from "@/lib/types";
-import { now } from "./firestore-helpers";
+import { now, omitUndefined } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/vendors`;
@@ -30,10 +30,13 @@ export async function createVendor(
 }
 
 export async function updateVendor(workspaceId: string, vendorId: string, patch: Partial<Vendor>) {
-  return updateDoc(doc(db, path(workspaceId), vendorId), {
-    ...patch,
-    updatedAt: now(),
-  });
+  return updateDoc(
+    doc(db, path(workspaceId), vendorId),
+    omitUndefined({
+      ...patch,
+      updatedAt: now(),
+    })
+  );
 }
 
 export async function deleteVendor(workspaceId: string, vendorId: string) {

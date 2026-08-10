@@ -4,7 +4,7 @@ import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "f
 import { deleteCloudinaryAsset } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase/client";
 import type { Invoice, InvoiceLineItem, InvoiceStatus } from "@/lib/types";
-import { now } from "./firestore-helpers";
+import { now, omitUndefined } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/invoices`;
@@ -41,10 +41,13 @@ export async function createInvoice(
 }
 
 export async function updateInvoice(workspaceId: string, invoiceId: string, patch: Partial<Invoice>) {
-  return updateDoc(doc(db, path(workspaceId), invoiceId), {
-    ...patch,
-    updatedAt: now(),
-  });
+  return updateDoc(
+    doc(db, path(workspaceId), invoiceId),
+    omitUndefined({
+      ...patch,
+      updatedAt: now(),
+    })
+  );
 }
 
 export async function setInvoiceStatus(workspaceId: string, invoiceId: string, status: InvoiceStatus) {

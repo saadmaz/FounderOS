@@ -3,6 +3,7 @@
 import {
   DollarSign,
   FileText,
+  Landmark,
   MoreHorizontal,
   Paperclip,
   PiggyBank,
@@ -42,6 +43,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { BudgetFormDialog } from "@/components/finance/budget-form-dialog";
 import { ExpenseFormDialog } from "@/components/finance/expense-form-dialog";
+import { InvestmentFormDialog } from "@/components/finance/investment-form-dialog";
 import { InvoiceFormDialog } from "@/components/finance/invoice-form-dialog";
 import { RevenueFormDialog } from "@/components/finance/revenue-form-dialog";
 import { VendorFormDialog } from "@/components/finance/vendor-form-dialog";
@@ -49,6 +51,7 @@ import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
 import { budgetPeriodRange, deleteBudget, useBudgets } from "@/lib/data/budgets";
 import { deleteExpense, useExpenses } from "@/lib/data/expenses";
+import { deleteInvestment, useInvestments } from "@/lib/data/investments";
 import { deleteInvoice, markInvoicePaid, useInvoices } from "@/lib/data/invoices";
 import { deleteRevenueEntry, useRevenue } from "@/lib/data/revenue";
 import { deleteVendor, useVendors } from "@/lib/data/vendors";
@@ -59,10 +62,19 @@ import type {
   ExpenseStatus,
   Invoice,
   InvoiceStatus,
+  Investment,
+  InvestmentStatus,
   RevenueEntry,
   Vendor,
 } from "@/lib/types";
-import { BUDGET_PERIODS, EXPENSE_CATEGORIES, EXPENSE_STATUSES, INVOICE_STATUSES } from "@/lib/types";
+import {
+  BUDGET_PERIODS,
+  EXPENSE_CATEGORIES,
+  EXPENSE_STATUSES,
+  INVESTMENT_STATUSES,
+  INVESTMENT_TYPES,
+  INVOICE_STATUSES,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { toast } from "sonner";
@@ -70,6 +82,7 @@ import { toast } from "sonner";
 const EXPENSE_STATUS_STYLES: Record<ExpenseStatus, string> = {
   pending: "bg-warning/10 text-warning",
   approved: "bg-primary/10 text-primary",
+  paid: "bg-analytics-cyan/10 text-analytics-cyan",
   reimbursed: "bg-success/10 text-success",
   rejected: "bg-danger/10 text-danger",
 };
@@ -108,6 +121,25 @@ function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
   );
 }
 
+const INVESTMENT_STATUS_STYLES: Record<InvestmentStatus, string> = {
+  active: "bg-primary/10 text-primary",
+  exited: "bg-success/10 text-success",
+  written_off: "bg-danger/10 text-danger",
+};
+
+function InvestmentStatusBadge({ status }: { status: InvestmentStatus }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex w-fit items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
+        INVESTMENT_STATUS_STYLES[status]
+      )}
+    >
+      {INVESTMENT_STATUSES.find((s) => s.value === status)?.label ?? status}
+    </span>
+  );
+}
+
 export default function FinancePage() {
   const { user } = useAuth();
   const { workspace, role } = useWorkspace();
@@ -120,6 +152,7 @@ export default function FinancePage() {
   const { data: invoices, loading: invoicesLoading } = useInvoices(workspaceId);
   const { data: budgets, loading: budgetsLoading } = useBudgets(workspaceId);
   const { data: vendors, loading: vendorsLoading } = useVendors(workspaceId);
+  const { data: investments, loading: investmentsLoading } = useInvestments(workspaceId);
 
   const [companyFilter, setCompanyFilter] = useState<string>("all");
 
@@ -133,6 +166,8 @@ export default function FinancePage() {
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [vendorDialogOpen, setVendorDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [investmentDialogOpen, setInvestmentDialogOpen] = useState(false);
+  const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
 
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
 
@@ -156,13 +191,21 @@ export default function FinancePage() {
     () => (companyFilter === "all" ? vendors : vendors.filter((v) => v.companyId === companyFilter)),
     [vendors, companyFilter]
   );
+  const filteredInvestments = useMemo(
+    () =>
+      companyFilter === "all" ? investments : investments.filter((i) => i.companyId === companyFilter),
+    [investments, companyFilter]
+  );
 
   const totalRevenue = useMemo(
     () => filteredRevenue.reduce((sum, r) => sum + r.amount, 0),
     [filteredRevenue]
   );
+  // Rejected expenses were never actually paid, so they shouldn't count as
+  // spend - only the entry in the table (for the audit trail) stays.
   const totalExpenses = useMemo(
-    () => filteredExpenses.reduce((sum, e) => sum + e.amount, 0),
+    () =>
+      filteredExpenses.filter((e) => e.status !== "rejected").reduce((sum, e) => sum + e.amount, 0),
     [filteredExpenses]
   );
   const net = totalRevenue - totalExpenses;
@@ -172,6 +215,10 @@ export default function FinancePage() {
         .filter((i) => i.status === "sent" || i.status === "overdue")
         .reduce((sum, i) => sum + i.amount, 0),
     [filteredInvoices]
+  );
+  const totalInvested = useMemo(
+    () => filteredInvestments.reduce((sum, i) => sum + i.amount, 0),
+    [filteredInvestments]
   );
 
   async function handleDeleteExpense(expense: Expense) {
@@ -204,12 +251,17 @@ export default function FinancePage() {
     await deleteVendor(workspaceId, id);
     toast.success("Vendor deleted");
   }
+  async function handleDeleteInvestment(id: string) {
+    if (!workspaceId) return;
+    await deleteInvestment(workspaceId, id);
+    toast.success("Investment deleted");
+  }
 
   return (
     <>
       <PageHeader
         title="Finance"
-        description="Expenses, revenue, invoices, budgets, and vendors across every company."
+        description="Expenses, revenue, invoices, budgets, investments, and vendors across every company."
         actions={
           companies.length > 0 && (
             <Select value={companyFilter} onValueChange={(v) => setCompanyFilter(v ?? "all")}>
@@ -242,13 +294,14 @@ export default function FinancePage() {
               <TabsTrigger value="revenue">Revenue</TabsTrigger>
               <TabsTrigger value="invoices">Invoices</TabsTrigger>
               <TabsTrigger value="budgets">Budgets</TabsTrigger>
+              <TabsTrigger value="investments">Investments</TabsTrigger>
               <TabsTrigger value="vendors">Vendors</TabsTrigger>
             </TabsList>
           </div>
 
           {/* ---------------- Overview ---------------- */}
           <TabsContent value="overview" className="mt-4 space-y-4">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <StatCard
                 label="Total Revenue"
                 value={formatCurrency(totalRevenue)}
@@ -280,6 +333,14 @@ export default function FinancePage() {
                 accent="text-warning"
                 accentBg="bg-warning/10"
                 loading={invoicesLoading}
+              />
+              <StatCard
+                label="Total Invested"
+                value={formatCurrency(totalInvested)}
+                icon={Landmark}
+                accent="text-analytics-purple"
+                accentBg="bg-analytics-purple/10"
+                loading={investmentsLoading}
               />
             </div>
           </TabsContent>
@@ -321,6 +382,7 @@ export default function FinancePage() {
                       <TableHead className="text-xs font-medium text-muted-foreground">Date</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Category</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Vendor</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Description</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
                       <TableHead className="text-right text-xs font-medium text-muted-foreground">
@@ -347,9 +409,20 @@ export default function FinancePage() {
                         <TableCell className="py-2 text-sm capitalize text-muted-foreground">
                           {EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category}
                         </TableCell>
+                        <TableCell className="py-2 text-sm text-muted-foreground">
+                          {vendors.find((v) => v.id === e.vendorId)?.name ?? "—"}
+                        </TableCell>
                         <TableCell className="max-w-56 py-2 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1.5">
                             <span className="truncate">{e.description ?? "—"}</span>
+                            {e.billable && (
+                              <span
+                                title="Billable to client"
+                                className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                              >
+                                Billable
+                              </span>
+                            )}
                             {e.receipt && (
                               <a
                                 href={e.receipt.url}
@@ -674,6 +747,7 @@ export default function FinancePage() {
                       (e) =>
                         e.companyId === b.companyId &&
                         e.category === b.category &&
+                        e.status !== "rejected" &&
                         e.date >= start &&
                         e.date < end
                     )
@@ -740,6 +814,136 @@ export default function FinancePage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ---------------- Investments ---------------- */}
+          <TabsContent value="investments" className="mt-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {filteredInvestments.length} investment{filteredInvestments.length === 1 ? "" : "s"} ·{" "}
+                {formatCurrency(totalInvested)} invested
+              </p>
+              {canEdit && (
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setEditingInvestment(null);
+                    setInvestmentDialogOpen(true);
+                  }}
+                >
+                  <Plus className="size-4" />
+                  New investment
+                </Button>
+              )}
+            </div>
+
+            {investmentsLoading ? (
+              <div className="h-64 animate-pulse rounded-xl bg-muted" />
+            ) : filteredInvestments.length === 0 ? (
+              <EmptyState
+                icon={Landmark}
+                title="No investments logged"
+                description="Track capital put into companies and other assets, and what it's worth now."
+              />
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-border">
+                <Table>
+                  <TableHeader className="bg-surface">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="text-xs font-medium text-muted-foreground">Date</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Type</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
+                      <TableHead className="text-right text-xs font-medium text-muted-foreground">
+                        Current Value
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-medium text-muted-foreground">
+                        Amount
+                      </TableHead>
+                      {canEdit && <TableHead />}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredInvestments.map((inv) => {
+                      const gain =
+                        inv.currentValue !== undefined ? inv.currentValue - inv.amount : undefined;
+                      return (
+                        <TableRow key={inv.id} className="hover:bg-secondary/40">
+                          <TableCell className="py-2 text-sm text-muted-foreground">
+                            {formatDate(inv.date)}
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="size-2 rounded-full"
+                                style={{
+                                  backgroundColor: companyById.get(inv.companyId)?.color ?? "#71717A",
+                                }}
+                              />
+                              <span className="text-sm">
+                                {companyById.get(inv.companyId)?.name ?? "—"}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-2 text-sm text-muted-foreground">
+                            {INVESTMENT_TYPES.find((t) => t.value === inv.type)?.label ?? inv.type}
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <InvestmentStatusBadge status={inv.status} />
+                          </TableCell>
+                          <TableCell className="py-2 text-right text-sm">
+                            {inv.currentValue !== undefined ? (
+                              <span
+                                className={cn(
+                                  "font-medium",
+                                  gain !== undefined && gain > 0 && "text-success",
+                                  gain !== undefined && gain < 0 && "text-danger"
+                                )}
+                              >
+                                {formatCurrency(inv.currentValue, inv.currency)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-2 text-right text-sm font-medium">
+                            {formatCurrency(inv.amount, inv.currency)}
+                          </TableCell>
+                          {canEdit && (
+                            <TableCell className="py-2 text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  render={<Button variant="ghost" size="icon" className="size-7" />}
+                                >
+                                  <MoreHorizontal className="size-4" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setEditingInvestment(inv);
+                                      setInvestmentDialogOpen(true);
+                                    }}
+                                  >
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    variant="destructive"
+                                    onClick={() => handleDeleteInvestment(inv.id)}
+                                  >
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </TabsContent>
@@ -857,6 +1061,7 @@ export default function FinancePage() {
             workspaceId={workspace.id}
             memberId={user.uid}
             companies={companies}
+            vendors={vendors}
             expense={editingExpense}
           />
           <RevenueFormDialog
@@ -886,6 +1091,13 @@ export default function FinancePage() {
             workspaceId={workspace.id}
             companies={companies}
             vendor={editingVendor}
+          />
+          <InvestmentFormDialog
+            open={investmentDialogOpen}
+            onOpenChange={setInvestmentDialogOpen}
+            workspaceId={workspace.id}
+            companies={companies}
+            investment={editingInvestment}
           />
         </>
       )}

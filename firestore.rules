@@ -108,6 +108,11 @@ service cloud.firestore {
         allow create, update, delete: if canManageFinance(workspaceId);
       }
 
+      match /investments/{investmentId} {
+        allow read: if isMember(workspaceId);
+        allow create, update, delete: if canManageFinance(workspaceId);
+      }
+
       // ----- CRM: contacts, deals -----
       match /contacts/{contactId} {
         allow read: if isMember(workspaceId);

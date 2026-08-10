@@ -3,7 +3,7 @@
 import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import type { Budget } from "@/lib/types";
-import { now } from "./firestore-helpers";
+import { now, omitUndefined } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/budgets`;
@@ -33,10 +33,13 @@ export async function createBudget(
 }
 
 export async function updateBudget(workspaceId: string, budgetId: string, patch: Partial<Budget>) {
-  return updateDoc(doc(db, path(workspaceId), budgetId), {
-    ...patch,
-    updatedAt: now(),
-  });
+  return updateDoc(
+    doc(db, path(workspaceId), budgetId),
+    omitUndefined({
+      ...patch,
+      updatedAt: now(),
+    })
+  );
 }
 
 export async function deleteBudget(workspaceId: string, budgetId: string) {

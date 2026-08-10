@@ -4,7 +4,7 @@ import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "f
 import { deleteCloudinaryAsset } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase/client";
 import type { Expense, ExpenseStatus } from "@/lib/types";
-import { now } from "./firestore-helpers";
+import { now, omitUndefined } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/expenses`;
@@ -34,10 +34,15 @@ export async function createExpense(
 }
 
 export async function updateExpense(workspaceId: string, expenseId: string, patch: Partial<Expense>) {
-  return updateDoc(doc(db, path(workspaceId), expenseId), {
-    ...patch,
-    updatedAt: now(),
-  });
+  // omitUndefined so `field: undefined` (clearing an optional value) never
+  // hits updateDoc, which throws on any undefined field value.
+  return updateDoc(
+    doc(db, path(workspaceId), expenseId),
+    omitUndefined({
+      ...patch,
+      updatedAt: now(),
+    })
+  );
 }
 
 export async function setExpenseStatus(workspaceId: string, expenseId: string, status: ExpenseStatus) {

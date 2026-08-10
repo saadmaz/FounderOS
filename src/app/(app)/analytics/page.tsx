@@ -93,7 +93,11 @@ export default function AnalyticsPage() {
   const loading = companiesLoading || tasksLoading || revenueLoading || expensesLoading;
 
   const totalRevenue = useMemo(() => revenue.reduce((s, r) => s + r.amount, 0), [revenue]);
-  const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
+  // Rejected expenses were never actually paid, so they shouldn't count as spend.
+  const totalExpenses = useMemo(
+    () => expenses.filter((e) => e.status !== "rejected").reduce((s, e) => s + e.amount, 0),
+    [expenses]
+  );
   const net = totalRevenue - totalExpenses;
   const totalHours = useMemo(
     () => sumHours(timeEntries) + sumMeetingHours(meetings),
@@ -105,7 +109,10 @@ export default function AnalyticsPage() {
     const revByMonth = new Map<string, number>();
     for (const r of revenue) revByMonth.set(monthKey(r.date), (revByMonth.get(monthKey(r.date)) ?? 0) + r.amount);
     const expByMonth = new Map<string, number>();
-    for (const e of expenses) expByMonth.set(monthKey(e.date), (expByMonth.get(monthKey(e.date)) ?? 0) + e.amount);
+    for (const e of expenses) {
+      if (e.status === "rejected") continue;
+      expByMonth.set(monthKey(e.date), (expByMonth.get(monthKey(e.date)) ?? 0) + e.amount);
+    }
     return keys.map((k) => ({
       month: monthLabel(k),
       Revenue: Math.round(revByMonth.get(k) ?? 0),
