@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowLeft, AtSign, Briefcase, Camera, CheckSquare, Clock, FolderKanban, Globe, Link2, Loader2, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, CheckSquare, Clock, FolderKanban, Globe, Link2, Loader2, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InstagramLogo, LinkedinLogo, XLogo } from "@/components/shared/brand-icons";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CompanyFormDialog } from "@/components/companies/company-form-dialog";
@@ -29,9 +30,9 @@ import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const LINK_ICONS = {
   website: Globe,
-  linkedin: Briefcase,
-  twitter: AtSign,
-  instagram: Camera,
+  linkedin: LinkedinLogo,
+  twitter: XLogo,
+  instagram: InstagramLogo,
   other: Link2,
 } as const;
 

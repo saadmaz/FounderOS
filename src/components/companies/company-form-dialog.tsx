@@ -1,11 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AtSign, Briefcase, Camera, Globe, Link2 } from "lucide-react";
+import { Globe, Link2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { InstagramLogo, LinkedinLogo, XLogo } from "@/components/shared/brand-icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -425,21 +426,21 @@ export function CompanyFormDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="linkedin" className="flex items-center gap-1.5">
-                    <Briefcase className="size-3.5 text-muted-foreground" /> LinkedIn
+                    <LinkedinLogo className="size-3.5 text-muted-foreground" /> LinkedIn
                   </Label>
                   <Input id="linkedin" placeholder="https://linkedin.com/…" {...register("linkedin")} />
                   {errors.linkedin && <p className="text-xs text-danger">{errors.linkedin.message}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="twitter" className="flex items-center gap-1.5">
-                    <AtSign className="size-3.5 text-muted-foreground" /> X / Twitter
+                    <XLogo className="size-3.5 text-muted-foreground" /> X / Twitter
                   </Label>
                   <Input id="twitter" placeholder="https://x.com/…" {...register("twitter")} />
                   {errors.twitter && <p className="text-xs text-danger">{errors.twitter.message}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="instagram" className="flex items-center gap-1.5">
-                    <Camera className="size-3.5 text-muted-foreground" /> Instagram
+                    <InstagramLogo className="size-3.5 text-muted-foreground" /> Instagram
                   </Label>
                   <Input id="instagram" placeholder="https://instagram.com/…" {...register("instagram")} />
                   {errors.instagram && <p className="text-xs text-danger">{errors.instagram.message}</p>}
