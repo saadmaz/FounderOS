@@ -181,13 +181,15 @@ export default function CalendarPage() {
     }
     if (view === "week") {
       const [start, end] = [weekDaysOf(selectedDate)[0], weekDaysOf(selectedDate)[6]];
-      const sameMonth = start.getMonth() === end.getMonth();
+      const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
       const startFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(start);
-      const endFmt = new Intl.DateTimeFormat("en-US", {
-        month: sameMonth ? undefined : "short",
-        day: "numeric",
-        year: "numeric",
-      }).format(end);
+      // Intl.DateTimeFormat has no pattern for "day + year, no month" - asking
+      // for that combination (to elide a repeated month name within the same
+      // month) falls back to a literal, un-localized "(day: 16)"-style label
+      // instead of formatting the date. Build the same-month case by hand.
+      const endFmt = sameMonth
+        ? `${end.getDate()}, ${end.getFullYear()}`
+        : new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(end);
       return `${startFmt} – ${endFmt}`;
     }
     return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(selectedDate);
