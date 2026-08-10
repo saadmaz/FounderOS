@@ -28,7 +28,7 @@ export function MeetingNotesViewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Meeting notes</DialogTitle>
           {meeting && (
@@ -44,7 +44,7 @@ export function MeetingNotesViewDialog({
           </p>
         ) : (
           <div
-            className="rich-text max-h-[60vh] overflow-y-auto rounded-lg bg-secondary/40 p-3 text-sm leading-relaxed"
+            className="rich-text max-h-[60vh] overflow-auto rounded-lg bg-secondary/40 p-3 text-sm leading-relaxed"
             // Notes only ever reach storage through sanitizeRichText (see
             // rich-text-editor.tsx), and are sanitized again here so this
             // stays safe even if a value was ever written another way.

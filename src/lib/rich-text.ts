@@ -3,10 +3,43 @@
  * (see src/components/ui/rich-text-editor.tsx) and persisted as HTML. Every
  * value that comes back out of the editor and every value rendered back
  * into the page passes through `sanitizeRichText` first, so notes can never
- * carry scripts, event handlers, or arbitrary markup - only the handful of
- * formatting tags the toolbar can produce survive.
+ * carry scripts, event handlers, or arbitrary markup - only the formatting
+ * tags the toolbar can produce survive, and only the handful of attributes
+ * (just `<a href>`) that are actually needed.
  */
-const ALLOWED_TAGS = new Set(["B", "STRONG", "I", "EM", "U", "UL", "OL", "LI", "BR", "P", "DIV"]);
+const ALLOWED_TAGS: Record<string, readonly string[]> = {
+  B: [],
+  STRONG: [],
+  I: [],
+  EM: [],
+  U: [],
+  S: [],
+  STRIKE: [],
+  DEL: [],
+  P: [],
+  DIV: [],
+  BR: [],
+  UL: [],
+  OL: [],
+  LI: [],
+  H1: [],
+  H2: [],
+  H3: [],
+  BLOCKQUOTE: [],
+  HR: [],
+  TABLE: [],
+  THEAD: [],
+  TBODY: [],
+  TR: [],
+  TH: [],
+  TD: [],
+  A: ["href", "target", "rel"],
+};
+
+// Only these URL schemes survive on an <a href> - blocks javascript:/data:/
+// vbscript: etc. A bare "example.com" (no scheme at all) is left to the
+// editor's link tool to normalize to https:// before it ever reaches here.
+const SAFE_URL_SCHEME = /^(https?:|mailto:)/i;
 
 export function sanitizeRichText(html: string): string {
   if (!html || typeof window === "undefined") return "";
@@ -23,14 +56,29 @@ function sanitizeChildren(parent: Element) {
       continue;
     }
     const el = child as Element;
-    if (!ALLOWED_TAGS.has(el.tagName)) {
+    const allowedAttrs = ALLOWED_TAGS[el.tagName];
+    if (!allowedAttrs) {
       // Unwrap disallowed elements (e.g. a pasted <span style=...>) instead
       // of dropping their text content.
       while (el.firstChild) parent.insertBefore(el.firstChild, el);
       el.remove();
       continue;
     }
-    for (const attr of Array.from(el.attributes)) el.removeAttribute(attr.name);
+    if (el.tagName === "A") {
+      const href = el.getAttribute("href") ?? "";
+      for (const attr of Array.from(el.attributes)) el.removeAttribute(attr.name);
+      if (SAFE_URL_SCHEME.test(href)) {
+        el.setAttribute("href", href);
+        // target/rel are always these two fixed values, never taken from
+        // user input, so it's safe to set them unconditionally here.
+        el.setAttribute("target", "_blank");
+        el.setAttribute("rel", "noopener noreferrer");
+      }
+    } else {
+      for (const attr of Array.from(el.attributes)) {
+        if (!allowedAttrs.includes(attr.name)) el.removeAttribute(attr.name);
+      }
+    }
     sanitizeChildren(el);
   }
 }
