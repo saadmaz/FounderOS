@@ -451,7 +451,7 @@ export default function FinancePage() {
                           {EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category}
                         </TableCell>
                         <TableCell className="py-2 text-sm text-muted-foreground">
-                          {vendors.find((v) => v.id === e.vendorId)?.name ?? "—"}
+                          {e.vendor || "—"}
                         </TableCell>
                         <TableCell className="py-2">
                           <ExpenseStatusBadge status={e.status} />
@@ -1078,7 +1078,6 @@ export default function FinancePage() {
             workspaceId={workspace.id}
             memberId={user.uid}
             companies={companies}
-            vendors={vendors}
             expense={editingExpense}
           />
           <RevenueFormDialog

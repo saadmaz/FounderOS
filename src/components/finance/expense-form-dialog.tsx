@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -35,16 +35,13 @@ import {
   type Company,
   type Expense,
   type FinanceAttachment,
-  type Vendor,
 } from "@/lib/types";
-
-const NO_VENDOR = "none";
 
 const schema = z.object({
   companyId: z.string().min(1, "Pick a company"),
   title: z.string().min(1, "Give the expense a name").max(150),
   category: z.enum(["software", "payroll", "marketing", "office", "travel", "legal", "other"]),
-  vendorId: z.string(),
+  vendor: z.string().optional(),
   amount: z
     .string()
     .min(1, "Amount is required")
@@ -62,7 +59,7 @@ const emptyDefaults = (companies: Company[]): FormValues => ({
   companyId: companies[0]?.id ?? "",
   title: "",
   category: "software",
-  vendorId: NO_VENDOR,
+  vendor: "",
   amount: "",
   currency: companies[0]?.currency ?? "LKR",
   date: new Date().toISOString().slice(0, 10),
@@ -85,7 +82,6 @@ export function ExpenseFormDialog({
   workspaceId,
   memberId,
   companies,
-  vendors = [],
   expense,
 }: {
   open: boolean;
@@ -93,7 +89,6 @@ export function ExpenseFormDialog({
   workspaceId: string;
   memberId: string;
   companies: Company[];
-  vendors?: Vendor[];
   expense?: Expense | null;
 }) {
   const [submitting, setSubmitting] = useState(false);
@@ -121,7 +116,7 @@ export function ExpenseFormDialog({
         companyId: expense.companyId,
         title: expense.title,
         category: expense.category,
-        vendorId: expense.vendorId ?? NO_VENDOR,
+        vendor: expense.vendor ?? "",
         amount: String(expense.amount),
         currency: expense.currency,
         date: new Date(expense.date).toISOString().slice(0, 10),
@@ -134,23 +129,6 @@ export function ExpenseFormDialog({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, expense]);
-
-  const companyId = watch("companyId");
-  const companyVendors = useMemo(
-    () => vendors.filter((v) => v.companyId === companyId),
-    [vendors, companyId]
-  );
-  const vendorId = watch("vendorId");
-
-  // Switching the company can strand the picked vendor (it belongs to the
-  // old company) - drop back to "No vendor" rather than silently keep a
-  // vendor that no longer matches what's shown in the dropdown.
-  useEffect(() => {
-    if (vendorId !== NO_VENDOR && !companyVendors.some((v) => v.id === vendorId)) {
-      setValue("vendorId", NO_VENDOR);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId, companyVendors]);
 
   async function resolveReceipt(): Promise<FinanceAttachment | null | undefined> {
     if (receiptFile) {
@@ -182,13 +160,12 @@ export function ExpenseFormDialog({
     try {
       const date = new Date(`${values.date}T00:00:00`).getTime();
       const receipt = await resolveReceipt();
-      const vendorId = values.vendorId === NO_VENDOR ? undefined : values.vendorId;
       if (isEditing && expense) {
         await updateExpense(workspaceId, expense.id, omitUndefined({
           companyId: values.companyId,
           title: values.title,
           category: values.category,
-          vendorId,
+          vendor: values.vendor || undefined,
           amount: Number(values.amount),
           currency: values.currency,
           date,
@@ -203,7 +180,7 @@ export function ExpenseFormDialog({
           companyId: values.companyId,
           title: values.title,
           category: values.category,
-          vendorId,
+          vendor: values.vendor || undefined,
           amount: Number(values.amount),
           currency: values.currency,
           date,
@@ -294,24 +271,8 @@ export function ExpenseFormDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Vendor (optional)</Label>
-              <Select value={watch("vendorId")} onValueChange={(v) => setValue("vendorId", v ?? NO_VENDOR)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="No vendor">
-                    {(v: string) =>
-                      v === NO_VENDOR ? "No vendor" : companyVendors.find((ven) => ven.id === v)?.name ?? "No vendor"
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_VENDOR}>No vendor</SelectItem>
-                  {companyVendors.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="vendor">Vendor (optional)</Label>
+              <Input id="vendor" placeholder="Who was this paid to?" {...register("vendor")} />
             </div>
           </div>
 

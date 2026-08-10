@@ -224,7 +224,12 @@ export interface Expense {
    * list of expenses is read by. Required: unlike `description` (extra
    * detail), an expense with no name at all isn't useful in a list. */
   title: string;
-  vendorId?: string;
+  /** Free-text vendor/payee name - typed directly on the expense rather
+   * than linked to a Vendor record, so logging an expense never depends on
+   * a vendor having been created first. Separate from the Vendor entity
+   * (src/lib/data/vendors.ts), which still exists for tracking contact
+   * info on who you regularly pay. */
+  vendor?: string;
   category: ExpenseCategory;
   amount: number;
   currency: string;
