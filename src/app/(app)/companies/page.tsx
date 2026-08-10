@@ -173,12 +173,15 @@ export default function CompaniesPage() {
                   className="flex items-center justify-between rounded-xl border border-border bg-card/50 p-4 opacity-70"
                 >
                   <div className="flex items-center gap-3">
-                    <span
-                      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white"
-                      style={{ backgroundColor: c.color }}
-                    >
-                      {c.name[0]}
-                    </span>
+                    <Avatar size="lg" className="size-8 shrink-0 rounded-lg">
+                      <AvatarImage src={c.logoUrl} className="rounded-lg" />
+                      <AvatarFallback
+                        className="rounded-lg text-xs font-semibold text-white"
+                        style={{ backgroundColor: c.color }}
+                      >
+                        {c.name[0]}
+                      </AvatarFallback>
+                    </Avatar>
                     <p className="truncate text-sm font-medium">{c.name}</p>
                   </div>
                   <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => handleRestore(c.id, c.name)}>
