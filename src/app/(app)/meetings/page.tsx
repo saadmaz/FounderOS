@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { MeetingCard, isUpcoming } from "@/components/meetings/meeting-card";
 import { MeetingFormDialog } from "@/components/meetings/meeting-form-dialog";
 import { MeetingNotesDialog } from "@/components/meetings/meeting-notes-dialog";
+import { MeetingNotesViewDialog } from "@/components/meetings/meeting-notes-view-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { useCompanies } from "@/lib/data/companies";
@@ -23,6 +24,7 @@ export default function MeetingsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Meeting | null>(null);
   const [notesFor, setNotesFor] = useState<Meeting | null>(null);
+  const [viewingNotesFor, setViewingNotesFor] = useState<Meeting | null>(null);
 
   const upcoming = useMemo(
     () => meetings.filter(isUpcoming).sort((a, b) => a.scheduledAt - b.scheduledAt),
@@ -114,6 +116,7 @@ export default function MeetingsPage() {
                       onDelete={handleDelete}
                       onDeleteSeries={handleDeleteSeries}
                       onOpenNotes={setNotesFor}
+                      onViewNotes={setViewingNotesFor}
                     />
                   ))}
                 </div>
@@ -138,6 +141,7 @@ export default function MeetingsPage() {
                       onDelete={handleDelete}
                       onDeleteSeries={handleDeleteSeries}
                       onOpenNotes={setNotesFor}
+                      onViewNotes={setViewingNotesFor}
                     />
                   ))}
                 </div>
@@ -154,12 +158,23 @@ export default function MeetingsPage() {
         meeting={editing}
       />
       {workspace && (
-        <MeetingNotesDialog
-          open={Boolean(notesFor)}
-          onOpenChange={(v) => !v && setNotesFor(null)}
-          meeting={notesFor}
-          workspaceId={workspace.id}
-        />
+        <>
+          <MeetingNotesDialog
+            open={Boolean(notesFor)}
+            onOpenChange={(v) => !v && setNotesFor(null)}
+            meeting={notesFor}
+            workspaceId={workspace.id}
+          />
+          <MeetingNotesViewDialog
+            open={Boolean(viewingNotesFor)}
+            onOpenChange={(v) => !v && setViewingNotesFor(null)}
+            meeting={viewingNotesFor}
+            onEdit={(m) => {
+              setViewingNotesFor(null);
+              setNotesFor(m);
+            }}
+          />
+        </>
       )}
     </>
   );

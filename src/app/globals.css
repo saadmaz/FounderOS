@@ -176,4 +176,30 @@
     background-color: var(--border);
     border-radius: 9999px;
   }
+
+  /* Shared between the meeting-notes editor (rich-text-editor.tsx) and its
+     read-only render (meeting-notes-view-dialog.tsx) so authored formatting
+     looks the same in both places. */
+  .rich-text ul {
+    list-style: disc;
+    margin: 0.25rem 0;
+    padding-left: 1.25rem;
+  }
+  .rich-text ol {
+    list-style: decimal;
+    margin: 0.25rem 0;
+    padding-left: 1.25rem;
+  }
+  .rich-text li {
+    margin: 0.125rem 0;
+  }
+  .rich-text p {
+    margin: 0.25rem 0;
+  }
+  .rich-text p:first-child {
+    margin-top: 0;
+  }
+  .rich-text p:last-child {
+    margin-bottom: 0;
+  }
 }

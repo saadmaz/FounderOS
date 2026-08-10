@@ -21,8 +21,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { addDays, startOfDay } from "@/lib/calendar-items";
 import { formatDateTime, initials } from "@/lib/format";
 import { recurrenceSummary } from "@/lib/recurrence";
+import { richTextToPlainText } from "@/lib/rich-text";
 import type { Company, Meeting, MeetingStatus, WorkspaceMember } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +67,22 @@ export function isUpcoming(meeting: Meeting) {
   return meeting.status === "scheduled" && meeting.scheduledAt >= Date.now();
 }
 
+export type MeetingDateFilter = "today" | "upcoming" | "past";
+
+/**
+ * Buckets a meeting by calendar day relative to now, for the Today /
+ * Upcoming / Past filter on the company meetings tab - a plain date
+ * partition (unlike `isUpcoming`, which also filters by status) so every
+ * meeting lands in exactly one bucket regardless of scheduled/completed/
+ * cancelled state.
+ */
+export function meetingDateBucket(meeting: Meeting, now = Date.now()): MeetingDateFilter {
+  const todayStart = startOfDay(now);
+  const todayEnd = addDays(todayStart, 1);
+  if (meeting.scheduledAt < todayStart) return "past";
+  return meeting.scheduledAt < todayEnd ? "today" : "upcoming";
+}
+
 export function MeetingCard({
   meeting,
   index,
@@ -76,6 +94,7 @@ export function MeetingCard({
   onDelete,
   onDeleteSeries,
   onOpenNotes,
+  onViewNotes,
 }: {
   meeting: Meeting;
   index: number;
@@ -87,6 +106,9 @@ export function MeetingCard({
   onDelete: (meeting: Meeting) => void;
   onDeleteSeries?: (meeting: Meeting) => void;
   onOpenNotes: (meeting: Meeting) => void;
+  /** Clicking the notes preview should open a read-only view, not drop
+   * straight into editing - falls back to onOpenNotes if not provided. */
+  onViewNotes?: (meeting: Meeting) => void;
 }) {
   function memberFor(memberId: string) {
     return members.find((m) => m.id === memberId);
@@ -97,7 +119,7 @@ export function MeetingCard({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, delay: index * 0.03 }}
-      className="group relative rounded-xl border border-border bg-card p-4"
+      className="group relative flex h-full flex-col rounded-xl border border-border bg-card p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -177,15 +199,17 @@ export function MeetingCard({
       {meeting.notes && (
         <button
           type="button"
-          onClick={() => onOpenNotes(meeting)}
+          onClick={() => (onViewNotes ?? onOpenNotes)(meeting)}
           className="mt-2 flex w-full items-start gap-1.5 rounded-lg bg-secondary/60 p-2 text-left transition-colors hover:bg-secondary"
         >
           <NotebookPen className="mt-0.5 size-3 shrink-0 text-muted-foreground-2" />
-          <span className="line-clamp-2 text-xs text-muted-foreground">{meeting.notes}</span>
+          <span className="line-clamp-2 text-xs text-muted-foreground">
+            {richTextToPlainText(meeting.notes)}
+          </span>
         </button>
       )}
 
-      <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+      <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
         <div className="flex items-center gap-1.5">
           {meeting.attendeeIds.length === 0 ? (
             <span className="flex items-center gap-1 text-xs text-muted-foreground-2">

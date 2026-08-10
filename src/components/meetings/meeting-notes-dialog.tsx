@@ -10,9 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { updateMeeting } from "@/lib/data/meetings";
 import { formatDateTime } from "@/lib/format";
+import { isRichTextEmpty } from "@/lib/rich-text";
 import type { Meeting } from "@/lib/types";
 
 /**
@@ -49,7 +50,10 @@ export function MeetingNotesDialog({
     if (!meeting) return;
     setSaving(true);
     try {
-      await updateMeeting(workspaceId, meeting.id, { notes: notes.trim() || undefined });
+      // An empty string (not `undefined`) so a cleared draft actually
+      // overwrites the stored notes instead of updateDoc silently skipping
+      // the field - see omitUndefined in lib/data/firestore-helpers.ts.
+      await updateMeeting(workspaceId, meeting.id, { notes: isRichTextEmpty(notes) ? "" : notes });
       toast.success("Notes saved");
       onOpenChange(false);
     } catch {
@@ -71,12 +75,12 @@ export function MeetingNotesDialog({
           )}
         </DialogHeader>
 
-        <Textarea
+        <RichTextEditor
           autoFocus
-          rows={10}
-          placeholder="What happened? Decisions, action items, follow-ups…"
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={setNotes}
+          placeholder="What happened? Decisions, action items, follow-ups…"
+          contentClassName="min-h-56"
         />
 
         <DialogFooter>

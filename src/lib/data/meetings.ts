@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import type { Meeting, MeetingStatus, RecurrenceFrequency } from "@/lib/types";
-import { now } from "./firestore-helpers";
+import { now, omitUndefined } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/meetings`;
@@ -88,10 +88,16 @@ export async function updateMeeting(
   meetingId: string,
   patch: Partial<Meeting>
 ) {
-  return updateDoc(doc(db, path(workspaceId), meetingId), {
-    ...patch,
-    updatedAt: now(),
-  });
+  // Optional fields are cleared with `field: undefined` (e.g. notes/agenda/
+  // location), but Firestore's updateDoc throws on any `undefined` value -
+  // omitUndefined strips those before the write instead of dropping the field.
+  return updateDoc(
+    doc(db, path(workspaceId), meetingId),
+    omitUndefined({
+      ...patch,
+      updatedAt: now(),
+    })
+  );
 }
 
 export async function setMeetingStatus(

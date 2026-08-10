@@ -4,14 +4,22 @@ import { Calendar, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { isUpcoming, MeetingCard } from "@/components/meetings/meeting-card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { meetingDateBucket, MeetingCard, type MeetingDateFilter } from "@/components/meetings/meeting-card";
 import { MeetingFormDialog } from "@/components/meetings/meeting-form-dialog";
 import { MeetingNotesDialog } from "@/components/meetings/meeting-notes-dialog";
+import { MeetingNotesViewDialog } from "@/components/meetings/meeting-notes-view-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { deleteMeeting, deleteMeetingSeries, setMeetingStatus, useMeetings } from "@/lib/data/meetings";
 import { useMembers } from "@/lib/data/members";
 import type { Company, Meeting, MeetingStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
+
+const EMPTY_MESSAGES: Record<MeetingDateFilter, string> = {
+  today: "No meetings today.",
+  upcoming: "No upcoming meetings scheduled.",
+  past: "No past meetings yet.",
+};
 
 /**
  * Meetings tab for a single company's detail page. Mirrors the
@@ -25,15 +33,22 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Meeting | null>(null);
   const [notesFor, setNotesFor] = useState<Meeting | null>(null);
+  const [viewingNotesFor, setViewingNotesFor] = useState<Meeting | null>(null);
+  // Defaults to "today" - jumping into a company's meetings tab and having
+  // to scroll past every past meeting to find what's happening today (or
+  // scan the entire upcoming list) is the exact friction this filter removes.
+  const [dateFilter, setDateFilter] = useState<MeetingDateFilter>("today");
 
-  const upcoming = useMemo(
-    () => meetings.filter(isUpcoming).sort((a, b) => a.scheduledAt - b.scheduledAt),
-    [meetings]
-  );
-  const past = useMemo(
-    () => meetings.filter((m) => !isUpcoming(m)).sort((a, b) => b.scheduledAt - a.scheduledAt),
-    [meetings]
-  );
+  const buckets = useMemo(() => {
+    const grouped: Record<MeetingDateFilter, Meeting[]> = { today: [], upcoming: [], past: [] };
+    for (const m of meetings) grouped[meetingDateBucket(m)].push(m);
+    grouped.today.sort((a, b) => a.scheduledAt - b.scheduledAt);
+    grouped.upcoming.sort((a, b) => a.scheduledAt - b.scheduledAt);
+    grouped.past.sort((a, b) => b.scheduledAt - a.scheduledAt);
+    return grouped;
+  }, [meetings]);
+
+  const activeMeetings = buckets[dateFilter];
 
   async function handleStatus(meeting: Meeting, status: MeetingStatus) {
     if (!workspace) return;
@@ -62,10 +77,20 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex items-center justify-between px-4 pt-4 lg:px-6">
-        <p className="text-sm text-muted-foreground">
-          {upcoming.length} upcoming meeting{upcoming.length === 1 ? "" : "s"}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 lg:px-6">
+        <Tabs value={dateFilter} onValueChange={(v) => setDateFilter((v as MeetingDateFilter) ?? "today")}>
+          <TabsList>
+            <TabsTrigger value="today">
+              Today{buckets.today.length > 0 ? ` (${buckets.today.length})` : ""}
+            </TabsTrigger>
+            <TabsTrigger value="upcoming">
+              Upcoming{buckets.upcoming.length > 0 ? ` (${buckets.upcoming.length})` : ""}
+            </TabsTrigger>
+            <TabsTrigger value="past">
+              Past{buckets.past.length > 0 ? ` (${buckets.past.length})` : ""}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
         <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
           <Plus className="size-4" />
           New meeting
@@ -91,58 +116,26 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
               </Button>
             }
           />
+        ) : activeMeetings.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{EMPTY_MESSAGES[dateFilter]}</p>
         ) : (
-          <>
-            <div>
-              <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground-2">
-                Upcoming
-              </h2>
-              {upcoming.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No upcoming meetings scheduled.</p>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {upcoming.map((m, i) => (
-                    <MeetingCard
-                      key={m.id}
-                      meeting={m}
-                      index={i}
-                      showCompany={false}
-                      members={members}
-                      onEdit={setEditing}
-                      onStatusChange={handleStatus}
-                      onDelete={handleDelete}
-                      onDeleteSeries={handleDeleteSeries}
-                      onOpenNotes={setNotesFor}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {past.length > 0 && (
-              <div className="mt-8">
-                <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground-2">
-                  Past
-                </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {past.map((m, i) => (
-                    <MeetingCard
-                      key={m.id}
-                      meeting={m}
-                      index={i}
-                      showCompany={false}
-                      members={members}
-                      onEdit={setEditing}
-                      onStatusChange={handleStatus}
-                      onDelete={handleDelete}
-                      onDeleteSeries={handleDeleteSeries}
-                      onOpenNotes={setNotesFor}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {activeMeetings.map((m, i) => (
+              <MeetingCard
+                key={m.id}
+                meeting={m}
+                index={i}
+                showCompany={false}
+                members={members}
+                onEdit={setEditing}
+                onStatusChange={handleStatus}
+                onDelete={handleDelete}
+                onDeleteSeries={handleDeleteSeries}
+                onOpenNotes={setNotesFor}
+                onViewNotes={setViewingNotesFor}
+              />
+            ))}
+          </div>
         )}
       </div>
 
@@ -154,12 +147,23 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
         defaultCompanyId={company.id}
       />
       {workspace && (
-        <MeetingNotesDialog
-          open={Boolean(notesFor)}
-          onOpenChange={(v) => !v && setNotesFor(null)}
-          meeting={notesFor}
-          workspaceId={workspace.id}
-        />
+        <>
+          <MeetingNotesDialog
+            open={Boolean(notesFor)}
+            onOpenChange={(v) => !v && setNotesFor(null)}
+            meeting={notesFor}
+            workspaceId={workspace.id}
+          />
+          <MeetingNotesViewDialog
+            open={Boolean(viewingNotesFor)}
+            onOpenChange={(v) => !v && setViewingNotesFor(null)}
+            meeting={viewingNotesFor}
+            onEdit={(m) => {
+              setViewingNotesFor(null);
+              setNotesFor(m);
+            }}
+          />
+        </>
       )}
     </div>
   );
