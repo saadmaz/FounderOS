@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CheckSquare, Clock, FolderKanban, Globe, Link2, Loader2, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, CheckSquare, Clock, FolderKanban, Globe, Link2, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -15,6 +15,7 @@ import {
   XLogo,
   YoutubeLogo,
 } from "@/components/shared/brand-icons";
+import { DetailPageSkeleton } from "@/components/shared/detail-page-skeleton";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CompanyFormDialog } from "@/components/companies/company-form-dialog";
@@ -33,6 +34,7 @@ import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
 import { formatHours, sumHours, sumMeetingHours } from "@/lib/format";
 import { companyTypeLabel } from "@/lib/labels";
+import { scrollMainToTop } from "@/lib/scroll";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const LINK_ICONS = {
@@ -86,11 +88,7 @@ export default function CompanyDetailPage() {
   ).length;
 
   if (companiesLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <DetailPageSkeleton avatar tabs={7} />;
   }
   if (!company) return notFound();
 
@@ -165,7 +163,7 @@ export default function CompanyDetailPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="flex flex-1 flex-col gap-0">
+      <Tabs defaultValue="overview" className="flex flex-1 flex-col gap-0" onValueChange={scrollMainToTop}>
         <div className="overflow-x-auto border-b border-border px-4 scrollbar-thin lg:px-6">
           <TabsList className="h-11 w-max bg-transparent p-0">
             {["overview", "projects", "tasks", "meetings", "finance", "crm", "documents"].map((v) => (

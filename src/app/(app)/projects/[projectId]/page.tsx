@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CheckSquare, Clock, Loader2, Plus, Target } from "lucide-react";
+import { ArrowLeft, CheckSquare, Clock, Plus, Target } from "lucide-react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DetailPageSkeleton } from "@/components/shared/detail-page-skeleton";
 import { StatCard } from "@/components/shared/stat-card";
 import { PriorityBadge } from "@/components/shared/status-badge";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
@@ -53,11 +54,7 @@ export default function ProjectDetailPage() {
   const completed = tasks.filter((t) => t.status === "completed").length;
 
   if (companiesLoading || projectsLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <DetailPageSkeleton />;
   }
   if (!project) return notFound();
 

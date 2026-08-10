@@ -16,6 +16,7 @@ import { TaskBoard } from "@/components/tasks/task-board";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { TaskTable } from "@/components/tasks/task-table";
 import { useCompanies } from "@/lib/data/companies";
+import { scrollMainToTop } from "@/lib/scroll";
 import { useTasks } from "@/lib/data/tasks";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { cn } from "@/lib/utils";
@@ -68,7 +69,10 @@ export default function TasksPage() {
 
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-surface p-0.5">
           <button
-            onClick={() => setView("board")}
+            onClick={() => {
+              setView("board");
+              scrollMainToTop();
+            }}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
               view === "board" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
@@ -78,7 +82,10 @@ export default function TasksPage() {
             Board
           </button>
           <button
-            onClick={() => setView("table")}
+            onClick={() => {
+              setView("table");
+              scrollMainToTop();
+            }}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
               view === "table" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"

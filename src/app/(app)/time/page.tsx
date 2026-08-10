@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/empty-state";
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { ManualEntryDialog } from "@/components/time/manual-entry-dialog";
@@ -81,7 +82,7 @@ export default function TimeTrackingPage() {
         </div>
 
         {loading ? (
-          <div className="h-64 animate-pulse rounded-xl bg-muted" />
+          <TableSkeleton />
         ) : completedEntries.length === 0 ? (
           <EmptyState
             icon={Clock}

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/shared/empty-state";
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { ContactFormDialog } from "@/components/crm/contact-form-dialog";
 import { DealBoard } from "@/components/crm/deal-board";
@@ -34,6 +35,7 @@ import { useCompanies } from "@/lib/data/companies";
 import { deleteContact, useContacts } from "@/lib/data/contacts";
 import { useDeals } from "@/lib/data/deals";
 import { formatDate } from "@/lib/format";
+import { scrollMainToTop } from "@/lib/scroll";
 import type { Contact, Deal } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { toast } from "sonner";
@@ -115,7 +117,10 @@ export default function CrmPage() {
 
       <Tabs
         value={tab}
-        onValueChange={(v) => setTab((v as "contacts" | "pipeline") ?? "contacts")}
+        onValueChange={(v) => {
+          setTab((v as "contacts" | "pipeline") ?? "contacts");
+          scrollMainToTop();
+        }}
         className="flex flex-1 flex-col"
       >
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5 lg:px-6">
@@ -144,7 +149,7 @@ export default function CrmPage() {
         <TabsContent value="contacts" className="flex flex-1 flex-col">
           {contactsLoading ? (
             <div className="flex-1 p-4 lg:p-6">
-              <div className="h-64 animate-pulse rounded-xl bg-muted" />
+              <TableSkeleton />
             </div>
           ) : contacts.length === 0 ? (
             <div className="flex flex-1 p-6">
@@ -242,7 +247,7 @@ export default function CrmPage() {
         <TabsContent value="pipeline" className="flex flex-1 flex-col">
           {dealsLoading ? (
             <div className="flex-1 p-4 lg:p-6">
-              <div className="h-64 animate-pulse rounded-xl bg-muted" />
+              <TableSkeleton />
             </div>
           ) : deals.length === 0 ? (
             <div className="flex flex-1 p-6">

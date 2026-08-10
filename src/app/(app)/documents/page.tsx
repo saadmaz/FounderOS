@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/empty-state";
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { UploadDialog } from "@/components/documents/upload-dialog";
 import { useCompanies } from "@/lib/data/companies";
@@ -142,7 +143,7 @@ export default function DocumentsPage() {
 
       <div className="flex-1 p-4 lg:p-6">
         {loading ? (
-          <div className="h-64 animate-pulse rounded-xl bg-muted" />
+          <TableSkeleton />
         ) : documents.length === 0 ? (
           <EmptyState
             icon={FileText}

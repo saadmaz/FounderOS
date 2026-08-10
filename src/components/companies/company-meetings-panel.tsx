@@ -12,6 +12,7 @@ import { MeetingNotesViewDialog } from "@/components/meetings/meeting-notes-view
 import { EmptyState } from "@/components/shared/empty-state";
 import { deleteMeeting, deleteMeetingSeries, setMeetingStatus, useMeetings } from "@/lib/data/meetings";
 import { useMembers } from "@/lib/data/members";
+import { scrollMainToTop } from "@/lib/scroll";
 import type { Company, Meeting, MeetingStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -78,7 +79,13 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 lg:px-6">
-        <Tabs value={dateFilter} onValueChange={(v) => setDateFilter((v as MeetingDateFilter) ?? "today")}>
+        <Tabs
+          value={dateFilter}
+          onValueChange={(v) => {
+            setDateFilter((v as MeetingDateFilter) ?? "today");
+            scrollMainToTop();
+          }}
+        >
           <TabsList>
             <TabsTrigger value="today">
               Today{buckets.today.length > 0 ? ` (${buckets.today.length})` : ""}

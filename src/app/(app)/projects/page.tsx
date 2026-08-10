@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/empty-state";
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { ProjectList } from "@/components/projects/project-list";
@@ -63,7 +64,7 @@ export default function ProjectsPage() {
 
       <div className="flex-1 p-4 lg:p-6">
         {loading ? (
-          <div className="h-64 animate-pulse rounded-xl bg-muted" />
+          <TableSkeleton />
         ) : projects.length === 0 ? (
           <EmptyState
             icon={FolderKanban}

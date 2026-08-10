@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/shared/empty-state";
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { BudgetFormDialog } from "@/components/finance/budget-form-dialog";
@@ -50,6 +51,7 @@ import { deleteExpense, useExpenses } from "@/lib/data/expenses";
 import { deleteInvestment, useInvestments } from "@/lib/data/investments";
 import { deleteVendor, useVendors } from "@/lib/data/vendors";
 import { commonCurrency, formatCurrency, formatDate } from "@/lib/format";
+import { scrollMainToTop } from "@/lib/scroll";
 import type {
   Budget,
   Expense,
@@ -235,7 +237,7 @@ export default function FinancePage() {
       />
 
       <div className="flex-1 space-y-6 p-4 lg:p-6">
-        <Tabs defaultValue="overview">
+        <Tabs defaultValue="overview" onValueChange={scrollMainToTop}>
           <div className="-mx-4 overflow-x-auto px-4 scrollbar-thin lg:mx-0 lg:px-0">
             <TabsList className="w-max sm:w-fit">
               <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -306,7 +308,7 @@ export default function FinancePage() {
             </div>
 
             {expensesLoading ? (
-              <div className="h-64 animate-pulse rounded-xl bg-muted" />
+              <TableSkeleton />
             ) : filteredExpenses.length === 0 ? (
               <EmptyState
                 icon={Wallet}
@@ -552,7 +554,7 @@ export default function FinancePage() {
             </div>
 
             {investmentsLoading ? (
-              <div className="h-64 animate-pulse rounded-xl bg-muted" />
+              <TableSkeleton />
             ) : filteredInvestments.length === 0 ? (
               <EmptyState
                 icon={Landmark}
@@ -681,7 +683,7 @@ export default function FinancePage() {
             </div>
 
             {vendorsLoading ? (
-              <div className="h-64 animate-pulse rounded-xl bg-muted" />
+              <TableSkeleton />
             ) : filteredVendors.length === 0 ? (
               <EmptyState
                 icon={Users}

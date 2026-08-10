@@ -20,7 +20,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!authLoading && !user) router.replace("/login");
   }, [authLoading, user, router]);
 
-  if (authLoading || !user || workspaceLoading) {
+  // Bail out before the chrome below: signed-out visitors get redirected by
+  // the effect above and should see nothing of the app in the meantime, and
+  // there's no `user` yet for Topbar to render an avatar for.
+  if (authLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -34,7 +37,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <MobileNav open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenMobileNav={() => setMobileNavOpen(true)} />
-        <main className="flex flex-1 flex-col overflow-y-auto scrollbar-thin">{children}</main>
+        <main className="flex flex-1 flex-col overflow-y-auto scrollbar-thin">
+          {/* Sidebar/topbar mount immediately above - only the page content
+           * waits on the workspace, so opening the app doesn't look like
+           * the whole screen popping in from a blank spinner. */}
+          {workspaceLoading ? (
+            <div className="flex flex-1 items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            children
+          )}
+        </main>
       </div>
       <CommandPalette />
     </div>
