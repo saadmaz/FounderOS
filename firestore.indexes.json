@@ -33,22 +33,6 @@
       ]
     },
     {
-      "collectionGroup": "revenue",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "companyId", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "invoices",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "companyId", "order": "ASCENDING" },
-        { "fieldPath": "issuedDate", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "budgets",
       "queryScope": "COLLECTION",
       "fields": [

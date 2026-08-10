@@ -47,7 +47,7 @@ const GUIDE_SECTIONS: { icon: LucideIcon; title: string; description: string }[]
     icon: Wallet,
     title: "Finance",
     description:
-      "Expenses, revenue, invoices, budgets, and vendors — workspace-wide on the Finance page, or scoped to one company from its detail page.",
+      "What you've put into each company - expenses (and whether you're reimbursed), investments, budgets, and vendors. Workspace-wide on the Finance page, or scoped to one company from its detail page.",
   },
   {
     icon: Users,

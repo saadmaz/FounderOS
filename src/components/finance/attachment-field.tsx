@@ -7,11 +7,9 @@ import { Label } from "@/components/ui/label";
 import type { FinanceAttachment } from "@/lib/types";
 
 /**
- * Multi-file picker for the receipts/bills attached to an Expense or
- * Invoice. Shared between both form dialogs rather than duplicated - the
- * two lists (already-saved attachments, new files staged for upload) are
- * the same shape in both places, and either one can hold any number of
- * files, not just one.
+ * Multi-file picker for the receipts attached to an Expense - handles two
+ * lists (already-saved attachments, new files staged for upload), either
+ * of which can hold any number of files, not just one.
  */
 export function AttachmentField({
   label,

@@ -23,7 +23,7 @@ export async function createExpense(
   workspaceId: string,
   input: Pick<
     Expense,
-    "companyId" | "title" | "category" | "amount" | "currency" | "date" | "status" | "billable" | "createdBy"
+    "companyId" | "title" | "category" | "amount" | "currency" | "date" | "status" | "createdBy"
   > &
     Partial<Expense>
 ) {

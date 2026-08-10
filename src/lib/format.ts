@@ -26,8 +26,8 @@ export function sumMeetingHours(meetings: Meeting[]): number {
 }
 
 // This workspace tracks finances in Sri Lankan Rupees by default - every
-// currency field defaults to LKR (see company/expense/revenue/invoice/
-// budget/investment forms), so that's the fallback here too.
+// currency field defaults to LKR (see company/expense/budget/investment
+// forms), so that's the fallback here too.
 export function formatCurrency(amount: number, currency = "LKR") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",

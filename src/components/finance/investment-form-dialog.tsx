@@ -66,10 +66,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 /**
- * Tracks capital put *into* a company/asset - a distinct concept from
- * RevenueEntry's "investment" category (money received, e.g. a dividend or
- * a round closing). Mirrors BudgetFormDialog/RevenueFormDialog's shape:
- * one company-scoped record, an amount, a date, an optional note.
+ * Tracks capital *you* put into a company/asset. Mirrors BudgetFormDialog's
+ * shape: one company-scoped record, an amount, a date, an optional note.
  */
 export function InvestmentFormDialog({
   open,

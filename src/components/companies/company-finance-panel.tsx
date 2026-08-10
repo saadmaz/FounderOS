@@ -1,15 +1,13 @@
 "use client";
 
 import {
-  DollarSign,
-  FileText,
+  CircleCheck,
+  Clock,
   Landmark,
   MoreHorizontal,
   Paperclip,
   PiggyBank,
   Plus,
-  TrendingDown,
-  TrendingUp,
   Users,
   Wallet,
 } from "lucide-react";
@@ -37,15 +35,11 @@ import { StatCard } from "@/components/shared/stat-card";
 import { BudgetFormDialog } from "@/components/finance/budget-form-dialog";
 import { ExpenseFormDialog } from "@/components/finance/expense-form-dialog";
 import { InvestmentFormDialog } from "@/components/finance/investment-form-dialog";
-import { InvoiceFormDialog } from "@/components/finance/invoice-form-dialog";
-import { RevenueFormDialog } from "@/components/finance/revenue-form-dialog";
 import { VendorFormDialog } from "@/components/finance/vendor-form-dialog";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { budgetPeriodRange, deleteBudget, useBudgets } from "@/lib/data/budgets";
 import { deleteExpense, useExpenses } from "@/lib/data/expenses";
 import { deleteInvestment, useInvestments } from "@/lib/data/investments";
-import { deleteInvoice, markInvoicePaid, useInvoices } from "@/lib/data/invoices";
-import { deleteRevenueEntry, useRevenue } from "@/lib/data/revenue";
 import { deleteVendor, useVendors } from "@/lib/data/vendors";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type {
@@ -53,11 +47,8 @@ import type {
   Company,
   Expense,
   ExpenseStatus,
-  Invoice,
-  InvoiceStatus,
   Investment,
   InvestmentStatus,
-  RevenueEntry,
   Vendor,
 } from "@/lib/types";
 import {
@@ -66,7 +57,6 @@ import {
   EXPENSE_STATUSES,
   INVESTMENT_STATUSES,
   INVESTMENT_TYPES,
-  INVOICE_STATUSES,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -74,7 +64,6 @@ import { useWorkspace } from "@/lib/workspace/workspace-provider";
 const EXPENSE_STATUS_STYLES: Record<ExpenseStatus, string> = {
   pending: "bg-warning/10 text-warning",
   approved: "bg-primary/10 text-primary",
-  paid: "bg-analytics-cyan/10 text-analytics-cyan",
   reimbursed: "bg-success/10 text-success",
   rejected: "bg-danger/10 text-danger",
 };
@@ -88,27 +77,6 @@ function ExpenseStatusBadge({ status }: { status: ExpenseStatus }) {
       )}
     >
       {EXPENSE_STATUSES.find((s) => s.value === status)?.label ?? status}
-    </span>
-  );
-}
-
-const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
-  draft: "bg-muted text-muted-foreground",
-  sent: "bg-primary/10 text-primary",
-  paid: "bg-success/10 text-success",
-  overdue: "bg-danger/10 text-danger",
-  cancelled: "bg-muted text-muted-foreground-2 line-through",
-};
-
-function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex w-fit items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
-        INVOICE_STATUS_STYLES[status]
-      )}
-    >
-      {INVOICE_STATUSES.find((s) => s.value === status)?.label ?? status}
     </span>
   );
 }
@@ -146,8 +114,6 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
   const companies = useMemo(() => [company], [company]);
 
   const { data: expenses, loading: expensesLoading } = useExpenses(workspaceId, company.id);
-  const { data: revenue, loading: revenueLoading } = useRevenue(workspaceId, company.id);
-  const { data: invoices, loading: invoicesLoading } = useInvoices(workspaceId, company.id);
   const { data: budgets, loading: budgetsLoading } = useBudgets(workspaceId, company.id);
   const { data: allVendors, loading: vendorsLoading } = useVendors(workspaceId);
   const vendors = useMemo(() => allVendors.filter((v) => v.companyId === company.id), [allVendors, company.id]);
@@ -155,10 +121,6 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
 
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [revenueDialogOpen, setRevenueDialogOpen] = useState(false);
-  const [editingRevenue, setEditingRevenue] = useState<RevenueEntry | null>(null);
-  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
-  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [vendorDialogOpen, setVendorDialogOpen] = useState(false);
@@ -166,19 +128,21 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
   const [investmentDialogOpen, setInvestmentDialogOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
 
-  const totalRevenue = useMemo(() => revenue.reduce((sum, r) => sum + r.amount, 0), [revenue]);
   // Rejected expenses were never actually paid, so they shouldn't count as spend.
-  const totalExpenses = useMemo(
+  const totalPutIn = useMemo(
     () => expenses.filter((e) => e.status !== "rejected").reduce((sum, e) => sum + e.amount, 0),
     [expenses]
   );
-  const net = totalRevenue - totalExpenses;
-  const outstandingInvoices = useMemo(
+  const totalReimbursed = useMemo(
+    () => expenses.filter((e) => e.status === "reimbursed").reduce((sum, e) => sum + e.amount, 0),
+    [expenses]
+  );
+  const pendingReimbursement = useMemo(
     () =>
-      invoices
-        .filter((i) => i.status === "sent" || i.status === "overdue")
-        .reduce((sum, i) => sum + i.amount, 0),
-    [invoices]
+      expenses
+        .filter((e) => e.status === "pending" || e.status === "approved")
+        .reduce((sum, e) => sum + e.amount, 0),
+    [expenses]
   );
   const totalInvested = useMemo(() => investments.reduce((sum, i) => sum + i.amount, 0), [investments]);
 
@@ -186,21 +150,6 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
     if (!workspaceId) return;
     await deleteExpense(workspaceId, expense.id, expense.receipts);
     toast.success("Expense deleted");
-  }
-  async function handleDeleteRevenue(id: string) {
-    if (!workspaceId) return;
-    await deleteRevenueEntry(workspaceId, id);
-    toast.success("Revenue entry deleted");
-  }
-  async function handleDeleteInvoice(invoice: Invoice) {
-    if (!workspaceId) return;
-    await deleteInvoice(workspaceId, invoice.id, invoice.attachments);
-    toast.success("Invoice deleted");
-  }
-  async function handleMarkPaid(id: string) {
-    if (!workspaceId) return;
-    await markInvoicePaid(workspaceId, id);
-    toast.success("Invoice marked as paid");
   }
   async function handleDeleteBudget(id: string) {
     if (!workspaceId) return;
@@ -225,8 +174,6 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
           <TabsList className="w-max sm:w-fit">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="expenses">Expenses</TabsTrigger>
-            <TabsTrigger value="revenue">Revenue</TabsTrigger>
-            <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="budgets">Budgets</TabsTrigger>
             <TabsTrigger value="investments">Investments</TabsTrigger>
             <TabsTrigger value="vendors">Vendors</TabsTrigger>
@@ -235,38 +182,30 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
 
         {/* ---------------- Overview ---------------- */}
         <TabsContent value="overview" className="mt-4 space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
-              label="Total Revenue"
-              value={formatCurrency(totalRevenue, company.currency)}
-              icon={DollarSign}
-              accent="text-success"
-              accentBg="bg-success/10"
-              loading={revenueLoading}
-            />
-            <StatCard
-              label="Total Expenses"
-              value={formatCurrency(totalExpenses, company.currency)}
+              label="Total Put In"
+              value={formatCurrency(totalPutIn, company.currency)}
               icon={Wallet}
               accent="text-danger"
               accentBg="bg-danger/10"
               loading={expensesLoading}
             />
             <StatCard
-              label="Net"
-              value={formatCurrency(net, company.currency)}
-              icon={net >= 0 ? TrendingUp : TrendingDown}
-              accent={net >= 0 ? "text-success" : "text-danger"}
-              accentBg={net >= 0 ? "bg-success/10" : "bg-danger/10"}
-              loading={revenueLoading || expensesLoading}
-            />
-            <StatCard
-              label="Outstanding Invoices"
-              value={formatCurrency(outstandingInvoices, company.currency)}
-              icon={FileText}
+              label="Pending Reimbursement"
+              value={formatCurrency(pendingReimbursement, company.currency)}
+              icon={Clock}
               accent="text-warning"
               accentBg="bg-warning/10"
-              loading={invoicesLoading}
+              loading={expensesLoading}
+            />
+            <StatCard
+              label="Reimbursed"
+              value={formatCurrency(totalReimbursed, company.currency)}
+              icon={CircleCheck}
+              accent="text-success"
+              accentBg="bg-success/10"
+              loading={expensesLoading}
             />
             <StatCard
               label="Total Invested"
@@ -306,7 +245,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             <EmptyState
               icon={Wallet}
               title="No expenses yet"
-              description={`Track spend for ${company.name} as it happens.`}
+              description={`Log money you put in on ${company.name}'s behalf to start tracking it.`}
             />
           ) : (
             <div className="overflow-hidden rounded-xl border border-border">
@@ -340,14 +279,6 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                               <p className="truncate text-xs text-muted-foreground">{e.description}</p>
                             )}
                           </div>
-                          {e.billable && (
-                            <span
-                              title="Billable to client"
-                              className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-                            >
-                              Billable
-                            </span>
-                          )}
                           {e.receipts?.map((r) => (
                             <a
                               key={r.publicId}
@@ -409,213 +340,6 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
           )}
         </TabsContent>
 
-        {/* ---------------- Revenue ---------------- */}
-        <TabsContent value="revenue" className="mt-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {revenue.length} entr{revenue.length === 1 ? "y" : "ies"}
-            </p>
-            {canEdit && (
-              <Button
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  setEditingRevenue(null);
-                  setRevenueDialogOpen(true);
-                }}
-              >
-                <Plus className="size-4" />
-                New revenue
-              </Button>
-            )}
-          </div>
-
-          {revenueLoading ? (
-            <div className="h-64 animate-pulse rounded-xl bg-muted" />
-          ) : revenue.length === 0 ? (
-            <EmptyState
-              icon={DollarSign}
-              title="No revenue logged yet"
-              description={`Log income for ${company.name} to keep the P&L current.`}
-            />
-          ) : (
-            <div className="overflow-hidden rounded-xl border border-border">
-              <Table>
-                <TableHeader className="bg-surface">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-xs font-medium text-muted-foreground">Date</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Category</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Source</TableHead>
-                    <TableHead className="text-right text-xs font-medium text-muted-foreground">
-                      Amount
-                    </TableHead>
-                    {canEdit && <TableHead />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {revenue.map((r) => (
-                    <TableRow key={r.id} className="hover:bg-secondary/40">
-                      <TableCell className="py-2 text-sm text-muted-foreground">
-                        {formatDate(r.date)}
-                      </TableCell>
-                      <TableCell className="py-2 text-sm capitalize text-muted-foreground">
-                        {r.category}
-                      </TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">
-                        {r.source ?? "—"}
-                      </TableCell>
-                      <TableCell className="py-2 text-right text-sm font-medium text-success">
-                        {formatCurrency(r.amount, r.currency)}
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell className="py-2 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={<Button variant="ghost" size="icon" className="size-7" />}
-                            >
-                              <MoreHorizontal className="size-4" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setEditingRevenue(r);
-                                  setRevenueDialogOpen(true);
-                                }}
-                              >
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => handleDeleteRevenue(r.id)}
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* ---------------- Invoices ---------------- */}
-        <TabsContent value="invoices" className="mt-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {invoices.length} invoice{invoices.length === 1 ? "" : "s"}
-            </p>
-            {canEdit && (
-              <Button
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  setEditingInvoice(null);
-                  setInvoiceDialogOpen(true);
-                }}
-              >
-                <Plus className="size-4" />
-                New invoice
-              </Button>
-            )}
-          </div>
-
-          {invoicesLoading ? (
-            <div className="h-64 animate-pulse rounded-xl bg-muted" />
-          ) : invoices.length === 0 ? (
-            <EmptyState
-              icon={FileText}
-              title="No invoices yet"
-              description={`Bill ${company.name}'s clients and track what's outstanding.`}
-            />
-          ) : (
-            <div className="overflow-hidden rounded-xl border border-border">
-              <Table>
-                <TableHeader className="bg-surface">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-xs font-medium text-muted-foreground">Invoice #</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Client</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Due</TableHead>
-                    <TableHead className="text-right text-xs font-medium text-muted-foreground">
-                      Amount
-                    </TableHead>
-                    {canEdit && <TableHead />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoices.map((inv) => (
-                    <TableRow key={inv.id} className="hover:bg-secondary/40">
-                      <TableCell className="py-2 text-sm font-medium">
-                        <div className="flex items-center gap-1.5">
-                          <span>{inv.invoiceNumber}</span>
-                          {inv.attachments?.map((a) => (
-                            <a
-                              key={a.publicId}
-                              href={a.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title={`View attachment: ${a.name}`}
-                              className="shrink-0 text-muted-foreground-2 hover:text-foreground"
-                            >
-                              <Paperclip className="size-3.5" />
-                            </a>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-2 text-sm">{inv.clientName}</TableCell>
-                      <TableCell className="py-2">
-                        <InvoiceStatusBadge status={inv.status} />
-                      </TableCell>
-                      <TableCell className="py-2 text-sm text-muted-foreground">
-                        {formatDate(inv.dueDate)}
-                      </TableCell>
-                      <TableCell className="py-2 text-right text-sm font-medium">
-                        {formatCurrency(inv.amount, inv.currency)}
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell className="py-2 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={<Button variant="ghost" size="icon" className="size-7" />}
-                            >
-                              <MoreHorizontal className="size-4" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setEditingInvoice(inv);
-                                  setInvoiceDialogOpen(true);
-                                }}
-                              >
-                                Edit
-                              </DropdownMenuItem>
-                              {inv.status !== "paid" && inv.status !== "cancelled" && (
-                                <DropdownMenuItem onClick={() => handleMarkPaid(inv.id)}>
-                                  Mark as paid
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => handleDeleteInvoice(inv)}
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-
         {/* ---------------- Budgets ---------------- */}
         <TabsContent value="budgets" className="mt-4 space-y-4">
           <div className="flex items-center justify-between">
@@ -647,7 +371,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             <EmptyState
               icon={PiggyBank}
               title="No budgets set"
-              description="Allocate spend per category and period, then track it against actual expenses."
+              description="Allocate what you're willing to put in per category and period, then track it against actual spend."
             />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -751,7 +475,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             <EmptyState
               icon={Landmark}
               title="No investments logged"
-              description={`Track capital put into ${company.name} and what it's worth now.`}
+              description={`Track capital you've put into ${company.name} and what it's worth now.`}
             />
           ) : (
             <div className="overflow-hidden rounded-xl border border-border">
@@ -942,20 +666,6 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             memberId={user.uid}
             companies={companies}
             expense={editingExpense}
-          />
-          <RevenueFormDialog
-            open={revenueDialogOpen}
-            onOpenChange={setRevenueDialogOpen}
-            workspaceId={workspace.id}
-            companies={companies}
-            entry={editingRevenue}
-          />
-          <InvoiceFormDialog
-            open={invoiceDialogOpen}
-            onOpenChange={setInvoiceDialogOpen}
-            workspaceId={workspace.id}
-            companies={companies}
-            invoice={editingInvoice}
           />
           <BudgetFormDialog
             open={budgetDialogOpen}

@@ -34,9 +34,9 @@ service cloud.firestore {
       return isMember(workspaceId) && role(workspaceId) in ['owner', 'admin'];
     }
 
-    // financial data (expenses, revenue, invoices, budgets, vendors): the
-    // dedicated 'accountant' role plus owner/admin. Managers/employees can
-    // read for visibility but not write.
+    // money members put in for companies (expenses, budgets, vendors,
+    // investments): the dedicated 'accountant' role plus owner/admin.
+    // Managers/employees can read for visibility but not write.
     function canManageFinance(workspaceId) {
       return isMember(workspaceId) && role(workspaceId) in ['owner', 'admin', 'accountant'];
     }
@@ -82,18 +82,10 @@ service cloud.firestore {
         allow create, update, delete: if canContribute(workspaceId);
       }
 
-      // ----- Finance: expenses, revenue, invoices, budgets, vendors -----
+      // ----- Finance: money members put in on a company's behalf
+      // (expenses, budgets, vendors, investments) - not the company's own
+      // revenue/client invoicing, which lives in a different system. -----
       match /expenses/{expenseId} {
-        allow read: if isMember(workspaceId);
-        allow create, update, delete: if canManageFinance(workspaceId);
-      }
-
-      match /revenue/{revenueId} {
-        allow read: if isMember(workspaceId);
-        allow create, update, delete: if canManageFinance(workspaceId);
-      }
-
-      match /invoices/{invoiceId} {
         allow read: if isMember(workspaceId);
         allow create, update, delete: if canManageFinance(workspaceId);
       }

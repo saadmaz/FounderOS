@@ -195,19 +195,21 @@ export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-export type ExpenseStatus = "pending" | "approved" | "paid" | "reimbursed" | "rejected";
+// Pending -> Approved -> Reimbursed (or Rejected, if the company won't be
+// covering it) - this tracks *you* getting paid back for money you put in,
+// not a company-side payment workflow.
+export type ExpenseStatus = "pending" | "approved" | "reimbursed" | "rejected";
 
 export const EXPENSE_STATUSES: { value: ExpenseStatus; label: string }[] = [
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
-  { value: "paid", label: "Paid" },
   { value: "reimbursed", label: "Reimbursed" },
   { value: "rejected", label: "Rejected" },
 ];
 
-/** A receipt/invoice/bill uploaded to Cloudinary and attached to a finance
- * record. publicId + resourceType are kept (not just the url) because
- * deleting a Cloudinary asset later needs both. */
+/** A receipt uploaded to Cloudinary and attached to an expense. publicId +
+ * resourceType are kept (not just the url) because deleting a Cloudinary
+ * asset later needs both. */
 export interface FinanceAttachment {
   url: string;
   publicId: string;
@@ -216,6 +218,12 @@ export interface FinanceAttachment {
   size: number;
 }
 
+/**
+ * Money *you* put in on a company's behalf - this app tracks what you do
+ * for a company, not the company's own books (its revenue/client invoicing
+ * live in whatever system runs that side of the business). `status` is
+ * about whether you're getting this back, not whether a bill got paid.
+ */
 export interface Expense {
   id: string;
   workspaceId: string;
@@ -236,68 +244,8 @@ export interface Expense {
   date: number;
   description?: string;
   status: ExpenseStatus;
-  billable: boolean;
   receipts?: FinanceAttachment[];
   createdBy: string; // WorkspaceMember id
-  createdAt: number;
-  updatedAt: number;
-}
-
-export type RevenueCategory = "sales" | "subscription" | "services" | "investment" | "other";
-
-export const REVENUE_CATEGORIES: { value: RevenueCategory; label: string }[] = [
-  { value: "sales", label: "Sales" },
-  { value: "subscription", label: "Subscription" },
-  { value: "services", label: "Services" },
-  { value: "investment", label: "Investment" },
-  { value: "other", label: "Other" },
-];
-
-export interface RevenueEntry {
-  id: string;
-  workspaceId: string;
-  companyId: string;
-  category: RevenueCategory;
-  amount: number;
-  currency: string;
-  date: number;
-  source?: string;
-  note?: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
-
-export const INVOICE_STATUSES: { value: InvoiceStatus; label: string }[] = [
-  { value: "draft", label: "Draft" },
-  { value: "sent", label: "Sent" },
-  { value: "paid", label: "Paid" },
-  { value: "overdue", label: "Overdue" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
-export interface InvoiceLineItem {
-  description: string;
-  quantity: number;
-  unitPrice: number;
-}
-
-export interface Invoice {
-  id: string;
-  workspaceId: string;
-  companyId: string;
-  invoiceNumber: string;
-  clientName: string;
-  status: InvoiceStatus;
-  lineItems: InvoiceLineItem[];
-  amount: number; // sum of lineItems, denormalized for querying/sorting
-  currency: string;
-  issuedDate: number;
-  dueDate: number;
-  paidDate?: number | null;
-  note?: string;
-  attachments?: FinanceAttachment[];
   createdAt: number;
   updatedAt: number;
 }
@@ -369,10 +317,9 @@ export const INVESTMENT_STATUSES: { value: InvestmentStatus; label: string }[] =
   { value: "written_off", label: "Written Off" },
 ];
 
-/** Capital put into a company/asset - as opposed to RevenueEntry's
- * "investment" category, which is money *received* (e.g. a dividend or a
- * funding round closing). `currentValue` is optional and separate from
- * `amount` (what was put in) so gain/loss can be shown once it's known. */
+/** Capital *you* put into a company/asset - `currentValue` is optional and
+ * separate from `amount` (what was put in) so gain/loss can be shown once
+ * it's known. */
 export interface Investment {
   id: string;
   workspaceId: string;

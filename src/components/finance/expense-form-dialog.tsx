@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
@@ -48,8 +47,7 @@ const schema = z.object({
     .refine((v) => !isNaN(Number(v)) && Number(v) > 0, "Amount must be greater than 0"),
   currency: z.string().min(1),
   date: z.string().min(1),
-  status: z.enum(["pending", "approved", "paid", "reimbursed", "rejected"]),
-  billable: z.boolean(),
+  status: z.enum(["pending", "approved", "reimbursed", "rejected"]),
   description: z.string().optional(),
 });
 
@@ -64,17 +62,16 @@ const emptyDefaults = (companies: Company[]): FormValues => ({
   currency: companies[0]?.currency ?? "LKR",
   date: new Date().toISOString().slice(0, 10),
   status: "pending",
-  billable: false,
   description: "",
 });
 
 /**
- * Expense entry, laid out to follow how someone actually fills it in: which
- * company this belongs to, what it was (a required name - the thing that
- * makes a list of expenses scannable, previously missing entirely), how
- * much and when, how it's classified, whether it's already settled, and
- * finally any extra detail plus a receipt. Description is optional and
- * separate from the name - a place for detail, not the label itself.
+ * Logs money *you* put in on a company's behalf - laid out to follow how
+ * someone actually fills it in: which company this was for, what it was (a
+ * required name - the thing that makes a list of expenses scannable), how
+ * much and when, how it's classified, and where it stands on getting paid
+ * back. Description is optional and separate from the name - a place for
+ * detail, not the label itself.
  */
 export function ExpenseFormDialog({
   open,
@@ -121,7 +118,6 @@ export function ExpenseFormDialog({
         currency: expense.currency,
         date: new Date(expense.date).toISOString().slice(0, 10),
         status: expense.status,
-        billable: expense.billable,
         description: expense.description ?? "",
       });
     } else {
@@ -170,7 +166,6 @@ export function ExpenseFormDialog({
           currency: values.currency,
           date,
           status: values.status,
-          billable: values.billable,
           description: values.description || undefined,
           receipts,
         }));
@@ -185,7 +180,6 @@ export function ExpenseFormDialog({
           currency: values.currency,
           date,
           status: values.status,
-          billable: values.billable,
           description: values.description || undefined,
           receipts,
           createdBy: memberId,
@@ -295,17 +289,6 @@ export function ExpenseFormDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="billable"
-              checked={watch("billable")}
-              onCheckedChange={(v) => setValue("billable", Boolean(v))}
-            />
-            <Label htmlFor="billable" className="font-normal">
-              Billable to client
-            </Label>
           </div>
 
           <div className="space-y-1.5">
