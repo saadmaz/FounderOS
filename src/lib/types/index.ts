@@ -237,7 +237,7 @@ export interface Expense {
   description?: string;
   status: ExpenseStatus;
   billable: boolean;
-  receipt?: FinanceAttachment | null;
+  receipts?: FinanceAttachment[];
   createdBy: string; // WorkspaceMember id
   createdAt: number;
   updatedAt: number;
@@ -297,7 +297,7 @@ export interface Invoice {
   dueDate: number;
   paidDate?: number | null;
   note?: string;
-  attachment?: FinanceAttachment | null;
+  attachments?: FinanceAttachment[];
   createdAt: number;
   updatedAt: number;
 }

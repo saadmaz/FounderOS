@@ -76,8 +76,8 @@ export function InvoiceFormDialog({
   invoice?: Invoice | null;
 }) {
   const [submitting, setSubmitting] = useState(false);
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
-  const [removeAttachment, setRemoveAttachment] = useState(false);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [removedAttachments, setRemovedAttachments] = useState<FinanceAttachment[]>([]);
   const isEditing = Boolean(invoice);
 
   const {
@@ -112,8 +112,8 @@ export function InvoiceFormDialog({
 
   useEffect(() => {
     if (!open) return;
-    setAttachmentFile(null);
-    setRemoveAttachment(false);
+    setAttachmentFiles([]);
+    setRemovedAttachments([]);
     if (invoice) {
       reset({
         companyId: invoice.companyId,
@@ -148,29 +148,29 @@ export function InvoiceFormDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, invoice]);
 
-  async function resolveAttachment(): Promise<FinanceAttachment | null | undefined> {
-    if (attachmentFile) {
-      const uploaded = await uploadDocumentToCloudinary(attachmentFile, `founderos/${workspaceId}/invoices`);
-      if (invoice?.attachment) {
-        deleteCloudinaryAsset(invoice.attachment.publicId, invoice.attachment.resourceType).catch(() => {});
-      }
-      return {
-        url: uploaded.url,
-        publicId: uploaded.publicId,
-        resourceType: uploaded.resourceType as FinanceAttachment["resourceType"],
-        name: attachmentFile.name,
-        size: attachmentFile.size,
-      };
+  /** Uploads every newly staged file, drops any existing attachment the
+   * user removed (best-effort Cloudinary cleanup - a hiccup there shouldn't
+   * block saving the invoice), and returns the full resulting list. */
+  async function resolveAttachments(): Promise<FinanceAttachment[]> {
+    const uploaded = await Promise.all(
+      attachmentFiles.map(async (file) => {
+        const result = await uploadDocumentToCloudinary(file, `founderos/${workspaceId}/invoices`);
+        return {
+          url: result.url,
+          publicId: result.publicId,
+          resourceType: result.resourceType as FinanceAttachment["resourceType"],
+          name: file.name,
+          size: file.size,
+        };
+      })
+    );
+    for (const att of removedAttachments) {
+      deleteCloudinaryAsset(att.publicId, att.resourceType).catch(() => {});
     }
-    if (removeAttachment) {
-      if (invoice?.attachment) {
-        deleteCloudinaryAsset(invoice.attachment.publicId, invoice.attachment.resourceType).catch(() => {});
-      }
-      // null (not undefined) so the update actually clears the field in
-      // Firestore instead of omitUndefined silently dropping the key.
-      return null;
-    }
-    return invoice?.attachment;
+    const kept = (invoice?.attachments ?? []).filter(
+      (att) => !removedAttachments.some((r) => r.publicId === att.publicId)
+    );
+    return [...kept, ...uploaded];
   }
 
   async function onSubmit(values: FormValues) {
@@ -184,7 +184,7 @@ export function InvoiceFormDialog({
         unitPrice: Number(li.unitPrice),
       }));
       const amount = lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice, 0);
-      const attachment = await resolveAttachment();
+      const attachments = await resolveAttachments();
       if (isEditing && invoice) {
         await updateInvoice(workspaceId, invoice.id, omitUndefined({
           companyId: values.companyId,
@@ -197,7 +197,7 @@ export function InvoiceFormDialog({
           issuedDate,
           dueDate,
           note: values.note || undefined,
-          attachment,
+          attachments,
         }));
         toast.success("Invoice updated");
       } else {
@@ -212,7 +212,7 @@ export function InvoiceFormDialog({
           issuedDate,
           dueDate,
           note: values.note || undefined,
-          attachment,
+          attachments,
         }));
         toast.success("Invoice created");
       }
@@ -368,11 +368,13 @@ export function InvoiceFormDialog({
           </div>
 
           <AttachmentField
-            label="Attachment (optional)"
-            existing={removeAttachment ? null : invoice?.attachment}
-            onRemoveExisting={() => setRemoveAttachment(true)}
-            file={attachmentFile}
-            onFileChange={setAttachmentFile}
+            label="Attachments (optional)"
+            existing={(invoice?.attachments ?? []).filter(
+              (att) => !removedAttachments.some((r) => r.publicId === att.publicId)
+            )}
+            onRemoveExisting={(att) => setRemovedAttachments((prev) => [...prev, att])}
+            files={attachmentFiles}
+            onFilesChange={setAttachmentFiles}
           />
 
           <DialogFooter className="sticky bottom-0">

@@ -52,11 +52,12 @@ export async function setExpenseStatus(workspaceId: string, expenseId: string, s
   return updateExpense(workspaceId, expenseId, { status });
 }
 
-/** Deletes the expense and, best-effort, its receipt - a Cloudinary hiccup
- * shouldn't block someone from deleting the underlying expense record. */
-export async function deleteExpense(workspaceId: string, expenseId: string, receipt?: Expense["receipt"]) {
-  if (receipt) {
-    await deleteCloudinaryAsset(receipt.publicId, receipt.resourceType).catch(() => {});
-  }
+/** Deletes the expense and, best-effort, every attached receipt - a
+ * Cloudinary hiccup shouldn't block someone from deleting the underlying
+ * expense record. */
+export async function deleteExpense(workspaceId: string, expenseId: string, receipts?: Expense["receipts"]) {
+  await Promise.all(
+    (receipts ?? []).map((r) => deleteCloudinaryAsset(r.publicId, r.resourceType).catch(() => {}))
+  );
   return deleteDoc(doc(db, path(workspaceId), expenseId));
 }

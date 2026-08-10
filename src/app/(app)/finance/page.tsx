@@ -233,7 +233,7 @@ export default function FinancePage() {
 
   async function handleDeleteExpense(expense: Expense) {
     if (!workspaceId) return;
-    await deleteExpense(workspaceId, expense.id, expense.receipt);
+    await deleteExpense(workspaceId, expense.id, expense.receipts);
     toast.success("Expense deleted");
   }
   async function handleDeleteRevenue(id: string) {
@@ -243,7 +243,7 @@ export default function FinancePage() {
   }
   async function handleDeleteInvoice(invoice: Invoice) {
     if (!workspaceId) return;
-    await deleteInvoice(workspaceId, invoice.id, invoice.attachment);
+    await deleteInvoice(workspaceId, invoice.id, invoice.attachments);
     toast.success("Invoice deleted");
   }
   async function handleMarkPaid(id: string) {
@@ -434,17 +434,18 @@ export default function FinancePage() {
                                 Billable
                               </span>
                             )}
-                            {e.receipt && (
+                            {e.receipts?.map((r) => (
                               <a
-                                href={e.receipt.url}
+                                key={r.publicId}
+                                href={r.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                title={`View receipt: ${e.receipt.name}`}
+                                title={`View receipt: ${r.name}`}
                                 className="shrink-0 text-muted-foreground-2 hover:text-foreground"
                               >
                                 <Paperclip className="size-3.5" />
                               </a>
-                            )}
+                            ))}
                           </div>
                         </TableCell>
                         <TableCell className="py-2 text-sm capitalize text-muted-foreground">
@@ -648,17 +649,18 @@ export default function FinancePage() {
                         <TableCell className="py-2 text-sm font-medium">
                           <div className="flex items-center gap-1.5">
                             <span>{inv.invoiceNumber}</span>
-                            {inv.attachment && (
+                            {inv.attachments?.map((a) => (
                               <a
-                                href={inv.attachment.url}
+                                key={a.publicId}
+                                href={a.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                title={`View attachment: ${inv.attachment.name}`}
+                                title={`View attachment: ${a.name}`}
                                 className="shrink-0 text-muted-foreground-2 hover:text-foreground"
                               >
                                 <Paperclip className="size-3.5" />
                               </a>
-                            )}
+                            ))}
                           </div>
                         </TableCell>
                         <TableCell className="py-2 text-sm">{inv.clientName}</TableCell>

@@ -7,86 +7,111 @@ import { Label } from "@/components/ui/label";
 import type { FinanceAttachment } from "@/lib/types";
 
 /**
- * File picker for the receipt/invoice/bill attached to an Expense or
- * Invoice. Shared between both form dialogs rather than duplicated -
- * the three states (nothing attached / an already-saved attachment /
- * a new file staged for upload) are the same in both places.
+ * Multi-file picker for the receipts/bills attached to an Expense or
+ * Invoice. Shared between both form dialogs rather than duplicated - the
+ * two lists (already-saved attachments, new files staged for upload) are
+ * the same shape in both places, and either one can hold any number of
+ * files, not just one.
  */
 export function AttachmentField({
   label,
   existing,
   onRemoveExisting,
-  file,
-  onFileChange,
+  files,
+  onFilesChange,
 }: {
   label: string;
-  existing?: FinanceAttachment | null;
-  onRemoveExisting: () => void;
-  file: File | null;
-  onFileChange: (file: File | null) => void;
+  existing: FinanceAttachment[];
+  onRemoveExisting: (attachment: FinanceAttachment) => void;
+  files: File[];
+  onFilesChange: (files: File[]) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function addFiles(selected: FileList | null) {
+    if (!selected || selected.length === 0) return;
+    onFilesChange([...files, ...Array.from(selected)]);
+  }
+
+  function removeStagedFile(index: number) {
+    onFilesChange(files.filter((_, i) => i !== index));
+  }
+
+  const hasAny = existing.length > 0 || files.length > 0;
 
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>
 
-      {file ? (
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2">
-          <span className="flex min-w-0 items-center gap-2 text-sm">
-            <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="truncate">{file.name}</span>
-          </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-6 shrink-0"
-            onClick={() => {
-              onFileChange(null);
-              if (inputRef.current) inputRef.current.value = "";
-            }}
-          >
-            <X className="size-3.5" />
-          </Button>
+      {hasAny && (
+        <div className="space-y-1.5">
+          {existing.map((att) => (
+            <div
+              key={att.publicId}
+              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+            >
+              <a
+                href={att.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-w-0 items-center gap-2 text-sm hover:underline"
+              >
+                <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{att.name}</span>
+              </a>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-6 shrink-0 text-muted-foreground-2 hover:text-danger"
+                onClick={() => onRemoveExisting(att)}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
+          ))}
+          {files.map((file, i) => (
+            <div
+              key={`${file.name}-${i}`}
+              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+            >
+              <span className="flex min-w-0 items-center gap-2 text-sm">
+                <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{file.name}</span>
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-6 shrink-0"
+                onClick={() => removeStagedFile(i)}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
+          ))}
         </div>
-      ) : existing ? (
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2">
-          <a
-            href={existing.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex min-w-0 items-center gap-2 text-sm hover:underline"
-          >
-            <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="truncate">{existing.name}</span>
-          </a>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-6 shrink-0 text-muted-foreground-2 hover:text-danger"
-            onClick={onRemoveExisting}
-          >
-            <X className="size-3.5" />
-          </Button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:border-white/25"
-        >
-          <Upload className="size-3.5" />
-          Attach a file
-        </button>
       )}
+
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:border-white/25"
+      >
+        <Upload className="size-3.5" />
+        {hasAny ? "Attach more files" : "Attach files"}
+      </button>
 
       <input
         ref={inputRef}
         type="file"
+        multiple
         className="hidden"
-        onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
+        onChange={(e) => {
+          addFiles(e.target.files);
+          // Reset so picking the same file again after removing it still fires onChange.
+          e.target.value = "";
+        }}
       />
     </div>
   );
