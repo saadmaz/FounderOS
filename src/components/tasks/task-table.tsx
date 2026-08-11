@@ -177,7 +177,17 @@ export function TaskTable({
   // viewport grows, same responsive-column pattern used by the other
   // tables - a phone-width table otherwise clips to 2-3 columns and the
   // rest is only reachable by scrolling sideways.
+  //
+  // "title" needs its own cap for a different reason: an HTML table with
+  // default (auto) layout sizes each column to its content's natural width
+  // before anything can truncate, and `truncate` alone has nothing to clip
+  // against without one. Status (a fixed-width Select) and the delete
+  // button are also always visible, so without this the title column could
+  // push them past the right edge entirely on a phone - not just
+  // untruncated text, but Status/actions rendered off-screen with no
+  // scrollbar cue that they're there.
   const RESPONSIVE_COLUMN_CLASS: Record<string, string> = {
+    title: "max-w-32 sm:max-w-40 lg:max-w-56",
     companyId: "hidden sm:table-cell",
     priority: "hidden sm:table-cell",
     dueDate: "hidden md:table-cell",

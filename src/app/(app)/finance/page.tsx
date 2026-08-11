@@ -347,7 +347,7 @@ export default function FinancePage() {
                             <span className="text-sm">{companyById.get(e.companyId)?.name ?? "—"}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-56 py-2">
+                        <TableCell className="max-w-36 py-2 sm:max-w-56">
                           <div className="flex items-center gap-1.5">
                             <div className="min-w-0">
                               <p className="truncate text-sm font-medium">

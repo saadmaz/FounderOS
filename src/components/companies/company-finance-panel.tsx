@@ -271,7 +271,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                       <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
                         {formatDate(e.date)}
                       </TableCell>
-                      <TableCell className="max-w-56 py-2">
+                      <TableCell className="max-w-36 py-2 sm:max-w-56">
                         <div className="flex items-center gap-1.5">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium">
