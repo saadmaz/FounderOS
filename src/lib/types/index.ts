@@ -174,6 +174,33 @@ export interface TimeEntry {
   createdAt: number;
 }
 
+/** A day marked as not-working for a "work" (day job) company - keeps
+ * clocked hours honest by excluding days off from work-hour totals instead
+ * of just leaving a gap that reads as a missed clock-in. One per
+ * company+date; see markTimeOff in lib/data/time-off.ts. */
+export type TimeOffReason = "vacation" | "sick" | "holiday" | "personal" | "other";
+
+export const TIME_OFF_REASONS: { value: TimeOffReason; label: string }[] = [
+  { value: "vacation", label: "Vacation" },
+  { value: "sick", label: "Sick" },
+  { value: "holiday", label: "Holiday" },
+  { value: "personal", label: "Personal" },
+  { value: "other", label: "Other" },
+];
+
+export interface TimeOffEntry {
+  id: string;
+  workspaceId: string;
+  companyId: string;
+  memberId: string;
+  /** Midnight (local) of the day marked off - dates, not timestamps, since
+   * a day off isn't a duration. */
+  date: number;
+  reason: TimeOffReason;
+  note?: string;
+  createdAt: number;
+}
+
 // ===================== Finance =====================
 
 export type ExpenseCategory =

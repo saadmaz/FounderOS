@@ -18,6 +18,7 @@ import {
 import { DetailPageSkeleton } from "@/components/shared/detail-page-skeleton";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { CompanyClockWidget } from "@/components/companies/company-clock-widget";
 import { CompanyFormDialog } from "@/components/companies/company-form-dialog";
 import { CompanyCrmPanel } from "@/components/companies/company-crm-panel";
 import { CompanyDocumentsPanel } from "@/components/companies/company-documents-panel";
@@ -179,6 +180,7 @@ export default function CompanyDetailPage() {
         </div>
 
         <TabsContent value="overview" className="flex-1 space-y-6 p-4 lg:p-6">
+          {company.type === "work" && <CompanyClockWidget company={company} />}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <section>
               <div className="mb-2 flex items-center justify-between">

@@ -82,6 +82,12 @@ service cloud.firestore {
         allow create, update, delete: if canContribute(workspaceId);
       }
 
+      // ----- Time off: days marked as not-working for a "work" company -----
+      match /timeOff/{entryId} {
+        allow read: if isMember(workspaceId);
+        allow create, update, delete: if canContribute(workspaceId);
+      }
+
       // ----- Finance: money members put in on a company's behalf
       // (expenses, budgets, vendors, investments) - not the company's own
       // revenue/client invoicing, which lives in a different system. -----
