@@ -171,7 +171,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 lg:p-6">
+    <div className="min-w-0 flex-1 space-y-6 p-4 lg:p-6">
       <Tabs defaultValue="overview" onValueChange={scrollMainToTop}>
         <ScrollableTabStrip className="-mx-4 px-4 lg:mx-0 lg:px-0">
           <TabsList className="w-max sm:w-fit">

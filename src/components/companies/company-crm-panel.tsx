@@ -84,7 +84,7 @@ export function CompanyCrmPanel({ company }: { company: Company }) {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-w-0 flex-1 flex-col">
       <Tabs
         value={tab}
         onValueChange={(v) => {

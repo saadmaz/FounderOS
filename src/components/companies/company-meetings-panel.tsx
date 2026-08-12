@@ -77,7 +77,7 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 lg:px-6">
         <Tabs
           value={dateFilter}

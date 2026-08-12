@@ -235,16 +235,16 @@ export default function CompanyDetailPage() {
           <TaskTable tasks={tasks} companies={companies} workspaceId={workspace!.id} showCompany={false} />
         </TabsContent>
 
-        <TabsContent value="meetings" className="flex flex-1">
+        <TabsContent value="meetings" className="flex min-w-0 flex-1">
           <CompanyMeetingsPanel company={company} />
         </TabsContent>
-        <TabsContent value="finance" className="flex flex-1">
+        <TabsContent value="finance" className="flex min-w-0 flex-1">
           <CompanyFinancePanel company={company} />
         </TabsContent>
-        <TabsContent value="crm" className="flex flex-1">
+        <TabsContent value="crm" className="flex min-w-0 flex-1">
           <CompanyCrmPanel company={company} />
         </TabsContent>
-        <TabsContent value="documents" className="flex flex-1">
+        <TabsContent value="documents" className="flex min-w-0 flex-1">
           <CompanyDocumentsPanel company={company} />
         </TabsContent>
       </Tabs>
