@@ -99,8 +99,17 @@ export default function CompaniesPage() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: i * 0.03 }}
-                  className="group relative rounded-xl border border-border bg-card p-5 transition-colors hover:border-white/15"
+                  className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-white/15 hover:shadow-lg"
                 >
+                  {/* A soft wash of the company's own color in the corner -
+                      distinguishes cards at a glance in a dense grid and
+                      reads as a deliberate, branded surface rather than a
+                      generic gray box. */}
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full opacity-[0.15] blur-2xl transition-opacity duration-200 group-hover:opacity-25"
+                    style={{ backgroundColor: c.color }}
+                  />
                   <div className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
                     <DropdownMenu>
                       <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" aria-label="Company actions" />}>
@@ -118,9 +127,12 @@ export default function CompaniesPage() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <Link href={`/companies/${c.id}`} className="flex flex-col">
+                  <Link href={`/companies/${c.id}`} className="relative flex flex-col">
                     <div className="flex items-center gap-3">
-                      <Avatar size="lg" className="size-10 shrink-0 rounded-lg">
+                      <Avatar
+                        size="lg"
+                        className="size-10 shrink-0 rounded-lg shadow-sm ring-1 ring-inset ring-white/10"
+                      >
                         <AvatarImage src={c.logoUrl} className="rounded-lg" />
                         <AvatarFallback
                           className="rounded-lg text-sm font-semibold text-white"

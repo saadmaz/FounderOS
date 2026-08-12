@@ -75,10 +75,11 @@ function ExpenseStatusBadge({ status }: { status: ExpenseStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
+        "inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-current/15",
         EXPENSE_STATUS_STYLES[status]
       )}
     >
+      <span className="size-1.5 shrink-0 rounded-full bg-current" />
       {EXPENSE_STATUSES.find((s) => s.value === status)?.label ?? status}
     </span>
   );
@@ -94,10 +95,11 @@ function InvestmentStatusBadge({ status }: { status: InvestmentStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
+        "inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-current/15",
         INVESTMENT_STATUS_STYLES[status]
       )}
     >
+      <span className="size-1.5 shrink-0 rounded-full bg-current" />
       {INVESTMENT_STATUSES.find((s) => s.value === status)?.label ?? status}
     </span>
   );
@@ -251,7 +253,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
               description={`Log money you put in on ${company.name}'s behalf to start tracking it.`}
             />
           ) : (
-            <div className="overflow-hidden rounded-xl border border-border">
+            <div className="overflow-hidden rounded-xl border border-border shadow-sm">
               <Table>
                 <TableHeader className="bg-surface">
                   <TableRow className="hover:bg-transparent">
@@ -396,7 +398,13 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                 const overBudget = actual > b.allocatedAmount;
 
                 return (
-                  <div key={b.id} className="relative rounded-xl border border-border bg-card p-4">
+                  <div
+                    key={b.id}
+                    className={cn(
+                      "relative rounded-xl border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
+                      overBudget ? "border-danger/30 bg-danger/[0.03] hover:border-danger/40" : "border-border hover:border-white/15"
+                    )}
+                  >
                     {canEdit && (
                       <div className="absolute right-3 top-3">
                         <DropdownMenu>
@@ -443,8 +451,11 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                           of {formatCurrency(b.allocatedAmount, b.currency)}
                         </span>
                       </div>
-                      <Progress value={Math.min(pct, 100)} />
-                      {overBudget && <p className="text-xs text-danger">Over budget</p>}
+                      <Progress
+                        value={Math.min(pct, 100)}
+                        indicatorClassName={overBudget ? "bg-danger" : undefined}
+                      />
+                      {overBudget && <p className="text-xs font-medium text-danger">Over budget</p>}
                     </div>
                   </div>
                 );
@@ -484,7 +495,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
               description={`Track capital you've put into ${company.name} and what it's worth now.`}
             />
           ) : (
-            <div className="overflow-hidden rounded-xl border border-border">
+            <div className="overflow-hidden rounded-xl border border-border shadow-sm">
               <Table>
                 <TableHeader className="bg-surface">
                   <TableRow className="hover:bg-transparent">
@@ -600,7 +611,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
               description="Keep track of who you pay and how to reach them."
             />
           ) : (
-            <div className="overflow-hidden rounded-xl border border-border">
+            <div className="overflow-hidden rounded-xl border border-border shadow-sm">
               <Table>
                 <TableHeader className="bg-surface">
                   <TableRow className="hover:bg-transparent">

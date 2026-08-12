@@ -31,7 +31,7 @@ export function StatCard({
       // by default, so a long formatted value (e.g. a big LKR total) would
       // otherwise force the whole grid track wider than the viewport instead
       // of wrapping/truncating, pushing content off-screen on mobile.
-      className="min-w-0 rounded-xl border border-border bg-card p-4"
+      className="group/stat min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-white/15 hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-2">
         {/* Wraps instead of truncating - on a cramped 3-up mobile grid (the
@@ -39,7 +39,12 @@ export function StatCard({
             unreadable "Activ…"; two short lines stay legible at any width
             this card actually gets used at. */}
         <span className="min-w-0 text-xs leading-snug font-medium text-muted-foreground">{label}</span>
-        <div className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg", accentBg)}>
+        <div
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ring-white/5 transition-transform duration-200 group-hover/stat:scale-105",
+            accentBg
+          )}
+        >
           <Icon className={cn("size-3.5", accent)} />
         </div>
       </div>
@@ -47,7 +52,10 @@ export function StatCard({
         {loading ? (
           <div className="h-7 w-16 animate-pulse rounded bg-muted" />
         ) : (
-          <span className="truncate text-2xl font-semibold tracking-tight" title={value}>
+          <span
+            className="truncate text-2xl font-semibold tracking-tight tabular-nums"
+            title={value}
+          >
             {value}
           </span>
         )}

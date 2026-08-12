@@ -33,10 +33,14 @@ export function StatusBadge({ status }: { status: TaskStatus | ProjectStatus | C
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
+        // ring-current/dot-bg-current both pick up whatever text color the
+        // status map assigns below, so each status gets a matching dot and
+        // hairline ring for free without a second color map to keep in sync.
+        "inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-current/15",
         STATUS_STYLES[status]
       )}
     >
+      <span className="size-1.5 shrink-0 rounded-full bg-current" />
       {STATUS_LABELS[status] ?? status}
     </span>
   );
@@ -60,10 +64,11 @@ export function PriorityBadge({ priority }: { priority: Priority }) {
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
+        "inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-current/15",
         PRIORITY_STYLES[priority]
       )}
     >
+      <span className="size-1.5 shrink-0 rounded-full bg-current" />
       {PRIORITY_LABELS[priority]}
     </span>
   );
