@@ -16,6 +16,7 @@ import {
   YoutubeLogo,
 } from "@/components/shared/brand-icons";
 import { DetailPageSkeleton } from "@/components/shared/detail-page-skeleton";
+import { ScrollableTabStrip } from "@/components/shared/scrollable-tabs";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CompanyClockWidget } from "@/components/companies/company-clock-widget";
@@ -165,7 +166,7 @@ export default function CompanyDetailPage() {
       </div>
 
       <Tabs defaultValue="overview" className="flex flex-1 flex-col gap-0" onValueChange={scrollMainToTop}>
-        <div className="overflow-x-auto overscroll-x-contain border-b border-border px-4 scrollbar-thin lg:px-6">
+        <ScrollableTabStrip className="border-b border-border px-4 lg:px-6">
           <TabsList className="h-11 w-max bg-transparent p-0">
             {["overview", "projects", "tasks", "meetings", "finance", "crm", "documents"].map((v) => (
               <TabsTrigger
@@ -179,7 +180,7 @@ export default function CompanyDetailPage() {
               </TabsTrigger>
             ))}
           </TabsList>
-        </div>
+        </ScrollableTabStrip>
 
         <TabsContent value="overview" className="flex-1 space-y-6 p-4 lg:p-6">
           {company.type === "work" && <CompanyClockWidget company={company} />}

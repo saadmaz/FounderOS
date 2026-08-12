@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ScrollableTabStrip } from "@/components/shared/scrollable-tabs";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -238,7 +239,7 @@ export default function FinancePage() {
 
       <div className="flex-1 space-y-6 p-4 lg:p-6">
         <Tabs defaultValue="overview" onValueChange={scrollMainToTop}>
-          <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 scrollbar-thin lg:mx-0 lg:px-0">
+          <ScrollableTabStrip className="-mx-4 px-4 lg:mx-0 lg:px-0">
             <TabsList className="w-max sm:w-fit">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="expenses">Expenses</TabsTrigger>
@@ -246,7 +247,7 @@ export default function FinancePage() {
               <TabsTrigger value="investments">Investments</TabsTrigger>
               <TabsTrigger value="vendors">Vendors</TabsTrigger>
             </TabsList>
-          </div>
+          </ScrollableTabStrip>
 
           {/* ---------------- Overview ---------------- */}
           <TabsContent value="overview" className="mt-4 space-y-4">
