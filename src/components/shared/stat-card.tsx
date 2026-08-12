@@ -26,24 +26,31 @@ export function StatCard({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="rounded-xl border border-border bg-card p-4"
+      // min-w-0 lets this shrink below its content's intrinsic width - a grid
+      // item (and this card's own flex children) refuse to shrink below that
+      // by default, so a long formatted value (e.g. a big LKR total) would
+      // otherwise force the whole grid track wider than the viewport instead
+      // of wrapping/truncating, pushing content off-screen on mobile.
+      className="min-w-0 rounded-xl border border-border bg-card p-4"
     >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <div className={cn("flex size-7 items-center justify-center rounded-lg", accentBg)}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
+        <div className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg", accentBg)}>
           <Icon className={cn("size-3.5", accent)} />
         </div>
       </div>
-      <div className="mt-2.5 flex items-baseline gap-2">
+      <div className="mt-2.5 flex min-w-0 items-baseline gap-2">
         {loading ? (
           <div className="h-7 w-16 animate-pulse rounded bg-muted" />
         ) : (
-          <span className="text-2xl font-semibold tracking-tight">{value}</span>
+          <span className="truncate text-2xl font-semibold tracking-tight" title={value}>
+            {value}
+          </span>
         )}
         {delta && !loading && (
           <span
             className={cn(
-              "flex items-center text-xs font-medium",
+              "flex shrink-0 items-center text-xs font-medium",
               delta.positive ? "text-success" : "text-danger"
             )}
           >
