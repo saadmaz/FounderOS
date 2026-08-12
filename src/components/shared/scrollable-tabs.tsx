@@ -21,12 +21,22 @@ export function ScrollableTabStrip({
   children: React.ReactNode;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  // Separate ref for the unconstrained content wrapper *inside* the scroll
+  // container. Observing only the scroller itself misses the case that
+  // actually bit us: the scroller's own box stays pinned to 100% of its
+  // parent's width, so ResizeObserver never fires just because the tab
+  // labels reflow wider once the real webfont swaps in after first paint -
+  // the strip was measured "doesn't overflow" against fallback-font widths
+  // and never got a second look. The content wrapper has no such
+  // constraint - its box genuinely grows when the labels do.
+  const contentRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   useEffect(() => {
     const el = scrollerRef.current;
-    if (!el) return;
+    const content = contentRef.current;
+    if (!el || !content) return;
 
     function update() {
       if (!el) return;
@@ -35,11 +45,19 @@ export function ScrollableTabStrip({
     }
 
     update();
+    // Re-check once webfonts have actually swapped in - the single biggest
+    // source of "measured too early" here - plus one more pass on the next
+    // frame to catch any other post-paint reflow (icons, etc.).
+    document.fonts?.ready?.then(update).catch(() => {});
+    const raf = requestAnimationFrame(update);
+
     const ro = new ResizeObserver(update);
     ro.observe(el);
+    ro.observe(content);
     el.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
     return () => {
+      cancelAnimationFrame(raf);
       ro.disconnect();
       el.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
@@ -63,7 +81,9 @@ export function ScrollableTabStrip({
         </button>
       )}
       <div ref={scrollerRef} className={cn("overflow-x-auto overscroll-x-contain scrollbar-thin", className)}>
-        {children}
+        <div ref={contentRef} className="inline-block">
+          {children}
+        </div>
       </div>
       {canScrollRight && (
         <button
