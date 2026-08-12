@@ -172,7 +172,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
   return (
     <div className="flex-1 space-y-6 p-4 lg:p-6">
       <Tabs defaultValue="overview" onValueChange={scrollMainToTop}>
-        <div className="-mx-4 overflow-x-auto px-4 scrollbar-thin lg:mx-0 lg:px-0">
+        <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 scrollbar-thin lg:mx-0 lg:px-0">
           <TabsList className="w-max sm:w-fit">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="expenses">Expenses</TabsTrigger>
@@ -222,7 +222,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
 
         {/* ---------------- Expenses ---------------- */}
         <TabsContent value="expenses" className="mt-4 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
               {expenses.length} expense{expenses.length === 1 ? "" : "s"}
             </p>
@@ -347,7 +347,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
 
         {/* ---------------- Budgets ---------------- */}
         <TabsContent value="budgets" className="mt-4 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
               {budgets.length} budget{budgets.length === 1 ? "" : "s"}
             </p>
@@ -454,7 +454,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
 
         {/* ---------------- Investments ---------------- */}
         <TabsContent value="investments" className="mt-4 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
               {investments.length} investment{investments.length === 1 ? "" : "s"} ·{" "}
               {formatCurrency(totalInvested, company.currency)} invested
@@ -571,7 +571,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
 
         {/* ---------------- Vendors ---------------- */}
         <TabsContent value="vendors" className="mt-4 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
               {vendors.length} vendor{vendors.length === 1 ? "" : "s"}
             </p>

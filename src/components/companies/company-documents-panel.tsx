@@ -104,7 +104,7 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex items-center justify-between px-4 pt-4 lg:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 lg:px-6">
         <p className="text-sm text-muted-foreground">
           {documents.length} file{documents.length === 1 ? "" : "s"}
         </p>

@@ -33,8 +33,12 @@ export function StatCard({
       // of wrapping/truncating, pushing content off-screen on mobile.
       className="min-w-0 rounded-xl border border-border bg-card p-4"
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
+      <div className="flex items-start justify-between gap-2">
+        {/* Wraps instead of truncating - on a cramped 3-up mobile grid (the
+            company header stats) an ellipsis reduced "Active Projects" to
+            unreadable "Activ…"; two short lines stay legible at any width
+            this card actually gets used at. */}
+        <span className="min-w-0 text-xs leading-snug font-medium text-muted-foreground">{label}</span>
         <div className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg", accentBg)}>
           <Icon className={cn("size-3.5", accent)} />
         </div>

@@ -165,13 +165,15 @@ export default function CompanyDetailPage() {
       </div>
 
       <Tabs defaultValue="overview" className="flex flex-1 flex-col gap-0" onValueChange={scrollMainToTop}>
-        <div className="overflow-x-auto border-b border-border px-4 scrollbar-thin lg:px-6">
+        <div className="overflow-x-auto overscroll-x-contain border-b border-border px-4 scrollbar-thin lg:px-6">
           <TabsList className="h-11 w-max bg-transparent p-0">
             {["overview", "projects", "tasks", "meetings", "finance", "crm", "documents"].map((v) => (
               <TabsTrigger
                 key={v}
                 value={v}
-                className="shrink-0 rounded-none border-b-2 border-transparent px-3 capitalize data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                // 7 tabs at once always needs to scroll somewhere - tighter
+                // padding on mobile just means less of that scrolling to do.
+                className="shrink-0 rounded-none border-b-2 border-transparent px-2 capitalize data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-3"
               >
                 {v}
               </TabsTrigger>
@@ -183,7 +185,7 @@ export default function CompanyDetailPage() {
           {company.type === "work" && <CompanyClockWidget company={company} />}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <section>
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold">Recent Projects</h2>
                 <Button variant="ghost" size="sm" onClick={() => setProjectDialogOpen(true)}>
                   <Plus className="size-3.5" /> Add
@@ -198,7 +200,7 @@ export default function CompanyDetailPage() {
               />
             </section>
             <section>
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold">Recent Tasks</h2>
                 <Button variant="ghost" size="sm" onClick={() => setTaskDialogOpen(true)}>
                   <Plus className="size-3.5" /> Add

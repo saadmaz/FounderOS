@@ -238,7 +238,7 @@ export default function FinancePage() {
 
       <div className="flex-1 space-y-6 p-4 lg:p-6">
         <Tabs defaultValue="overview" onValueChange={scrollMainToTop}>
-          <div className="-mx-4 overflow-x-auto px-4 scrollbar-thin lg:mx-0 lg:px-0">
+          <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 scrollbar-thin lg:mx-0 lg:px-0">
             <TabsList className="w-max sm:w-fit">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="expenses">Expenses</TabsTrigger>
@@ -288,7 +288,7 @@ export default function FinancePage() {
 
           {/* ---------------- Expenses ---------------- */}
           <TabsContent value="expenses" className="mt-4 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 {filteredExpenses.length} expense{filteredExpenses.length === 1 ? "" : "s"}
               </p>
@@ -423,7 +423,7 @@ export default function FinancePage() {
 
           {/* ---------------- Budgets ---------------- */}
           <TabsContent value="budgets" className="mt-4 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 {filteredBudgets.length} budget{filteredBudgets.length === 1 ? "" : "s"}
               </p>
@@ -536,7 +536,7 @@ export default function FinancePage() {
 
           {/* ---------------- Investments ---------------- */}
           <TabsContent value="investments" className="mt-4 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 {filteredInvestments.length} investment{filteredInvestments.length === 1 ? "" : "s"} ·{" "}
                 {formatCurrency(totalInvested, displayCurrency)} invested
@@ -669,7 +669,7 @@ export default function FinancePage() {
 
           {/* ---------------- Vendors ---------------- */}
           <TabsContent value="vendors" className="mt-4 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 {filteredVendors.length} vendor{filteredVendors.length === 1 ? "" : "s"}
               </p>
