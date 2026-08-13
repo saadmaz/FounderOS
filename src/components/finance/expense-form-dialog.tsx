@@ -47,7 +47,7 @@ const schema = z.object({
     .refine((v) => !isNaN(Number(v)) && Number(v) > 0, "Amount must be greater than 0"),
   currency: z.string().min(1),
   date: z.string().min(1),
-  status: z.enum(["pending", "approved", "reimbursed", "rejected"]),
+  status: z.enum(["pending", "reimbursed"]),
   description: z.string().optional(),
 });
 

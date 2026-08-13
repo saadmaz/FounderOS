@@ -74,9 +74,7 @@ import { toast } from "sonner";
 
 const EXPENSE_STATUS_STYLES: Record<ExpenseStatus, string> = {
   pending: "bg-warning/10 text-warning",
-  approved: "bg-primary/10 text-primary",
   reimbursed: "bg-success/10 text-success",
-  rejected: "bg-danger/10 text-danger",
 };
 
 function ExpenseStatusBadge({ status }: { status: ExpenseStatus }) {
@@ -166,11 +164,8 @@ export default function FinancePage() {
     [companyFilter, companies, companyById]
   );
 
-  // Rejected expenses were never actually paid, so they shouldn't count as
-  // spend - only the entry in the table (for the audit trail) stays.
   const totalPutIn = useMemo(
-    () =>
-      filteredExpenses.filter((e) => e.status !== "rejected").reduce((sum, e) => sum + e.amount, 0),
+    () => filteredExpenses.reduce((sum, e) => sum + e.amount, 0),
     [filteredExpenses]
   );
   const totalReimbursed = useMemo(
@@ -180,9 +175,7 @@ export default function FinancePage() {
   );
   const pendingReimbursement = useMemo(
     () =>
-      filteredExpenses
-        .filter((e) => e.status === "pending" || e.status === "approved")
-        .reduce((sum, e) => sum + e.amount, 0),
+      filteredExpenses.filter((e) => e.status === "pending").reduce((sum, e) => sum + e.amount, 0),
     [filteredExpenses]
   );
   const totalInvested = useMemo(
@@ -484,7 +477,6 @@ export default function FinancePage() {
                       (e) =>
                         e.companyId === b.companyId &&
                         e.category === b.category &&
-                        e.status !== "rejected" &&
                         e.date >= start &&
                         e.date < end
                     )

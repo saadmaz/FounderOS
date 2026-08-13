@@ -104,20 +104,13 @@ export default function AnalyticsPage() {
   // share one (see commonCurrency).
   const displayCurrency = useMemo(() => commonCurrency(companies), [companies]);
 
-  // Rejected expenses were never actually paid, so they shouldn't count as spend.
-  const totalPutIn = useMemo(
-    () => expenses.filter((e) => e.status !== "rejected").reduce((s, e) => s + e.amount, 0),
-    [expenses]
-  );
+  const totalPutIn = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
   const totalReimbursed = useMemo(
     () => expenses.filter((e) => e.status === "reimbursed").reduce((s, e) => s + e.amount, 0),
     [expenses]
   );
   const pendingReimbursement = useMemo(
-    () =>
-      expenses
-        .filter((e) => e.status === "pending" || e.status === "approved")
-        .reduce((s, e) => s + e.amount, 0),
+    () => expenses.filter((e) => e.status === "pending").reduce((s, e) => s + e.amount, 0),
     [expenses]
   );
   const totalInvested = useMemo(() => investments.reduce((s, i) => s + i.amount, 0), [investments]);
@@ -131,7 +124,6 @@ export default function AnalyticsPage() {
     const putInByMonth = new Map<string, number>();
     const reimbursedByMonth = new Map<string, number>();
     for (const e of expenses) {
-      if (e.status === "rejected") continue;
       const key = monthKey(e.date);
       putInByMonth.set(key, (putInByMonth.get(key) ?? 0) + e.amount);
       if (e.status === "reimbursed") {
@@ -170,7 +162,7 @@ export default function AnalyticsPage() {
       .map((c) => ({
         name: c.name,
         amount: expenses
-          .filter((e) => e.companyId === c.id && e.status !== "rejected")
+          .filter((e) => e.companyId === c.id)
           .reduce((s, e) => s + e.amount, 0),
       }))
       .filter((c) => c.amount > 0)

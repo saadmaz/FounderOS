@@ -66,9 +66,7 @@ import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const EXPENSE_STATUS_STYLES: Record<ExpenseStatus, string> = {
   pending: "bg-warning/10 text-warning",
-  approved: "bg-primary/10 text-primary",
   reimbursed: "bg-success/10 text-success",
-  rejected: "bg-danger/10 text-danger",
 };
 
 function ExpenseStatusBadge({ status }: { status: ExpenseStatus }) {
@@ -133,9 +131,8 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
   const [investmentDialogOpen, setInvestmentDialogOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
 
-  // Rejected expenses were never actually paid, so they shouldn't count as spend.
   const totalPutIn = useMemo(
-    () => expenses.filter((e) => e.status !== "rejected").reduce((sum, e) => sum + e.amount, 0),
+    () => expenses.reduce((sum, e) => sum + e.amount, 0),
     [expenses]
   );
   const totalReimbursed = useMemo(
@@ -143,10 +140,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
     [expenses]
   );
   const pendingReimbursement = useMemo(
-    () =>
-      expenses
-        .filter((e) => e.status === "pending" || e.status === "approved")
-        .reduce((sum, e) => sum + e.amount, 0),
+    () => expenses.filter((e) => e.status === "pending").reduce((sum, e) => sum + e.amount, 0),
     [expenses]
   );
   const totalInvested = useMemo(() => investments.reduce((sum, i) => sum + i.amount, 0), [investments]);
@@ -404,13 +398,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
               {budgets.map((b) => {
                 const [start, end] = budgetPeriodRange(b);
                 const actual = expenses
-                  .filter(
-                    (e) =>
-                      e.category === b.category &&
-                      e.status !== "rejected" &&
-                      e.date >= start &&
-                      e.date < end
-                  )
+                  .filter((e) => e.category === b.category && e.date >= start && e.date < end)
                   .reduce((sum, e) => sum + e.amount, 0);
                 const pct = b.allocatedAmount > 0 ? (actual / b.allocatedAmount) * 100 : 0;
                 const overBudget = actual > b.allocatedAmount;

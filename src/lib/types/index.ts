@@ -223,16 +223,14 @@ export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-// Pending -> Approved -> Reimbursed (or Rejected, if the company won't be
-// covering it) - this tracks *you* getting paid back for money you put in,
-// not a company-side payment workflow.
-export type ExpenseStatus = "pending" | "approved" | "reimbursed" | "rejected";
+// Pending -> Reimbursed - every expense you put in on a company's behalf is
+// expected to be paid back eventually, so this just tracks whether *you've*
+// gotten that money back yet, not a multi-step approval workflow.
+export type ExpenseStatus = "pending" | "reimbursed";
 
 export const EXPENSE_STATUSES: { value: ExpenseStatus; label: string }[] = [
   { value: "pending", label: "Pending" },
-  { value: "approved", label: "Approved" },
   { value: "reimbursed", label: "Reimbursed" },
-  { value: "rejected", label: "Rejected" },
 ];
 
 /** A receipt uploaded to Cloudinary and attached to an expense. publicId +
