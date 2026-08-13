@@ -66,6 +66,7 @@ import { downloadCsv } from "@/lib/csv";
 import {
   bulkMarkExpensesReimbursed,
   deleteExpense,
+  rolloverRecurringExpenses,
   setExpenseStatus,
   useExpenses,
 } from "@/lib/data/expenses";
@@ -346,20 +347,27 @@ export default function FinancePage() {
   );
   const totalInvested = useMemo(() => formatMixedCurrencyTotal(filteredInvestments), [filteredInvestments]);
 
-  // Runs once per mount, not on every budgets refetch (rolloverRecurringBudgets
-  // is idempotent, so a re-run would just be a wasted no-op check, not a bug -
-  // the ref guard is purely to avoid that redundant work).
-  const rolloverRanRef = useRef(false);
+  // Runs once per mount, not on every budgets/expenses refetch
+  // (rolloverRecurringBudgets/rolloverRecurringExpenses are idempotent, so a
+  // re-run would just be a wasted no-op check, not a bug - the ref guards
+  // are purely to avoid that redundant work).
+  const budgetRolloverRanRef = useRef(false);
   useEffect(() => {
-    if (!workspaceId || !canEdit || budgetsLoading || rolloverRanRef.current) return;
-    rolloverRanRef.current = true;
+    if (!workspaceId || !canEdit || budgetsLoading || budgetRolloverRanRef.current) return;
+    budgetRolloverRanRef.current = true;
     rolloverRecurringBudgets(workspaceId, budgets).catch(() => {});
   }, [workspaceId, canEdit, budgetsLoading, budgets]);
+  const expenseRolloverRanRef = useRef(false);
+  useEffect(() => {
+    if (!workspaceId || !canEdit || expensesLoading || expenseRolloverRanRef.current) return;
+    expenseRolloverRanRef.current = true;
+    rolloverRecurringExpenses(workspaceId, expenses).catch(() => {});
+  }, [workspaceId, canEdit, expensesLoading, expenses]);
 
   // Proactive nudge for budgets already over allocation *this* period - the
   // in-tab "Over budget" badge only helps if you open the Budgets tab.
-  // Fires once per mount (see rolloverRanRef above for why a ref guard
-  // instead of a dependency-driven re-check).
+  // Fires once per mount (see budgetRolloverRanRef above for why a ref
+  // guard instead of a dependency-driven re-check).
   const overBudgetToastRanRef = useRef(false);
   useEffect(() => {
     if (budgetsLoading || expensesLoading || overBudgetToastRanRef.current) return;
@@ -728,6 +736,14 @@ export default function FinancePage() {
                                 </p>
                               )}
                             </div>
+                            {e.recurringInterval && (
+                              <span
+                                title={`Repeats every ${e.recurringInterval}`}
+                                className="shrink-0 text-muted-foreground-2"
+                              >
+                                <Repeat className="size-3.5" />
+                              </span>
+                            )}
                             {e.receipts?.map((r) => (
                               <a
                                 key={r.publicId}

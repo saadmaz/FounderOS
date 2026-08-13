@@ -14,6 +14,7 @@ import {
 import { deleteCloudinaryAsset } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase/client";
 import type { Expense, ExpenseStatus } from "@/lib/types";
+import { budgetPeriodRange } from "./budgets";
 import { now, omitUndefined } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
@@ -79,6 +80,22 @@ export async function setExpenseStatus(
   });
 }
 
+/** Sets or clears an expense's recurringInterval - bypasses updateExpense/
+ * omitUndefined (same reasoning as setExpenseStatus above) so unchecking
+ * "repeat" on an expense actually stops rolloverRecurringExpenses from
+ * continuing its chain, instead of silently leaving the old interval
+ * sitting in Firestore. */
+export async function setExpenseRecurring(
+  workspaceId: string,
+  expenseId: string,
+  interval: Expense["recurringInterval"]
+) {
+  return updateDoc(doc(db, path(workspaceId), expenseId), {
+    updatedAt: now(),
+    recurringInterval: interval ?? deleteField(),
+  });
+}
+
 /** Same as setExpenseStatus("reimbursed") but for many expenses in one
  * Firestore batch (a single payout covering several logged expenses),
  * chunked at 400 writes/batch (Firestore's limit is 500). */
@@ -99,6 +116,54 @@ export async function bulkMarkExpensesReimbursed(
       });
     }
     await batch.commit();
+  }
+}
+
+/**
+ * For every recurring expense (recurringInterval set) whose latest
+ * occurrence's period has fully passed, creates the occurrence(s) needed to
+ * reach right now - catches up in one pass after a gap (reopening after 3
+ * missed months creates all 3), same shape as rolloverRecurringBudgets.
+ * Each chain is identified by recurringRootId (falling back to the
+ * expense's own id for a chain's first instance) rather than matching
+ * title/amount, which two unrelated expenses could share. Every generated
+ * occurrence starts "pending" (it hasn't been reimbursed yet) and keeps the
+ * originating occurrence's `createdBy` - it's attributed to whoever set the
+ * recurrence up, not whoever happened to have the page open when it rolled.
+ * Receipts never carry over; each occurrence needs its own.
+ */
+export async function rolloverRecurringExpenses(workspaceId: string, expenses: Expense[]) {
+  const nowMs = now();
+  const latestByChain = new Map<string, Expense>();
+  for (const e of expenses) {
+    if (!e.recurringInterval) continue;
+    const key = e.recurringRootId ?? e.id;
+    const current = latestByChain.get(key);
+    if (!current || e.date > current.date) latestByChain.set(key, e);
+  }
+  for (const [rootId, latest] of latestByChain.entries()) {
+    const interval = latest.recurringInterval!;
+    let [, next] = budgetPeriodRange({ period: interval, periodStart: latest.date });
+    while (next <= nowMs) {
+      await createExpense(
+        workspaceId,
+        omitUndefined({
+          companyId: latest.companyId,
+          title: latest.title,
+          vendor: latest.vendor,
+          category: latest.category,
+          amount: latest.amount,
+          currency: latest.currency,
+          date: next,
+          description: latest.description,
+          status: "pending",
+          recurringInterval: interval,
+          recurringRootId: rootId,
+          createdBy: latest.createdBy,
+        })
+      );
+      [, next] = budgetPeriodRange({ period: interval, periodStart: next });
+    }
   }
 }
 

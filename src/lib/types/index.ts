@@ -277,6 +277,17 @@ export interface Expense {
    * not hand-edited. Absent while status is "pending". */
   reimbursedAt?: number;
   reimbursedBy?: string; // WorkspaceMember id
+  /** When set, rolloverRecurringExpenses (src/lib/data/expenses.ts) keeps
+   * creating this expense's next occurrence automatically once its period
+   * has passed - a subscription/recurring cost (e.g. monthly AWS hosting)
+   * instead of a one-off. Reuses BudgetPeriod rather than a parallel type -
+   * "repeats every X" means the same thing for an expense as for a budget. */
+  recurringInterval?: BudgetPeriod;
+  /** Set only on auto-generated occurrences (never on the one you create by
+   * hand) - points at the very first expense in this recurring chain, so
+   * rollover can find "the latest occurrence" without relying on matching
+   * title/amount, which two unrelated expenses could easily share. */
+  recurringRootId?: string;
   receipts?: FinanceAttachment[];
   createdBy: string; // WorkspaceMember id
   createdAt: number;

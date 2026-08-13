@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
@@ -27,8 +28,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { AttachmentField } from "@/components/finance/attachment-field";
 import { deleteCloudinaryAsset, uploadDocumentToCloudinary } from "@/lib/cloudinary";
 import { now, omitUndefined } from "@/lib/data/firestore-helpers";
-import { createExpense, setExpenseStatus, updateExpense } from "@/lib/data/expenses";
+import { createExpense, setExpenseRecurring, setExpenseStatus, updateExpense } from "@/lib/data/expenses";
 import {
+  BUDGET_PERIODS,
   EXPENSE_CATEGORIES,
   EXPENSE_STATUSES,
   type Company,
@@ -48,6 +50,8 @@ const schema = z.object({
   currency: z.string().min(1),
   date: z.string().min(1),
   status: z.enum(["pending", "reimbursed"]),
+  recurring: z.boolean(),
+  recurringInterval: z.enum(["monthly", "quarterly", "yearly"]),
   description: z.string().optional(),
 });
 
@@ -62,6 +66,8 @@ const emptyDefaults = (companies: Company[]): FormValues => ({
   currency: companies[0]?.currency ?? "LKR",
   date: new Date().toISOString().slice(0, 10),
   status: "pending",
+  recurring: false,
+  recurringInterval: "monthly",
   description: "",
 });
 
@@ -118,6 +124,8 @@ export function ExpenseFormDialog({
         currency: expense.currency,
         date: new Date(expense.date).toISOString().slice(0, 10),
         status: expense.status,
+        recurring: Boolean(expense.recurringInterval),
+        recurringInterval: expense.recurringInterval ?? "monthly",
         description: expense.description ?? "",
       });
     } else {
@@ -156,12 +164,13 @@ export function ExpenseFormDialog({
     try {
       const date = new Date(`${values.date}T00:00:00`).getTime();
       const receipts = await resolveReceipts();
+      const newInterval = values.recurring ? values.recurringInterval : undefined;
       if (isEditing && expense) {
-        // Status is handled separately via setExpenseStatus, which is the
-        // one place that keeps reimbursedAt/reimbursedBy in sync (it can
-        // actually clear them with deleteField() - this update can only
-        // omit fields, never clear a stored one, so it must never touch
-        // status itself).
+        // Status and recurringInterval are each handled separately via
+        // setExpenseStatus/setExpenseRecurring, the one place that keeps
+        // reimbursedAt/reimbursedBy and recurringInterval clearable via
+        // deleteField() - this update can only omit fields, never clear a
+        // stored one, so it must never touch either itself.
         await updateExpense(workspaceId, expense.id, omitUndefined({
           companyId: values.companyId,
           title: values.title,
@@ -175,6 +184,9 @@ export function ExpenseFormDialog({
         }));
         if (values.status !== expense.status) {
           await setExpenseStatus(workspaceId, expense.id, values.status, memberId);
+        }
+        if (newInterval !== (expense.recurringInterval ?? undefined)) {
+          await setExpenseRecurring(workspaceId, expense.id, newInterval);
         }
         toast.success("Expense updated");
       } else {
@@ -190,6 +202,7 @@ export function ExpenseFormDialog({
           status: values.status,
           reimbursedAt: reimbursedNow ? now() : undefined,
           reimbursedBy: reimbursedNow ? memberId : undefined,
+          recurringInterval: newInterval,
           description: values.description || undefined,
           receipts,
           createdBy: memberId,
@@ -251,6 +264,38 @@ export function ExpenseFormDialog({
           <div className="space-y-1.5">
             <Label>Date</Label>
             <DatePicker value={watch("date")} onChange={(v) => setValue("date", v)} />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="recurring"
+                checked={watch("recurring")}
+                onCheckedChange={(v) => setValue("recurring", Boolean(v))}
+              />
+              <Label htmlFor="recurring" className="font-normal">
+                Repeat this expense automatically
+              </Label>
+            </div>
+            {watch("recurring") && (
+              <Select
+                value={watch("recurringInterval")}
+                onValueChange={(v) => setValue("recurringInterval", v as FormValues["recurringInterval"])}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {(v: string) => `Every ${BUDGET_PERIODS.find((p) => p.value === v)?.label.toLowerCase() ?? v}`}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {BUDGET_PERIODS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      Every {p.label.toLowerCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
