@@ -103,28 +103,41 @@ function DialogFooter({
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
 }) {
+  const footerClassName = cn(
+    // sticky to the bottom of DialogContent's own scrollport (see its
+    // overflow-y-auto above) so Save/Cancel stay reachable while a tall
+    // form scrolls, instead of sitting below the fold. Solid background
+    // (not a translucent/blurred one) - scrolled-away fields peeking
+    // through a see-through footer reads as a rendering bug, not a
+    // deliberate frosted-glass effect, on a form this dense.
+    "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t border-border bg-popover p-4 sm:flex-row sm:justify-end",
+    className
+  )
+
+  const closeButton = showCloseButton && (
+    <DialogPrimitive.Close render={<Button variant="outline" />}>
+      Close
+    </DialogPrimitive.Close>
+  )
+
   return (
-    <div
-      data-slot="dialog-footer"
-      className={cn(
-        // sticky to the bottom of DialogContent's own scrollport (see its
-        // overflow-y-auto above) so Save/Cancel stay reachable while a tall
-        // form scrolls, instead of sitting below the fold. Solid background
-        // (not a translucent/blurred one) - scrolled-away fields peeking
-        // through a see-through footer reads as a rendering bug, not a
-        // deliberate frosted-glass effect, on a form this dense.
-        "sticky bottom-0 -mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t border-border bg-popover p-4 sm:flex-row sm:justify-end",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      {showCloseButton && (
-        <DialogPrimitive.Close render={<Button variant="outline" />}>
-          Close
-        </DialogPrimitive.Close>
-      )}
-    </div>
+    <>
+      {/* Invisible clone, same content so it takes identical height, laid
+       * out normally (not sticky) right where the footer's content ends.
+       * Reserves that much scroll room so the real sticky footer below can
+       * only ever come to rest over this blank space, never over a real
+       * field - without it, a form taller than the dialog's viewport gets
+       * its last row or two visually cut off by the footer while scrolling,
+       * since a sticky element doesn't reserve its own space by default. */}
+      <div aria-hidden="true" className={cn(footerClassName, "invisible")}>
+        {children}
+        {closeButton}
+      </div>
+      <div data-slot="dialog-footer" className={cn(footerClassName, "sticky bottom-0")} {...props}>
+        {children}
+        {closeButton}
+      </div>
+    </>
   )
 }
 
