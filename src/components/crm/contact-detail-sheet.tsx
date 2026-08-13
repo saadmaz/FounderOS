@@ -72,7 +72,7 @@ type Draft = {
   name: string;
   companyId: string;
   title: string;
-  jobDescription: string;
+  prospectCompany: string;
   phone: string;
   email: string;
   linkedin: string;
@@ -87,7 +87,7 @@ function draftFrom(contact: Contact): Draft {
     name: contact.name,
     companyId: contact.companyId,
     title: contact.title ?? "",
-    jobDescription: contact.jobDescription ?? "",
+    prospectCompany: contact.prospectCompany ?? "",
     phone: contact.phone ?? "",
     email: contact.email ?? "",
     linkedin: contact.linkedin ?? "",
@@ -270,7 +270,14 @@ export function ContactDetailSheet({
                   {company.name}
                 </span>
               )}
-              {draft.title && <span>· {draft.title}</span>}
+              {(draft.title || draft.prospectCompany) && (
+                <span>
+                  ·{" "}
+                  {draft.title && draft.prospectCompany
+                    ? `${draft.title} at ${draft.prospectCompany}`
+                    : (draft.title || draft.prospectCompany)}
+                </span>
+              )}
             </span>
             {owner && (
               <span className="flex shrink-0 items-center gap-1.5">
@@ -362,14 +369,13 @@ export function ContactDetailSheet({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="contact-job-description">Job description</Label>
-              <Textarea
-                id="contact-job-description"
-                rows={2}
-                placeholder="What they actually own/do in the role"
-                value={draft.jobDescription}
-                onChange={(e) => set("jobDescription", e.target.value)}
-                onBlur={() => commit({ jobDescription: draft.jobDescription || undefined })}
+              <Label htmlFor="contact-prospect-company">Prospect company</Label>
+              <Input
+                id="contact-prospect-company"
+                placeholder="Acme Corp"
+                value={draft.prospectCompany}
+                onChange={(e) => set("prospectCompany", e.target.value)}
+                onBlur={() => commit({ prospectCompany: draft.prospectCompany || undefined })}
               />
             </div>
 

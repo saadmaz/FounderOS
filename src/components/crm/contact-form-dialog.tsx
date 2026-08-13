@@ -36,7 +36,7 @@ const schema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   companyId: z.string().min(1, "Pick a company"),
   title: z.string().optional(),
-  jobDescription: z.string().optional(),
+  prospectCompany: z.string().optional(),
   email: z.string().email("Enter a valid email").optional().or(z.literal("")),
   phone: z.string().optional(),
   linkedin: z.string().optional(),
@@ -51,7 +51,7 @@ const DEFAULT_VALUES: FormValues = {
   name: "",
   companyId: "",
   title: "",
-  jobDescription: "",
+  prospectCompany: "",
   email: "",
   phone: "",
   linkedin: "",
@@ -113,7 +113,7 @@ export function ContactFormDialog({
         companyId: values.companyId,
         name: values.name,
         title: values.title || undefined,
-        jobDescription: values.jobDescription || undefined,
+        prospectCompany: values.prospectCompany || undefined,
         email: values.email || undefined,
         phone: values.phone || undefined,
         linkedin: values.linkedin || undefined,
@@ -163,12 +163,11 @@ export function ContactFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="jobDescription">Job description (optional)</Label>
-            <Textarea
-              id="jobDescription"
-              rows={2}
-              placeholder="What they actually own/do in the role"
-              {...register("jobDescription")}
+            <Label htmlFor="prospectCompany">Prospect company (optional)</Label>
+            <Input
+              id="prospectCompany"
+              placeholder="Acme Corp"
+              {...register("prospectCompany")}
             />
           </div>
 

@@ -378,9 +378,10 @@ export interface Contact {
   companyId: string;
   name: string;
   title?: string;
-  /** Longer description of what this person actually does/owns - Job
-   * Title is the short label ("VP of Sales"), this is the free-text detail. */
-  jobDescription?: string;
+  /** The prospect's own employer/company (free text, e.g. "Acme Corp") -
+   * distinct from `companyId` above, which is which of *your* companies
+   * this contact is tracked under, not who they work for. */
+  prospectCompany?: string;
   email?: string;
   phone?: string;
   linkedin?: string;
