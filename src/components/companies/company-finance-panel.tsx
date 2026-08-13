@@ -1,13 +1,18 @@
 "use client";
 
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   CircleCheck,
   Clock,
+  Download,
   Landmark,
   MoreHorizontal,
   Paperclip,
   PiggyBank,
   Plus,
+  Search,
   Users,
   Wallet,
 } from "lucide-react";
@@ -21,7 +26,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -41,6 +54,8 @@ import { InvestmentFormDialog } from "@/components/finance/investment-form-dialo
 import { VendorFormDialog } from "@/components/finance/vendor-form-dialog";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { budgetPeriodRange, deleteBudget, useBudgets } from "@/lib/data/budgets";
+import { downloadCsv } from "@/lib/csv";
+import { DATE_RANGE_PRESETS, dateRangePresetBounds, type DateRangePreset } from "@/lib/date-range";
 import {
   bulkMarkExpensesReimbursed,
   deleteExpense,
@@ -135,6 +150,42 @@ function ExpenseStatusHint({
   );
 }
 
+type ExpenseSortState = { key: "date" | "amount"; dir: "asc" | "desc" } | null;
+
+/** Clickable column header that toggles the Expenses table's sort: click
+ * cycles unsorted -> desc -> asc -> unsorted (back to the underlying
+ * Firestore date-desc order) for that column, switching to a fresh desc
+ * sort if a different column is clicked while one is active. */
+function ExpenseSortHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  sortKey: "date" | "amount";
+  sort: ExpenseSortState;
+  onSort: (key: "date" | "amount") => void;
+  align?: "left" | "right";
+}) {
+  const active = sort?.key === sortKey;
+  const Icon = active ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className={cn(
+        "inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground",
+        align === "right" && "flex-row-reverse"
+      )}
+    >
+      {label}
+      <Icon className={cn("size-3", active && "text-foreground")} />
+    </button>
+  );
+}
+
 const INVESTMENT_STATUS_STYLES: Record<InvestmentStatus, string> = {
   active: "bg-primary/10 text-primary",
   exited: "bg-success/10 text-success",
@@ -185,14 +236,60 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(new Set());
 
+  // Expenses-tab-only findability controls - never touch the Overview
+  // totals or the other tabs, only what's listed (and exportable/
+  // selectable) in the Expenses table below.
+  const [expenseSearch, setExpenseSearch] = useState("");
+  const [expenseCategoryFilter, setExpenseCategoryFilter] = useState<string>("all");
+  const [expenseStatusFilter, setExpenseStatusFilter] = useState<string>("all");
+  const [expenseDateRange, setExpenseDateRange] = useState<DateRangePreset>("all");
+  const [expenseSort, setExpenseSort] = useState<ExpenseSortState>(null);
+
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
+  const expenseFiltersActive =
+    expenseSearch.trim() !== "" ||
+    expenseCategoryFilter !== "all" ||
+    expenseStatusFilter !== "all" ||
+    expenseDateRange !== "all";
+  const visibleExpenses = useMemo(() => {
+    let list = expenses;
+    if (expenseCategoryFilter !== "all") list = list.filter((e) => e.category === expenseCategoryFilter);
+    if (expenseStatusFilter !== "all") list = list.filter((e) => e.status === expenseStatusFilter);
+    const bounds = dateRangePresetBounds(expenseDateRange);
+    if (bounds) list = list.filter((e) => e.date >= bounds[0] && e.date < bounds[1]);
+    const q = expenseSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter((e) =>
+        [e.title, e.description, e.vendor].some((f) => f?.toLowerCase().includes(q))
+      );
+    }
+    if (expenseSort) {
+      const { key, dir } = expenseSort;
+      list = [...list].sort((a, b) => {
+        const diff = key === "date" ? a.date - b.date : a.amount - b.amount;
+        return dir === "asc" ? diff : -diff;
+      });
+    }
+    return list;
+  }, [expenses, expenseCategoryFilter, expenseStatusFilter, expenseDateRange, expenseSearch, expenseSort]);
+  function toggleExpenseSort(key: "date" | "amount") {
+    setExpenseSort((prev) => {
+      if (!prev || prev.key !== key) return { key, dir: "desc" };
+      return prev.dir === "desc" ? { key, dir: "asc" } : null;
+    });
+  }
+  // Only pending rows in the currently visible (filtered/searched) set are
+  // ever selectable (see the row checkbox below), so a stale id from a
+  // filter change just quietly drops out here rather than needing an effect
+  // to prune selectedExpenseIds on every filter change.
   const selectedPendingIds = useMemo(
-    () => expenses.filter((e) => e.status === "pending" && selectedExpenseIds.has(e.id)).map((e) => e.id),
-    [expenses, selectedExpenseIds]
+    () =>
+      visibleExpenses.filter((e) => e.status === "pending" && selectedExpenseIds.has(e.id)).map((e) => e.id),
+    [visibleExpenses, selectedExpenseIds]
   );
   const selectablePendingIds = useMemo(
-    () => expenses.filter((e) => e.status === "pending").map((e) => e.id),
-    [expenses]
+    () => visibleExpenses.filter((e) => e.status === "pending").map((e) => e.id),
+    [visibleExpenses]
   );
 
   // An expense/investment can carry its own currency (not necessarily
@@ -240,6 +337,32 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
       else next.add(id);
       return next;
     });
+  }
+  function clearExpenseFilters() {
+    setExpenseSearch("");
+    setExpenseCategoryFilter("all");
+    setExpenseStatusFilter("all");
+    setExpenseDateRange("all");
+  }
+  /** Exports exactly what's currently listed - same search/category/status/
+   * date-range/sort the table is showing, so what you export matches what
+   * you were looking at. */
+  function handleExportExpenses() {
+    downloadCsv(
+      `${company.name}-expenses-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Date", "Title", "Category", "Vendor", "Status", "Currency", "Amount", "Logged by", "Description"],
+      visibleExpenses.map((e) => [
+        new Date(e.date).toISOString().slice(0, 10),
+        e.title,
+        EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category,
+        e.vendor ?? "",
+        EXPENSE_STATUSES.find((s) => s.value === e.status)?.label ?? e.status,
+        e.currency,
+        e.amount,
+        memberById.get(e.createdBy)?.displayName ?? "",
+        e.description ?? "",
+      ])
+    );
   }
   async function handleDeleteBudget(id: string) {
     if (!workspaceId) return;
@@ -324,23 +447,96 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                {expenses.length} expense{expenses.length === 1 ? "" : "s"}
+                {expenseFiltersActive
+                  ? `${visibleExpenses.length} of ${expenses.length} expense${expenses.length === 1 ? "" : "s"}`
+                  : `${expenses.length} expense${expenses.length === 1 ? "" : "s"}`}
               </p>
             )}
-            {canEdit && (
-              <Button
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  setEditingExpense(null);
-                  setExpenseDialogOpen(true);
-                }}
-              >
-                <Plus className="size-4" />
-                New expense
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {expenses.length > 0 && (
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportExpenses}>
+                  <Download className="size-4" />
+                  Export
+                </Button>
+              )}
+              {canEdit && (
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setEditingExpense(null);
+                    setExpenseDialogOpen(true);
+                  }}
+                >
+                  <Plus className="size-4" />
+                  New expense
+                </Button>
+              )}
+            </div>
           </div>
+
+          {expenses.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-40 flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={expenseSearch}
+                  onChange={(e) => setExpenseSearch(e.target.value)}
+                  placeholder="Search title, description, vendor…"
+                  className="pl-8"
+                />
+              </div>
+              <Select value={expenseCategoryFilter} onValueChange={(v) => setExpenseCategoryFilter(v ?? "all")}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Category">
+                    {(v: string) => (v === "all" ? "Category" : EXPENSE_CATEGORIES.find((c) => c.value === v)?.label ?? v)}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All categories</SelectItem>
+                  {EXPENSE_CATEGORIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={expenseStatusFilter} onValueChange={(v) => setExpenseStatusFilter(v ?? "all")}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Status">
+                    {(v: string) => (v === "all" ? "Status" : EXPENSE_STATUSES.find((s) => s.value === v)?.label ?? v)}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  {EXPENSE_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={expenseDateRange} onValueChange={(v) => setExpenseDateRange((v ?? "all") as DateRangePreset)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue>
+                    {(v: string) => DATE_RANGE_PRESETS.find((p) => p.value === v)?.label ?? v}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {DATE_RANGE_PRESETS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {expenseFiltersActive && (
+                <Button variant="ghost" size="sm" onClick={clearExpenseFilters}>
+                  Clear
+                </Button>
+              )}
+            </div>
+          )}
 
           {expensesLoading ? (
             <TableSkeleton />
@@ -349,6 +545,12 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
               icon={Wallet}
               title="No expenses yet"
               description={`Log money you put in on ${company.name}'s behalf to start tracking it.`}
+            />
+          ) : visibleExpenses.length === 0 ? (
+            <EmptyState
+              icon={Search}
+              title="No expenses match"
+              description="Try a different search or clear the filters above."
             />
           ) : (
             <div className="overflow-hidden rounded-xl border border-border shadow-sm">
@@ -366,19 +568,21 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                         )}
                       </TableHead>
                     )}
-                    <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Date</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      <ExpenseSortHeader label="Date" sortKey="date" sort={expenseSort} onSort={toggleExpenseSort} />
+                    </TableHead>
                     <TableHead className="text-xs font-medium text-muted-foreground">Expense</TableHead>
                     <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Category</TableHead>
                     <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Vendor</TableHead>
                     <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
-                    <TableHead className="text-right text-xs font-medium text-muted-foreground">
-                      Amount
+                    <TableHead className="text-right">
+                      <ExpenseSortHeader label="Amount" sortKey="amount" sort={expenseSort} onSort={toggleExpenseSort} align="right" />
                     </TableHead>
                     {canEdit && <TableHead />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {expenses.map((e) => (
+                  {visibleExpenses.map((e) => (
                     <TableRow key={e.id} className="hover:bg-secondary/40">
                       {canEdit && (
                         <TableCell className="py-2">
@@ -405,6 +609,14 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                             </p>
                             {e.description && e.title && (
                               <p className="hidden truncate text-xs text-muted-foreground sm:block">{e.description}</p>
+                            )}
+                            {/* Only shown for expenses someone else logged - in a
+                                single-member workspace every row would say "Logged
+                                by You", which is just noise. */}
+                            {e.createdBy !== user?.uid && memberById.get(e.createdBy) && (
+                              <p className="hidden truncate text-xs text-muted-foreground-2 lg:block">
+                                Logged by {memberById.get(e.createdBy)?.displayName}
+                              </p>
                             )}
                           </div>
                           {e.receipts?.map((r) => (
