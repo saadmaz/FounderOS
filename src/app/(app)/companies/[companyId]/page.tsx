@@ -64,6 +64,21 @@ const LINK_LABELS: Record<keyof typeof LINK_ICONS, string> = {
   other: "Other",
 };
 
+const COMPANY_TABS = ["overview", "projects", "tasks", "meetings", "finance", "crm", "documents"] as const;
+
+// Same rationale as LINK_LABELS above - `capitalize` on the raw tab value
+// turns "crm" into "Crm" instead of the acronym "CRM", so it needs an
+// explicit label rather than a CSS transform.
+const TAB_LABELS: Record<(typeof COMPANY_TABS)[number], string> = {
+  overview: "Overview",
+  projects: "Projects",
+  tasks: "Tasks",
+  meetings: "Meetings",
+  finance: "Finance",
+  crm: "CRM",
+  documents: "Documents",
+};
+
 export default function CompanyDetailPage() {
   const { companyId } = useParams<{ companyId: string }>();
   const { workspace } = useWorkspace();
@@ -168,15 +183,15 @@ export default function CompanyDetailPage() {
       <Tabs defaultValue="overview" className="flex flex-1 flex-col gap-0" onValueChange={scrollMainToTop}>
         <ScrollableTabStrip className="border-b border-border px-4 lg:px-6">
           <TabsList className="h-11 w-max bg-transparent p-0">
-            {["overview", "projects", "tasks", "meetings", "finance", "crm", "documents"].map((v) => (
+            {COMPANY_TABS.map((v) => (
               <TabsTrigger
                 key={v}
                 value={v}
                 // 7 tabs at once always needs to scroll somewhere - tighter
                 // padding on mobile just means less of that scrolling to do.
-                className="shrink-0 rounded-none border-b-2 border-transparent px-2 capitalize data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-3"
+                className="shrink-0 rounded-none border-b-2 border-transparent px-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-3"
               >
-                {v}
+                {TAB_LABELS[v]}
               </TabsTrigger>
             ))}
           </TabsList>
