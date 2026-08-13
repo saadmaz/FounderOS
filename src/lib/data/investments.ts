@@ -1,6 +1,7 @@
 "use client";
 
 import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
+import { deleteCloudinaryAsset } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase/client";
 import type { Investment, InvestmentStatus } from "@/lib/types";
 import { now, omitUndefined } from "./firestore-helpers";
@@ -66,6 +67,16 @@ export async function setInvestmentCurrentValue(
   return updateInvestment(workspaceId, investmentId, { currentValue });
 }
 
-export async function deleteInvestment(workspaceId: string, investmentId: string) {
+/** Deletes the investment and, best-effort, every attached document - a
+ * Cloudinary hiccup shouldn't block someone from deleting the underlying
+ * investment record (mirrors deleteExpense). */
+export async function deleteInvestment(
+  workspaceId: string,
+  investmentId: string,
+  documents?: Investment["documents"]
+) {
+  await Promise.all(
+    (documents ?? []).map((d) => deleteCloudinaryAsset(d.publicId, d.resourceType).catch(() => {}))
+  );
   return deleteDoc(doc(db, path(workspaceId), investmentId));
 }

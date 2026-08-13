@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import type { FinanceAttachment } from "@/lib/types";
 
 /**
- * Multi-file picker for the receipts attached to an Expense - handles two
+ * Multi-file picker for the documents attached to a finance record (an
+ * Expense's receipts, an Investment's supporting documents) - handles two
  * lists (already-saved attachments, new files staged for upload), either
  * of which can hold any number of files, not just one.
  */

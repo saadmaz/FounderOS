@@ -380,6 +380,11 @@ export interface Investment {
   currentValue?: number;
   ownershipPercent?: number;
   note?: string;
+  /** Supporting documents - bank transfer confirmations, signed agreements,
+   * cap table extracts, anything backing up the record. Broader than
+   * Expense's `receipts` (same FinanceAttachment shape, different name
+   * since "receipt" undersells what an investment's paperwork usually is). */
+  documents?: FinanceAttachment[];
   createdAt: number;
   updatedAt: number;
 }

@@ -456,9 +456,9 @@ export default function FinancePage() {
     await deleteVendor(workspaceId, id);
     toast.success("Vendor deleted");
   }
-  async function handleDeleteInvestment(id: string) {
+  async function handleDeleteInvestment(investment: Investment) {
     if (!workspaceId) return;
-    await deleteInvestment(workspaceId, id);
+    await deleteInvestment(workspaceId, investment.id, investment.documents);
     toast.success("Investment deleted");
   }
   async function handleMarkInvestmentStatus(id: string, status: "exited" | "written_off") {
@@ -1020,7 +1020,21 @@ export default function FinancePage() {
                             </div>
                           </TableCell>
                           <TableCell className="py-2 text-sm text-muted-foreground">
-                            {INVESTMENT_TYPES.find((t) => t.value === inv.type)?.label ?? inv.type}
+                            <div className="flex items-center gap-1.5">
+                              <span>{INVESTMENT_TYPES.find((t) => t.value === inv.type)?.label ?? inv.type}</span>
+                              {inv.documents?.map((d) => (
+                                <a
+                                  key={d.publicId}
+                                  href={d.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={`View document: ${d.name}`}
+                                  className="shrink-0 text-muted-foreground-2 hover:text-foreground"
+                                >
+                                  <Paperclip className="size-3.5" />
+                                </a>
+                              ))}
+                            </div>
                             <p className="text-xs text-muted-foreground-2 sm:hidden">
                               {formatDate(inv.date)} · {companyById.get(inv.companyId)?.name ?? "—"}
                             </p>
@@ -1091,7 +1105,7 @@ export default function FinancePage() {
                                   )}
                                   <DropdownMenuItem
                                     variant="destructive"
-                                    onClick={() => handleDeleteInvestment(inv.id)}
+                                    onClick={() => handleDeleteInvestment(inv)}
                                   >
                                     Delete
                                   </DropdownMenuItem>

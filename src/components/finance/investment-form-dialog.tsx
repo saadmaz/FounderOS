@@ -23,12 +23,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AttachmentField } from "@/components/finance/attachment-field";
+import { deleteCloudinaryAsset, uploadDocumentToCloudinary } from "@/lib/cloudinary";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createInvestment, updateInvestment } from "@/lib/data/investments";
 import {
   INVESTMENT_STATUSES,
   INVESTMENT_TYPES,
   type Company,
+  type FinanceAttachment,
   type Investment,
 } from "@/lib/types";
 
@@ -83,6 +86,8 @@ export function InvestmentFormDialog({
   investment?: Investment | null;
 }) {
   const [submitting, setSubmitting] = useState(false);
+  const [documentFiles, setDocumentFiles] = useState<File[]>([]);
+  const [removedDocuments, setRemovedDocuments] = useState<FinanceAttachment[]>([]);
   const isEditing = Boolean(investment);
   const {
     register,
@@ -108,6 +113,8 @@ export function InvestmentFormDialog({
 
   useEffect(() => {
     if (!open) return;
+    setDocumentFiles([]);
+    setRemovedDocuments([]);
     if (investment) {
       reset({
         companyId: investment.companyId,
@@ -137,10 +144,36 @@ export function InvestmentFormDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, investment]);
 
+  /** Uploads every newly staged file, drops any existing document the user
+   * removed (best-effort Cloudinary cleanup - a hiccup there shouldn't block
+   * saving the investment), and returns the full resulting list. */
+  async function resolveDocuments(): Promise<FinanceAttachment[]> {
+    const uploaded = await Promise.all(
+      documentFiles.map(async (file) => {
+        const result = await uploadDocumentToCloudinary(file, `founderos/${workspaceId}/investment-documents`);
+        return {
+          url: result.url,
+          publicId: result.publicId,
+          resourceType: result.resourceType as FinanceAttachment["resourceType"],
+          name: file.name,
+          size: file.size,
+        };
+      })
+    );
+    for (const att of removedDocuments) {
+      deleteCloudinaryAsset(att.publicId, att.resourceType).catch(() => {});
+    }
+    const kept = (investment?.documents ?? []).filter(
+      (att) => !removedDocuments.some((r) => r.publicId === att.publicId)
+    );
+    return [...kept, ...uploaded];
+  }
+
   async function onSubmit(values: FormValues) {
     setSubmitting(true);
     try {
       const date = new Date(`${values.date}T00:00:00`).getTime();
+      const documents = await resolveDocuments();
       const payload = omitUndefined({
         companyId: values.companyId,
         type: values.type,
@@ -151,6 +184,7 @@ export function InvestmentFormDialog({
         currentValue: values.currentValue ? Number(values.currentValue) : undefined,
         ownershipPercent: values.ownershipPercent ? Number(values.ownershipPercent) : undefined,
         note: values.note || undefined,
+        documents,
       });
       if (isEditing && investment) {
         await updateInvestment(workspaceId, investment.id, payload);
@@ -281,6 +315,16 @@ export function InvestmentFormDialog({
             <Label htmlFor="note">Note (optional)</Label>
             <Input id="note" placeholder="Round, terms, anything worth remembering" {...register("note")} />
           </div>
+
+          <AttachmentField
+            label="Documents (optional)"
+            existing={(investment?.documents ?? []).filter(
+              (att) => !removedDocuments.some((r) => r.publicId === att.publicId)
+            )}
+            onRemoveExisting={(att) => setRemovedDocuments((prev) => [...prev, att])}
+            files={documentFiles}
+            onFilesChange={setDocumentFiles}
+          />
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
