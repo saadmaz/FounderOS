@@ -27,6 +27,7 @@ import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
 import { addContactActivity, createContact } from "@/lib/data/contacts";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
+import { CONTACT_SOURCES } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const schema = z.object({
@@ -35,6 +36,8 @@ const schema = z.object({
   title: z.string().optional(),
   email: z.string().email("Enter a valid email").optional().or(z.literal("")),
   phone: z.string().optional(),
+  linkedin: z.string().optional(),
+  source: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -46,14 +49,18 @@ const DEFAULT_VALUES: FormValues = {
   title: "",
   email: "",
   phone: "",
+  linkedin: "",
+  source: "",
   notes: "",
 };
 
 /**
- * Quick-add for a new contact - just the essentials (name, company, title,
- * email, phone). LinkedIn, lead source, status, timeline, tasks, documents,
- * and linked deals all live in ContactDetailSheet, which is where a
- * contact actually gets fleshed out and edited going forward.
+ * Quick-add for a new contact - the full profile (name, company, title,
+ * email, mobile, LinkedIn, lead source) plus an optional first note.
+ * Status, timeline, open tasks, attached documents, and linked deals all
+ * live in ContactDetailSheet, which is where a contact keeps getting
+ * fleshed out going forward - those inherently can't exist before the
+ * contact itself does.
  */
 export function ContactFormDialog({
   open,
@@ -101,6 +108,8 @@ export function ContactFormDialog({
         title: values.title || undefined,
         email: values.email || undefined,
         phone: values.phone || undefined,
+        linkedin: values.linkedin || undefined,
+        source: values.source || undefined,
         status: "active" as const,
       });
       const ref = await createContact(workspace.id, payload, user.uid);
@@ -176,6 +185,27 @@ export function ContactFormDialog({
             <div className="space-y-1.5">
               <Label htmlFor="phone">Mobile number (optional)</Label>
               <Input id="phone" placeholder="+1 555 000 0000" {...register("phone")} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="linkedin">LinkedIn (optional)</Label>
+              <Input id="linkedin" placeholder="linkedin.com/in/…" {...register("linkedin")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="source">Lead source (optional)</Label>
+              <Input
+                id="source"
+                list="contact-source-suggestions"
+                placeholder="e.g. Referral"
+                {...register("source")}
+              />
+              <datalist id="contact-source-suggestions">
+                {CONTACT_SOURCES.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
             </div>
           </div>
 

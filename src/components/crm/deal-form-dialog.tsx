@@ -29,6 +29,8 @@ import { useCompanies } from "@/lib/data/companies";
 import { useContacts } from "@/lib/data/contacts";
 import { addDealActivity, createDeal } from "@/lib/data/deals";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
+import { useMembers } from "@/lib/data/members";
+import { DEAL_SOURCES } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const schema = z.object({
@@ -48,6 +50,11 @@ const schema = z.object({
       "Enter 0-100"
     ),
   expectedCloseDate: z.string().optional(),
+  ownerId: z.string().optional(),
+  source: z.string().optional(),
+  exitCriteria: z.string().optional(),
+  nextStep: z.string().optional(),
+  nextStepDate: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -61,15 +68,22 @@ const DEFAULT_VALUES: FormValues = {
   currency: "LKR",
   probability: "",
   expectedCloseDate: "",
+  ownerId: "",
+  source: "",
+  exitCriteria: "",
+  nextStep: "",
+  nextStepDate: "",
   notes: "",
 };
 
 /**
- * Quick-add for a new deal - deliberately just the essentials (title,
- * company/contact, value, probability, close date). Everything else
- * (owner, source, exit criteria, next step, activity) lives in
- * DealDetailSheet, which opens right after creating and is where a deal
- * actually gets fleshed out and edited going forward.
+ * Quick-add for a new deal - the full deal-card property set (title,
+ * company/contact, value, probability, close date, owner, source, exit
+ * criteria, next step) plus an optional first note. Stage always starts
+ * at "prospecting" - a deal doesn't skip the top of the funnel just
+ * because it was fleshed out on the way in. The activity timeline, linked
+ * tasks/documents, and ongoing stage changes all live in DealDetailSheet,
+ * which opens right after creating.
  */
 export function DealFormDialog({
   open,
@@ -89,6 +103,7 @@ export function DealFormDialog({
   const { workspace } = useWorkspace();
   const { user } = useAuth();
   const { data: companies } = useCompanies(workspace?.id ?? null);
+  const { data: members } = useMembers(workspace?.id ?? null);
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -135,6 +150,11 @@ export function DealFormDialog({
         expectedCloseDate: values.expectedCloseDate
           ? new Date(values.expectedCloseDate).getTime()
           : null,
+        ownerId: values.ownerId || undefined,
+        source: values.source || undefined,
+        exitCriteria: values.exitCriteria || undefined,
+        nextStep: values.nextStep || undefined,
+        nextStepDate: values.nextStepDate ? new Date(values.nextStepDate).getTime() : null,
       });
       const ref = await createDeal(workspace.id, payload, user.uid);
       if (values.notes?.trim()) {
@@ -249,12 +269,73 @@ export function DealFormDialog({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Expected close</Label>
+              <DatePicker
+                value={watch("expectedCloseDate")}
+                onChange={(v) => setValue("expectedCloseDate", v)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Deal owner (optional)</Label>
+              <Select
+                value={watch("ownerId")}
+                onValueChange={(v) => setValue("ownerId", v ?? "")}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Unassigned">
+                    {(v: string) => members.find((m) => m.id === v)?.displayName ?? "Unassigned"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {members.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="space-y-1.5">
-            <Label>Expected close</Label>
-            <DatePicker
-              value={watch("expectedCloseDate")}
-              onChange={(v) => setValue("expectedCloseDate", v)}
+            <Label htmlFor="source">Source / tag (optional)</Label>
+            <Input
+              id="source"
+              list="deal-source-suggestions"
+              placeholder="e.g. Referral"
+              {...register("source")}
             />
+            <datalist id="deal-source-suggestions">
+              {DEAL_SOURCES.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="exitCriteria">Exit criteria (optional)</Label>
+            <Textarea
+              id="exitCriteria"
+              rows={2}
+              placeholder="What has to happen to move this forward?"
+              {...register("exitCriteria")}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="nextStep">Next step (optional)</Label>
+              <Input id="nextStep" placeholder="e.g. Send proposal" {...register("nextStep")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Next step date (optional)</Label>
+              <DatePicker
+                value={watch("nextStepDate")}
+                onChange={(v) => setValue("nextStepDate", v)}
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">
