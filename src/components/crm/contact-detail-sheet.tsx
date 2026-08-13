@@ -72,6 +72,7 @@ type Draft = {
   name: string;
   companyId: string;
   title: string;
+  jobDescription: string;
   phone: string;
   email: string;
   linkedin: string;
@@ -86,6 +87,7 @@ function draftFrom(contact: Contact): Draft {
     name: contact.name,
     companyId: contact.companyId,
     title: contact.title ?? "",
+    jobDescription: contact.jobDescription ?? "",
     phone: contact.phone ?? "",
     email: contact.email ?? "",
     linkedin: contact.linkedin ?? "",
@@ -356,6 +358,18 @@ export function ContactDetailSheet({
                 value={draft.title}
                 onChange={(e) => set("title", e.target.value)}
                 onBlur={() => commit({ title: draft.title || undefined })}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-job-description">Job description</Label>
+              <Textarea
+                id="contact-job-description"
+                rows={2}
+                placeholder="What they actually own/do in the role"
+                value={draft.jobDescription}
+                onChange={(e) => set("jobDescription", e.target.value)}
+                onBlur={() => commit({ jobDescription: draft.jobDescription || undefined })}
               />
             </div>
 

@@ -378,6 +378,9 @@ export interface Contact {
   companyId: string;
   name: string;
   title?: string;
+  /** Longer description of what this person actually does/owns - Job
+   * Title is the short label ("VP of Sales"), this is the free-text detail. */
+  jobDescription?: string;
   email?: string;
   phone?: string;
   linkedin?: string;
