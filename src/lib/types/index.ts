@@ -425,11 +425,11 @@ export const DEAL_STAGES: { value: DealStage; label: string; description: string
     label: "Qualification",
     description: "Confirming the buyer has a real need, budget, and authority.",
   },
-  { value: "meeting", label: "Meeting / Demo", description: "Presenting the product or service solution." },
+  { value: "meeting", label: "Meeting or Demo", description: "Presenting the product or service solution." },
   { value: "proposal", label: "Proposal", description: "Delivering formal pricing, terms, and scope." },
   { value: "negotiation", label: "Negotiation", description: "Adjusting final contract details and terms." },
-  { value: "closed_won", label: "Closed Won", description: "The deal was won." },
-  { value: "closed_lost", label: "Closed Lost", description: "The deal was lost." },
+  { value: "closed_won", label: "Closed Won", description: "Recording the final outcome - won." },
+  { value: "closed_lost", label: "Closed Lost", description: "Recording the final outcome - lost." },
 ];
 
 /** Stages a deal can still be dragged into/out of on the board - the two

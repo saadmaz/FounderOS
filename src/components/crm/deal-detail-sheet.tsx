@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { SectionLabel } from "@/components/crm/section-label";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
 import { useContacts } from "@/lib/data/contacts";
@@ -282,7 +283,9 @@ export function DealDetailSheet({
         {/* Body */}
         <div className="flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
           {/* Properties */}
-          <div className="order-1 shrink-0 space-y-4 border-b border-border p-4 lg:order-2 lg:w-72 lg:overflow-y-auto lg:border-b-0 lg:border-l lg:p-5">
+          <div className="order-1 shrink-0 space-y-3 border-b border-border p-4 lg:order-2 lg:w-72 lg:overflow-y-auto lg:border-b-0 lg:border-l lg:p-5">
+            <SectionLabel>Deal properties</SectionLabel>
+
             <div className="space-y-1.5">
               <Label>Company</Label>
               <Select
@@ -411,6 +414,8 @@ export function DealDetailSheet({
               </Select>
             </div>
 
+            <SectionLabel>Management rules</SectionLabel>
+
             <div className="space-y-1.5">
               <Label htmlFor="deal-source">Source / tag</Label>
               <Input
@@ -459,15 +464,17 @@ export function DealDetailSheet({
               />
             </div>
 
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full gap-1.5 text-danger hover:text-danger"
-              onClick={handleDelete}
-            >
-              <Trash2 className="size-3.5" />
-              Delete deal
-            </Button>
+            <div className="pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full gap-1.5 text-danger hover:text-danger"
+                onClick={handleDelete}
+              >
+                <Trash2 className="size-3.5" />
+                Delete deal
+              </Button>
+            </div>
           </div>
 
           {/* Activity / notes thread */}

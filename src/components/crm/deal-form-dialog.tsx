@@ -32,6 +32,7 @@ import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { useMembers } from "@/lib/data/members";
 import { DEAL_SOURCES } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
+import { SectionLabel } from "@/components/crm/section-label";
 
 const schema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -182,10 +183,12 @@ export function DealFormDialog({
         <DialogHeader>
           <DialogTitle>New deal</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <SectionLabel>Deal properties</SectionLabel>
+
           <div className="space-y-1.5">
-            <Label htmlFor="title">Title</Label>
-            <Input id="title" placeholder="Enterprise contract" autoFocus {...register("title")} />
+            <Label htmlFor="title">Deal name</Label>
+            <Input id="title" placeholder="Acme Corp - Enterprise contract" autoFocus {...register("title")} />
             {errors.title && <p className="text-xs text-danger">{errors.title.message}</p>}
           </div>
 
@@ -242,7 +245,7 @@ export function DealFormDialog({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label htmlFor="value">Value</Label>
+              <Label htmlFor="value">Amount</Label>
               <Input id="value" type="number" min={0} step="1" {...register("value")} />
               {errors.value && <p className="text-xs text-danger">{errors.value.message}</p>}
             </div>
@@ -271,7 +274,7 @@ export function DealFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Expected close</Label>
+              <Label>Close date</Label>
               <DatePicker
                 value={watch("expectedCloseDate")}
                 onChange={(v) => setValue("expectedCloseDate", v)}
@@ -299,12 +302,14 @@ export function DealFormDialog({
             </div>
           </div>
 
+          <SectionLabel>Management rules</SectionLabel>
+
           <div className="space-y-1.5">
             <Label htmlFor="source">Source / tag (optional)</Label>
             <Input
               id="source"
               list="deal-source-suggestions"
-              placeholder="e.g. Referral"
+              placeholder="e.g. Inbound, Referral"
               {...register("source")}
             />
             <datalist id="deal-source-suggestions">
@@ -319,7 +324,7 @@ export function DealFormDialog({
             <Textarea
               id="exitCriteria"
               rows={2}
-              placeholder="What has to happen to move this forward?"
+              placeholder="What action-based rule moves this deal forward?"
               {...register("exitCriteria")}
             />
           </div>
