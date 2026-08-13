@@ -12,11 +12,12 @@ import {
   Paperclip,
   PiggyBank,
   Plus,
+  Repeat,
   Search,
   Users,
   Wallet,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -54,7 +55,13 @@ import { InvestmentFormDialog } from "@/components/finance/investment-form-dialo
 import { VendorFormDialog } from "@/components/finance/vendor-form-dialog";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
-import { budgetPeriodRange, deleteBudget, useBudgets } from "@/lib/data/budgets";
+import {
+  budgetActualSpend,
+  budgetPeriodRange,
+  deleteBudget,
+  rolloverRecurringBudgets,
+  useBudgets,
+} from "@/lib/data/budgets";
 import { downloadCsv } from "@/lib/csv";
 import {
   bulkMarkExpensesReimbursed,
@@ -114,6 +121,19 @@ const DAY_MS = 86_400_000;
 // below doesn't call it directly during render.
 function daysSince(date: number, now = Date.now()): number {
   return Math.floor((now - date) / DAY_MS);
+}
+
+/** Whether a budget's *current* period (the one covering right now, not a
+ * past or future one) is over its allocation - a budget that was over
+ * budget three months ago shouldn't keep nagging forever. */
+function isCurrentPeriodOverBudget(
+  budget: Pick<Budget, "companyId" | "category" | "currency" | "period" | "periodStart" | "allocatedAmount">,
+  expenses: Expense[],
+  now = Date.now()
+): boolean {
+  const [start, end] = budgetPeriodRange(budget);
+  if (now < start || now >= end) return false;
+  return budgetActualSpend(budget, expenses) > budget.allocatedAmount;
 }
 
 /** Secondary text next to the status badge: how long a pending expense has
@@ -325,6 +345,36 @@ export default function FinancePage() {
     [filteredExpenses]
   );
   const totalInvested = useMemo(() => formatMixedCurrencyTotal(filteredInvestments), [filteredInvestments]);
+
+  // Runs once per mount, not on every budgets refetch (rolloverRecurringBudgets
+  // is idempotent, so a re-run would just be a wasted no-op check, not a bug -
+  // the ref guard is purely to avoid that redundant work).
+  const rolloverRanRef = useRef(false);
+  useEffect(() => {
+    if (!workspaceId || !canEdit || budgetsLoading || rolloverRanRef.current) return;
+    rolloverRanRef.current = true;
+    rolloverRecurringBudgets(workspaceId, budgets).catch(() => {});
+  }, [workspaceId, canEdit, budgetsLoading, budgets]);
+
+  // Proactive nudge for budgets already over allocation *this* period - the
+  // in-tab "Over budget" badge only helps if you open the Budgets tab.
+  // Fires once per mount (see rolloverRanRef above for why a ref guard
+  // instead of a dependency-driven re-check).
+  const overBudgetToastRanRef = useRef(false);
+  useEffect(() => {
+    if (budgetsLoading || expensesLoading || overBudgetToastRanRef.current) return;
+    overBudgetToastRanRef.current = true;
+    const overBudgetNow = budgets.filter((b) => isCurrentPeriodOverBudget(b, expenses));
+    if (overBudgetNow.length === 0) return;
+    if (overBudgetNow.length === 1) {
+      const b = overBudgetNow[0];
+      const companyName = companyById.get(b.companyId)?.name ?? "A company";
+      const categoryLabel = EXPENSE_CATEGORIES.find((c) => c.value === b.category)?.label ?? b.category;
+      toast.warning(`${companyName}'s ${categoryLabel} budget is over allocation this period`);
+    } else {
+      toast.warning(`${overBudgetNow.length} budgets are over allocation this period`);
+    }
+  }, [budgetsLoading, expensesLoading, budgets, expenses, companyById]);
 
   async function handleDeleteExpense(expense: Expense) {
     if (!workspaceId) return;
@@ -789,24 +839,7 @@ export default function FinancePage() {
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredBudgets.map((b) => {
-                  const [start, end] = budgetPeriodRange(b);
-                  // A budget has one `currency`; an expense matching by
-                  // company/category/period but logged in a different
-                  // currency can't be added into `actual` without an
-                  // exchange rate, so (like the overview totals above) it's
-                  // excluded rather than silently mixed in - matching it by
-                  // company/category is still useful context even if its
-                  // amount can't count toward this budget's number.
-                  const actual = expenses
-                    .filter(
-                      (e) =>
-                        e.companyId === b.companyId &&
-                        e.category === b.category &&
-                        e.currency === b.currency &&
-                        e.date >= start &&
-                        e.date < end
-                    )
-                    .reduce((sum, e) => sum + e.amount, 0);
+                  const actual = budgetActualSpend(b, expenses);
                   const pct = b.allocatedAmount > 0 ? (actual / b.allocatedAmount) * 100 : 0;
                   const overBudget = actual > b.allocatedAmount;
 
@@ -859,6 +892,15 @@ export default function FinancePage() {
                         <span className="rounded-full bg-secondary px-2 py-0.5 text-xs capitalize text-muted-foreground">
                           {BUDGET_PERIODS.find((p) => p.value === b.period)?.label ?? b.period}
                         </span>
+                        {b.recurring && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground"
+                            title="Automatically creates the next period's budget once this one ends"
+                          >
+                            <Repeat className="size-3" />
+                            Repeats
+                          </span>
+                        )}
                       </div>
                       <div className="mt-4 space-y-1.5">
                         <div className="flex items-baseline justify-between text-sm">

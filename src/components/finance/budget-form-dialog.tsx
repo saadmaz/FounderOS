@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
@@ -37,6 +38,7 @@ const schema = z.object({
     .min(1, "Amount is required")
     .refine((v) => !isNaN(Number(v)) && Number(v) > 0, "Amount must be greater than 0"),
   currency: z.string().min(1),
+  recurring: z.boolean(),
   note: z.string().optional(),
 });
 
@@ -73,6 +75,7 @@ export function BudgetFormDialog({
       periodStart: new Date().toISOString().slice(0, 10),
       allocatedAmount: "",
       currency: companies[0]?.currency ?? "LKR",
+      recurring: false,
       note: "",
     },
   });
@@ -87,6 +90,7 @@ export function BudgetFormDialog({
         periodStart: new Date(budget.periodStart).toISOString().slice(0, 10),
         allocatedAmount: String(budget.allocatedAmount),
         currency: budget.currency,
+        recurring: budget.recurring ?? false,
         note: budget.note ?? "",
       });
     } else {
@@ -97,6 +101,7 @@ export function BudgetFormDialog({
         periodStart: new Date().toISOString().slice(0, 10),
         allocatedAmount: "",
         currency: companies[0]?.currency ?? "LKR",
+        recurring: false,
         note: "",
       });
     }
@@ -115,6 +120,7 @@ export function BudgetFormDialog({
           periodStart,
           allocatedAmount: Number(values.allocatedAmount),
           currency: values.currency,
+          recurring: values.recurring,
           note: values.note || undefined,
         }));
         toast.success("Budget updated");
@@ -126,6 +132,7 @@ export function BudgetFormDialog({
           periodStart,
           allocatedAmount: Number(values.allocatedAmount),
           currency: values.currency,
+          recurring: values.recurring,
           note: values.note || undefined,
         }));
         toast.success("Budget created");
@@ -210,6 +217,17 @@ export function BudgetFormDialog({
           <div className="space-y-1.5">
             <Label>Period starts</Label>
             <DatePicker value={watch("periodStart")} onChange={(v) => setValue("periodStart", v)} />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="recurring"
+              checked={watch("recurring")}
+              onCheckedChange={(v) => setValue("recurring", Boolean(v))}
+            />
+            <Label htmlFor="recurring" className="font-normal">
+              Repeat automatically every {watch("period")}
+            </Label>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

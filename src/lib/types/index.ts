@@ -300,6 +300,10 @@ export interface Budget {
   periodStart: number;
   allocatedAmount: number;
   currency: string;
+  /** When true, rolloverRecurringBudgets (src/lib/data/budgets.ts) keeps
+   * creating this budget's next period automatically once the current one
+   * ends, instead of it being a one-off allocation. */
+  recurring?: boolean;
   note?: string;
   createdAt: number;
   updatedAt: number;
