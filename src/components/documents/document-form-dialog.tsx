@@ -39,6 +39,7 @@ export function DocumentFormDialog({
   companies,
   editingDocument,
   defaultCompanyId,
+  contactId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -46,6 +47,9 @@ export function DocumentFormDialog({
   companies: Company[];
   editingDocument?: DocumentFile | null;
   defaultCompanyId?: string;
+  /** Attaches an uploaded file to this contact (e.g. opened from a
+   * contact's Documents tab) - invisible in the form, no contact picker. */
+  contactId?: string;
 }) {
   const { user } = useAuth();
   const isEditing = Boolean(editingDocument);
@@ -107,6 +111,7 @@ export function DocumentFormDialog({
           file,
           name: trimmedName,
           companyId: companyId === "none" ? undefined : companyId,
+          contactId,
           description: trimmedDescription,
           uploadedBy: user.uid,
         });

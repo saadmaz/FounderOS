@@ -20,13 +20,31 @@ export function useDocuments(workspaceId: string | null, companyId?: string) {
   ]);
 }
 
+/** Direct contactId query rather than piggybacking on useDocuments(companyId)
+ * + a client-side filter - a document stays attached to its contact even if
+ * that contact's company field is later changed. */
+export function useDocumentsByContact(workspaceId: string | null, contactId: string | null) {
+  return useCollection<DocumentFile>(
+    workspaceId && contactId ? path(workspaceId) : null,
+    [where("contactId", "==", contactId), orderBy("createdAt", "desc")],
+    [workspaceId, contactId]
+  );
+}
+
 /**
  * Uploads the file to Cloudinary, then writes the metadata doc that the
  * rest of the app (list, filters, etc.) actually queries against.
  */
 export async function uploadDocument(
   workspaceId: string,
-  input: { file: File; name?: string; companyId?: string; description?: string; uploadedBy: string }
+  input: {
+    file: File;
+    name?: string;
+    companyId?: string;
+    contactId?: string;
+    description?: string;
+    uploadedBy: string;
+  }
 ) {
   const { url, publicId, resourceType } = await uploadDocumentToCloudinary(
     input.file,
@@ -37,6 +55,7 @@ export async function uploadDocument(
   const ref = await addDoc(collection(db, path(workspaceId)), {
     workspaceId,
     ...(input.companyId ? { companyId: input.companyId } : {}),
+    ...(input.contactId ? { contactId: input.contactId } : {}),
     name: input.name?.trim() || input.file.name,
     ...(input.description ? { description: input.description } : {}),
     url,

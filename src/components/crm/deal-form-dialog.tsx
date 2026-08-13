@@ -75,11 +75,13 @@ export function DealFormDialog({
   open,
   onOpenChange,
   defaultCompanyId,
+  defaultContactId,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   defaultCompanyId?: string;
+  defaultContactId?: string;
   /** Called with the new deal's id right after creation, so the caller can
    * open DealDetailSheet on it immediately. */
   onCreated?: (dealId: string) => void;
@@ -98,14 +100,22 @@ export function DealFormDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { ...DEFAULT_VALUES, companyId: defaultCompanyId ?? "" },
+    defaultValues: {
+      ...DEFAULT_VALUES,
+      companyId: defaultCompanyId ?? "",
+      contactId: defaultContactId ?? "",
+    },
   });
 
   useEffect(() => {
     if (!open) return;
-    reset({ ...DEFAULT_VALUES, companyId: defaultCompanyId ?? "" });
+    reset({
+      ...DEFAULT_VALUES,
+      companyId: defaultCompanyId ?? "",
+      contactId: defaultContactId ?? "",
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultCompanyId]);
+  }, [open, defaultCompanyId, defaultContactId]);
 
   const companyId = watch("companyId");
   const { data: contacts } = useContacts(workspace?.id ?? null, companyId || undefined);

@@ -23,6 +23,18 @@ export function useDeals(workspaceId: string | null, companyId?: string) {
   return { ...result, data: result.data.map((d) => ({ ...d, stage: normalizeDealStage(d.stage) })) };
 }
 
+/** Direct contactId query rather than piggybacking on useDeals(companyId)
+ * + a client-side filter - a deal stays visible on its contact even if
+ * that contact's company field is later changed. */
+export function useDealsByContact(workspaceId: string | null, contactId: string | null) {
+  const result = useCollection<Deal>(
+    workspaceId && contactId ? path(workspaceId) : null,
+    [where("contactId", "==", contactId), orderBy("createdAt", "desc")],
+    [workspaceId, contactId]
+  );
+  return { ...result, data: result.data.map((d) => ({ ...d, stage: normalizeDealStage(d.stage) })) };
+}
+
 export async function createDeal(
   workspaceId: string,
   input: Pick<Deal, "companyId" | "title" | "value" | "currency" | "stage"> & Partial<Deal>,

@@ -18,6 +18,17 @@ export function useTasks(workspaceId: string | null, companyId?: string) {
   ]);
 }
 
+/** Direct contactId query rather than piggybacking on useTasks(companyId)
+ * + a client-side filter - a task stays visible on its contact even if
+ * that contact's company field is later changed. */
+export function useTasksByContact(workspaceId: string | null, contactId: string | null) {
+  return useCollection<Task>(
+    workspaceId && contactId ? path(workspaceId) : null,
+    [where("contactId", "==", contactId), orderBy("order", "asc")],
+    [workspaceId, contactId]
+  );
+}
+
 export async function createTask(
   workspaceId: string,
   input: Pick<Task, "companyId" | "title" | "status" | "priority"> & Partial<Task>

@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal, Pencil, Plus, Trash2, TrendingUp, Users } from "lucide-react";
+import { MoreHorizontal, Plus, Trash2, TrendingUp, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { PageHeader } from "@/components/shared/page-header";
+import { ContactDetailSheet } from "@/components/crm/contact-detail-sheet";
 import { ContactFormDialog } from "@/components/crm/contact-form-dialog";
 import { DealBoard } from "@/components/crm/deal-board";
 import { DealDetailSheet } from "@/components/crm/deal-detail-sheet";
@@ -38,7 +39,7 @@ import { useDeals } from "@/lib/data/deals";
 import { useMembers } from "@/lib/data/members";
 import { formatDate } from "@/lib/format";
 import { scrollMainToTop } from "@/lib/scroll";
-import type { Contact } from "@/lib/types";
+import type { Contact, Deal } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { toast } from "sonner";
 
@@ -68,7 +69,8 @@ export default function CrmPage() {
   const [tab, setTab] = useState<"contacts" | "pipeline">("contacts");
 
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
+  const editingContact = contacts.find((c) => c.id === editingContactId) ?? null;
 
   const [dealDialogOpen, setDealDialogOpen] = useState(false);
   const [editingDealId, setEditingDealId] = useState<string | null>(null);
@@ -77,15 +79,16 @@ export default function CrmPage() {
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
 
   function openNewContact() {
-    setEditingContact(null);
-    setContactDialogOpen(true);
-  }
-  function openEditContact(contact: Contact) {
-    setEditingContact(contact);
     setContactDialogOpen(true);
   }
   function openNewDeal() {
     setDealDialogOpen(true);
+  }
+  /** Used by ContactDetailSheet's Deals tab to hand off to DealDetailSheet
+   * instead of stacking a second sheet on top. */
+  function openDealFromContact(deal: Deal) {
+    setEditingContactId(null);
+    setEditingDealId(deal.id);
   }
 
   async function handleDeleteContact(contact: Contact) {
@@ -184,7 +187,11 @@ export default function CrmPage() {
                     {contacts.map((contact) => {
                       const company = companyById.get(contact.companyId);
                       return (
-                        <TableRow key={contact.id} className="hover:bg-secondary/40">
+                        <TableRow
+                          key={contact.id}
+                          className="cursor-pointer hover:bg-secondary/40"
+                          onClick={() => setEditingContactId(contact.id)}
+                        >
                           <TableCell className="max-w-36 py-2 text-sm font-medium sm:max-w-none">
                             <span className="block truncate">{contact.name}</span>
                             <p className="truncate text-xs font-normal text-muted-foreground sm:hidden">
@@ -221,16 +228,12 @@ export default function CrmPage() {
                               {CONTACT_STATUS_LABELS[contact.status]}
                             </span>
                           </TableCell>
-                          <TableCell className="py-2 text-right">
+                          <TableCell className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}>
                                 <MoreHorizontal className="size-4" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openEditContact(contact)}>
-                                  <Pencil className="size-4" />
-                                  Edit
-                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleDeleteContact(contact)}>
                                   <Trash2 className="size-4" />
                                   Delete
@@ -282,8 +285,14 @@ export default function CrmPage() {
       <ContactFormDialog
         open={contactDialogOpen}
         onOpenChange={setContactDialogOpen}
-        contact={editingContact}
         defaultCompanyId={companyIdFilter}
+        onCreated={setEditingContactId}
+      />
+      <ContactDetailSheet
+        open={Boolean(editingContact)}
+        onOpenChange={(v) => !v && setEditingContactId(null)}
+        contact={editingContact}
+        onOpenDeal={openDealFromContact}
       />
       <DealFormDialog
         open={dealDialogOpen}

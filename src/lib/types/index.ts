@@ -142,6 +142,7 @@ export interface Task {
   workspaceId: string;
   companyId: string;
   projectId?: string;
+  contactId?: string;
   title: string;
   description?: string;
   status: TaskStatus;
@@ -367,6 +368,10 @@ export interface Investment {
 
 export type ContactStatus = "active" | "inactive";
 
+/** Where this contact/lead came from. Free-text `source` also accepts
+ * anything else a user types, this is just the quick-pick list. */
+export const CONTACT_SOURCES = ["Website form", "Referral", "Trade show", "Outbound", "Event", "Other"] as const;
+
 export interface Contact {
   id: string;
   workspaceId: string;
@@ -375,11 +380,31 @@ export interface Contact {
   title?: string;
   email?: string;
   phone?: string;
+  linkedin?: string;
+  /** Lead source, e.g. "Website form", "Referral", "Trade show". */
+  source?: string;
+  /** Superseded by the contactActivity thread (see below) - kept only so
+   * contacts written before that existed don't lose their note. */
   notes?: string;
   status: ContactStatus;
   lastContactedAt?: number | null;
   createdAt: number;
   updatedAt: number;
+}
+
+/** A contact's activity timeline - same shape and purpose as DealActivity
+ * (see below): the "notes" thread plus a manually-logged history of calls/
+ * emails/meetings, since there's no real inbox/calendar sync to draw from. */
+export type ContactActivityType = "note" | "call" | "email" | "meeting" | "created";
+
+export interface ContactActivity {
+  id: string;
+  workspaceId: string;
+  contactId: string;
+  type: ContactActivityType;
+  text?: string;
+  authorId: string;
+  createdAt: number;
 }
 
 export type DealStage =
@@ -482,6 +507,7 @@ export interface DocumentFile {
   id: string;
   workspaceId: string;
   companyId?: string;
+  contactId?: string;
   name: string;
   description?: string;
   url: string; // Cloudinary secure_url - stable, safe to use directly

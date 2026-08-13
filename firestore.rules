@@ -117,6 +117,11 @@ service cloud.firestore {
         allow create, update, delete: if canContribute(workspaceId);
       }
 
+      match /contactActivity/{activityId} {
+        allow read: if isMember(workspaceId);
+        allow create, delete: if canContribute(workspaceId);
+      }
+
       match /deals/{dealId} {
         allow read: if isMember(workspaceId);
         allow create, update, delete: if canContribute(workspaceId);
