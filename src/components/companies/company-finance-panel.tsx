@@ -50,7 +50,7 @@ import {
 import { deleteInvestment, useInvestments } from "@/lib/data/investments";
 import { useMembers } from "@/lib/data/members";
 import { deleteVendor, useVendors } from "@/lib/data/vendors";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatMixedCurrencyTotal } from "@/lib/format";
 import { scrollMainToTop } from "@/lib/scroll";
 import type {
   Budget,
@@ -195,19 +195,20 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
     [expenses]
   );
 
-  const totalPutIn = useMemo(
-    () => expenses.reduce((sum, e) => sum + e.amount, 0),
-    [expenses]
-  );
+  // An expense/investment can carry its own currency (not necessarily
+  // company.currency) - formatMixedCurrencyTotal keeps every currency's
+  // subtotal separately visible instead of silently adding incompatible
+  // amounts into one misleading number (see its doc comment).
+  const totalPutIn = useMemo(() => formatMixedCurrencyTotal(expenses), [expenses]);
   const totalReimbursed = useMemo(
-    () => expenses.filter((e) => e.status === "reimbursed").reduce((sum, e) => sum + e.amount, 0),
+    () => formatMixedCurrencyTotal(expenses.filter((e) => e.status === "reimbursed")),
     [expenses]
   );
   const pendingReimbursement = useMemo(
-    () => expenses.filter((e) => e.status === "pending").reduce((sum, e) => sum + e.amount, 0),
+    () => formatMixedCurrencyTotal(expenses.filter((e) => e.status === "pending")),
     [expenses]
   );
-  const totalInvested = useMemo(() => investments.reduce((sum, i) => sum + i.amount, 0), [investments]);
+  const totalInvested = useMemo(() => formatMixedCurrencyTotal(investments), [investments]);
 
   async function handleDeleteExpense(expense: Expense) {
     if (!workspaceId) return;
@@ -274,7 +275,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
               label="Total Put In"
-              value={formatCurrency(totalPutIn, company.currency)}
+              value={totalPutIn}
               icon={Wallet}
               accent="text-danger"
               accentBg="bg-danger/10"
@@ -282,7 +283,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             />
             <StatCard
               label="Pending Reimbursement"
-              value={formatCurrency(pendingReimbursement, company.currency)}
+              value={pendingReimbursement}
               icon={Clock}
               accent="text-warning"
               accentBg="bg-warning/10"
@@ -290,7 +291,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             />
             <StatCard
               label="Reimbursed"
-              value={formatCurrency(totalReimbursed, company.currency)}
+              value={totalReimbursed}
               icon={CircleCheck}
               accent="text-success"
               accentBg="bg-success/10"
@@ -298,7 +299,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             />
             <StatCard
               label="Total Invested"
-              value={formatCurrency(totalInvested, company.currency)}
+              value={totalInvested}
               icon={Landmark}
               accent="text-analytics-purple"
               accentBg="bg-analytics-purple/10"
@@ -518,8 +519,16 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {budgets.map((b) => {
                 const [start, end] = budgetPeriodRange(b);
+                // Same-currency only - see the analogous filter in
+                // finance/page.tsx's budgets tab for why.
                 const actual = expenses
-                  .filter((e) => e.category === b.category && e.date >= start && e.date < end)
+                  .filter(
+                    (e) =>
+                      e.category === b.category &&
+                      e.currency === b.currency &&
+                      e.date >= start &&
+                      e.date < end
+                  )
                   .reduce((sum, e) => sum + e.amount, 0);
                 const pct = b.allocatedAmount > 0 ? (actual / b.allocatedAmount) * 100 : 0;
                 const overBudget = actual > b.allocatedAmount;
@@ -596,7 +605,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
               {investments.length} investment{investments.length === 1 ? "" : "s"} ·{" "}
-              {formatCurrency(totalInvested, company.currency)} invested
+              {totalInvested} invested
             </p>
             {canEdit && (
               <Button

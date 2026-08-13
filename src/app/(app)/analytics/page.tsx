@@ -21,7 +21,14 @@ import { useInvestments } from "@/lib/data/investments";
 import { useMeetings } from "@/lib/data/meetings";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { commonCurrency, formatCurrency, formatHours, sumHours, sumMeetingHours } from "@/lib/format";
+import {
+  commonCurrency,
+  formatCurrency,
+  formatHours,
+  formatMixedCurrencyTotal,
+  sumHours,
+  sumMeetingHours,
+} from "@/lib/format";
 import type { TaskStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -104,16 +111,20 @@ export default function AnalyticsPage() {
   // share one (see commonCurrency).
   const displayCurrency = useMemo(() => commonCurrency(companies), [companies]);
 
-  const totalPutIn = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
+  // formatMixedCurrencyTotal keeps each currency's subtotal separately
+  // visible instead of silently adding incompatible amounts into one
+  // misleading number (see its doc comment) - unlike displayCurrency above,
+  // which only labels chart data that stays a plain numeric sum.
+  const totalPutIn = useMemo(() => formatMixedCurrencyTotal(expenses), [expenses]);
   const totalReimbursed = useMemo(
-    () => expenses.filter((e) => e.status === "reimbursed").reduce((s, e) => s + e.amount, 0),
+    () => formatMixedCurrencyTotal(expenses.filter((e) => e.status === "reimbursed")),
     [expenses]
   );
   const pendingReimbursement = useMemo(
-    () => expenses.filter((e) => e.status === "pending").reduce((s, e) => s + e.amount, 0),
+    () => formatMixedCurrencyTotal(expenses.filter((e) => e.status === "pending")),
     [expenses]
   );
-  const totalInvested = useMemo(() => investments.reduce((s, i) => s + i.amount, 0), [investments]);
+  const totalInvested = useMemo(() => formatMixedCurrencyTotal(investments), [investments]);
   const totalHours = useMemo(
     () => sumHours(timeEntries) + sumMeetingHours(meetings),
     [timeEntries, meetings]
@@ -200,7 +211,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <StatCard
                 label="Total Put In"
-                value={formatCurrency(totalPutIn, displayCurrency)}
+                value={totalPutIn}
                 icon={Wallet}
                 accent="text-danger"
                 accentBg="bg-danger/10"
@@ -208,7 +219,7 @@ export default function AnalyticsPage() {
               />
               <StatCard
                 label="Pending Reimbursement"
-                value={formatCurrency(pendingReimbursement, displayCurrency)}
+                value={pendingReimbursement}
                 icon={Hourglass}
                 accent="text-warning"
                 accentBg="bg-warning/10"
@@ -216,7 +227,7 @@ export default function AnalyticsPage() {
               />
               <StatCard
                 label="Reimbursed"
-                value={formatCurrency(totalReimbursed, displayCurrency)}
+                value={totalReimbursed}
                 icon={CircleCheck}
                 accent="text-success"
                 accentBg="bg-success/10"
@@ -224,7 +235,7 @@ export default function AnalyticsPage() {
               />
               <StatCard
                 label="Total Invested"
-                value={formatCurrency(totalInvested, displayCurrency)}
+                value={totalInvested}
                 icon={Landmark}
                 accent="text-analytics-purple"
                 accentBg="bg-analytics-purple/10"

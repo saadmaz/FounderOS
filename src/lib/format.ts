@@ -56,6 +56,31 @@ export function commonCurrency(companies: { currency: string }[], fallback = "LK
   return first && companies.every((c) => c.currency === first) ? first : fallback;
 }
 
+/**
+ * Sums `amount` per distinct `currency` and formats each subtotal
+ * separately, joined with " + " - the honest counterpart to summing
+ * straight into a number and labeling it with commonCurrency's fallback.
+ * That pattern (still used for a single-currency total, or to *label* a
+ * mixed one) hides the mix: adding a $100 expense and a Rs 100 expense as
+ * a raw "200" is wrong regardless of which currency symbol it's printed
+ * with. This keeps every currency's subtotal visible instead - a no-op
+ * (single formatted amount) whenever everything already shares one
+ * currency, which is the common case. Still no exchange-rate conversion
+ * (see commonCurrency) - this only ever keeps same-currency amounts summed
+ * together, never converts one currency's value into another's.
+ */
+export function formatMixedCurrencyTotal(items: { amount: number; currency: string }[]): string {
+  const byCurrency = new Map<string, number>();
+  for (const item of items) {
+    byCurrency.set(item.currency, (byCurrency.get(item.currency) ?? 0) + item.amount);
+  }
+  if (byCurrency.size === 0) return formatCurrency(0);
+  return [...byCurrency.entries()]
+    .sort((a, b) => b[1] - a[1]) // largest subtotal first
+    .map(([currency, amount]) => formatCurrency(amount, currency))
+    .join(" + ");
+}
+
 export function formatHours(hours: number) {
   return `${hours.toFixed(1)}h`;
 }

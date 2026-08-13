@@ -58,7 +58,7 @@ import {
 import { deleteInvestment, useInvestments } from "@/lib/data/investments";
 import { useMembers } from "@/lib/data/members";
 import { deleteVendor, useVendors } from "@/lib/data/vendors";
-import { commonCurrency, formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatMixedCurrencyTotal } from "@/lib/format";
 import { scrollMainToTop } from "@/lib/scroll";
 import type {
   Budget,
@@ -223,34 +223,22 @@ export default function FinancePage() {
     [investments, companyFilter]
   );
 
-  // A single selected company has one unambiguous currency; "All companies"
-  // only has one if every company here actually shares it - otherwise there's
-  // no honest single currency to sum into, so the stat cards fall back to
-  // the workspace default rather than mislabeling a mixed-currency total.
-  const displayCurrency = useMemo(
-    () =>
-      companyFilter === "all" ? commonCurrency(companies) : companyById.get(companyFilter)?.currency ?? "LKR",
-    [companyFilter, companies, companyById]
-  );
-
-  const totalPutIn = useMemo(
-    () => filteredExpenses.reduce((sum, e) => sum + e.amount, 0),
-    [filteredExpenses]
-  );
+  // Each of these sums expenses/investments that can each carry their own
+  // `currency` (not necessarily the company's default) - formatMixedCurrencyTotal
+  // keeps every currency's subtotal separately visible instead of silently
+  // adding incompatible amounts into one misleading number (see its doc
+  // comment). A single-currency selection collapses to one formatted amount,
+  // same as before.
+  const totalPutIn = useMemo(() => formatMixedCurrencyTotal(filteredExpenses), [filteredExpenses]);
   const totalReimbursed = useMemo(
-    () =>
-      filteredExpenses.filter((e) => e.status === "reimbursed").reduce((sum, e) => sum + e.amount, 0),
+    () => formatMixedCurrencyTotal(filteredExpenses.filter((e) => e.status === "reimbursed")),
     [filteredExpenses]
   );
   const pendingReimbursement = useMemo(
-    () =>
-      filteredExpenses.filter((e) => e.status === "pending").reduce((sum, e) => sum + e.amount, 0),
+    () => formatMixedCurrencyTotal(filteredExpenses.filter((e) => e.status === "pending")),
     [filteredExpenses]
   );
-  const totalInvested = useMemo(
-    () => filteredInvestments.reduce((sum, i) => sum + i.amount, 0),
-    [filteredInvestments]
-  );
+  const totalInvested = useMemo(() => formatMixedCurrencyTotal(filteredInvestments), [filteredInvestments]);
 
   async function handleDeleteExpense(expense: Expense) {
     if (!workspaceId) return;
@@ -344,7 +332,7 @@ export default function FinancePage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <StatCard
                 label="Total Put In"
-                value={formatCurrency(totalPutIn, displayCurrency)}
+                value={totalPutIn}
                 icon={Wallet}
                 accent="text-danger"
                 accentBg="bg-danger/10"
@@ -352,7 +340,7 @@ export default function FinancePage() {
               />
               <StatCard
                 label="Pending Reimbursement"
-                value={formatCurrency(pendingReimbursement, displayCurrency)}
+                value={pendingReimbursement}
                 icon={Clock}
                 accent="text-warning"
                 accentBg="bg-warning/10"
@@ -360,7 +348,7 @@ export default function FinancePage() {
               />
               <StatCard
                 label="Reimbursed"
-                value={formatCurrency(totalReimbursed, displayCurrency)}
+                value={totalReimbursed}
                 icon={CircleCheck}
                 accent="text-success"
                 accentBg="bg-success/10"
@@ -368,7 +356,7 @@ export default function FinancePage() {
               />
               <StatCard
                 label="Total Invested"
-                value={formatCurrency(totalInvested, displayCurrency)}
+                value={totalInvested}
                 icon={Landmark}
                 accent="text-analytics-purple"
                 accentBg="bg-analytics-purple/10"
@@ -600,11 +588,19 @@ export default function FinancePage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredBudgets.map((b) => {
                   const [start, end] = budgetPeriodRange(b);
+                  // A budget has one `currency`; an expense matching by
+                  // company/category/period but logged in a different
+                  // currency can't be added into `actual` without an
+                  // exchange rate, so (like the overview totals above) it's
+                  // excluded rather than silently mixed in - matching it by
+                  // company/category is still useful context even if its
+                  // amount can't count toward this budget's number.
                   const actual = expenses
                     .filter(
                       (e) =>
                         e.companyId === b.companyId &&
                         e.category === b.category &&
+                        e.currency === b.currency &&
                         e.date >= start &&
                         e.date < end
                     )
@@ -689,7 +685,7 @@ export default function FinancePage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 {filteredInvestments.length} investment{filteredInvestments.length === 1 ? "" : "s"} ·{" "}
-                {formatCurrency(totalInvested, displayCurrency)} invested
+                {totalInvested} invested
               </p>
               {canEdit && (
                 <Button
