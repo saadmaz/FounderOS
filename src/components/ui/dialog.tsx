@@ -109,8 +109,11 @@ function DialogFooter({
       className={cn(
         // sticky to the bottom of DialogContent's own scrollport (see its
         // overflow-y-auto above) so Save/Cancel stay reachable while a tall
-        // form scrolls, instead of sitting below the fold.
-        "sticky bottom-0 -mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 backdrop-blur-sm sm:flex-row sm:justify-end",
+        // form scrolls, instead of sitting below the fold. Solid background
+        // (not a translucent/blurred one) - scrolled-away fields peeking
+        // through a see-through footer reads as a rendering bug, not a
+        // deliberate frosted-glass effect, on a form this dense.
+        "sticky bottom-0 -mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t border-border bg-popover p-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
