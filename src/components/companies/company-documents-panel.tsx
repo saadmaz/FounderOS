@@ -161,6 +161,14 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
                             <span className="block max-w-40 truncate text-sm font-medium hover:underline sm:max-w-64">
                               {d.name}
                             </span>
+                            {d.description && (
+                              <span
+                                className="block max-w-40 truncate text-xs text-muted-foreground sm:max-w-64"
+                                title={d.description}
+                              >
+                                {d.description}
+                              </span>
+                            )}
                             <span className="block text-xs text-muted-foreground sm:hidden">
                               {formatFileSize(d.size)} · {formatDate(d.createdAt)}
                             </span>

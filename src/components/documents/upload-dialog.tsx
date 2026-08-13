@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { uploadDocument } from "@/lib/data/documents";
 import type { Company } from "@/lib/types";
@@ -40,21 +41,26 @@ export function UploadDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [companyId, setCompanyId] = useState<string>(defaultCompanyId ?? "none");
+  const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
+
+  const trimmedDescription = description.trim();
 
   function reset() {
     setFile(null);
     setCompanyId(defaultCompanyId ?? "none");
+    setDescription("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleUpload() {
-    if (!file || !user) return;
+    if (!file || !user || !trimmedDescription) return;
     setUploading(true);
     try {
       await uploadDocument(workspaceId, {
         file,
         companyId: companyId === "none" ? undefined : companyId,
+        description: trimmedDescription,
         uploadedBy: user.uid,
       });
       toast.success(`${file.name} uploaded`);
@@ -92,8 +98,8 @@ export function UploadDialog({
               className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-4 py-6 text-center transition-colors hover:border-white/25 disabled:pointer-events-none disabled:opacity-50"
             >
               <UploadIcon className="size-5 text-muted-foreground" />
-              <span className="text-sm">
-                {file ? file.name : "Click to choose a file"}
+              <span className="text-sm break-all">
+                {file ? file.name : "Tap to choose a file"}
               </span>
               {file && (
                 <span className="text-xs text-muted-foreground">
@@ -127,13 +133,37 @@ export function UploadDialog({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="document-description">Description</Label>
+            <Textarea
+              id="document-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={uploading}
+              placeholder="What is this file? e.g. “Signed Q3 investor SAFE”"
+              rows={3}
+              maxLength={280}
+            />
+          </div>
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={uploading}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={uploading}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
-          <Button type="button" onClick={handleUpload} disabled={uploading || !file}>
+          <Button
+            type="button"
+            onClick={handleUpload}
+            disabled={uploading || !file || !trimmedDescription}
+            className="w-full sm:w-auto"
+          >
             {uploading ? "Uploading…" : "Upload"}
           </Button>
         </DialogFooter>

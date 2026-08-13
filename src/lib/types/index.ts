@@ -416,6 +416,7 @@ export interface DocumentFile {
   workspaceId: string;
   companyId?: string;
   name: string;
+  description?: string;
   url: string; // Cloudinary secure_url - stable, safe to use directly
   publicId: string; // Cloudinary public_id, needed to delete the asset later
   resourceType: "image" | "video" | "raw"; // Cloudinary's asset bucket, needed to delete it

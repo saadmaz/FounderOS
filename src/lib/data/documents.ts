@@ -26,7 +26,7 @@ export function useDocuments(workspaceId: string | null, companyId?: string) {
  */
 export async function uploadDocument(
   workspaceId: string,
-  input: { file: File; companyId?: string; uploadedBy: string }
+  input: { file: File; companyId?: string; description?: string; uploadedBy: string }
 ) {
   const { url, publicId, resourceType } = await uploadDocumentToCloudinary(
     input.file,
@@ -38,6 +38,7 @@ export async function uploadDocument(
     workspaceId,
     ...(input.companyId ? { companyId: input.companyId } : {}),
     name: input.file.name,
+    ...(input.description ? { description: input.description } : {}),
     url,
     publicId,
     resourceType,
