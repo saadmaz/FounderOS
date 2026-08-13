@@ -27,8 +27,10 @@ import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
 import { addContactActivity, createContact } from "@/lib/data/contacts";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
+import { useMembers } from "@/lib/data/members";
 import { CONTACT_SOURCES } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
+import { SectionLabel } from "@/components/crm/section-label";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -38,6 +40,7 @@ const schema = z.object({
   phone: z.string().optional(),
   linkedin: z.string().optional(),
   source: z.string().optional(),
+  ownerId: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -51,6 +54,7 @@ const DEFAULT_VALUES: FormValues = {
   phone: "",
   linkedin: "",
   source: "",
+  ownerId: "",
   notes: "",
 };
 
@@ -78,6 +82,7 @@ export function ContactFormDialog({
   const { workspace } = useWorkspace();
   const { user } = useAuth();
   const { data: companies } = useCompanies(workspace?.id ?? null);
+  const { data: members } = useMembers(workspace?.id ?? null);
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -110,6 +115,7 @@ export function ContactFormDialog({
         phone: values.phone || undefined,
         linkedin: values.linkedin || undefined,
         source: values.source || undefined,
+        ownerId: values.ownerId || undefined,
         status: "active" as const,
       });
       const ref = await createContact(workspace.id, payload, user.uid);
@@ -138,15 +144,17 @@ export function ContactFormDialog({
         <DialogHeader>
           <DialogTitle>New contact</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <SectionLabel>Contact info</SectionLabel>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">Full name</Label>
               <Input id="name" placeholder="Jane Doe" autoFocus {...register("name")} />
               {errors.name && <p className="text-xs text-danger">{errors.name.message}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="title">Title (optional)</Label>
+              <Label htmlFor="title">Job title (optional)</Label>
               <Input id="title" placeholder="VP of Sales" {...register("title")} />
             </div>
           </div>
@@ -178,21 +186,24 @@ export function ContactFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
+              <Label htmlFor="phone">Mobile number (optional)</Label>
+              <Input id="phone" placeholder="+1 555 000 0000" {...register("phone")} />
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email (optional)</Label>
               <Input id="email" type="email" placeholder="jane@acme.com" {...register("email")} />
               {errors.email && <p className="text-xs text-danger">{errors.email.message}</p>}
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="phone">Mobile number (optional)</Label>
-              <Input id="phone" placeholder="+1 555 000 0000" {...register("phone")} />
-            </div>
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="linkedin">LinkedIn (optional)</Label>
+            <Input id="linkedin" placeholder="linkedin.com/in/…" {...register("linkedin")} />
+          </div>
+
+          <SectionLabel>Lead details</SectionLabel>
+
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="linkedin">LinkedIn (optional)</Label>
-              <Input id="linkedin" placeholder="linkedin.com/in/…" {...register("linkedin")} />
-            </div>
             <div className="space-y-1.5">
               <Label htmlFor="source">Lead source (optional)</Label>
               <Input
@@ -206,6 +217,26 @@ export function ContactFormDialog({
                   <option key={s} value={s} />
                 ))}
               </datalist>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Contact owner (optional)</Label>
+              <Select
+                value={watch("ownerId")}
+                onValueChange={(v) => setValue("ownerId", v ?? "")}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Unassigned">
+                    {(v: string) => members.find((m) => m.id === v)?.displayName ?? "Unassigned"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {members.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { LinkedinLogo } from "@/components/shared/brand-icons";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -41,10 +42,12 @@ import {
 } from "@/lib/data/contacts";
 import { deleteDocument, useDocumentsByContact } from "@/lib/data/documents";
 import { useDealsByContact } from "@/lib/data/deals";
+import { useMembers } from "@/lib/data/members";
 import { setTaskStatus, useTasksByContact, createTask, deleteTask } from "@/lib/data/tasks";
 import { DocumentFormDialog } from "@/components/documents/document-form-dialog";
 import { DealFormDialog } from "@/components/crm/deal-form-dialog";
-import { formatCurrency, formatDate, formatDateTime, formatFileSize } from "@/lib/format";
+import { SectionLabel } from "@/components/crm/section-label";
+import { formatCurrency, formatDate, formatDateTime, formatFileSize, initials } from "@/lib/format";
 import {
   CONTACT_SOURCES,
   DEAL_STAGES,
@@ -73,6 +76,7 @@ type Draft = {
   email: string;
   linkedin: string;
   source: string;
+  ownerId: string;
   status: Contact["status"];
   lastContactedAt: string;
 };
@@ -86,10 +90,12 @@ function draftFrom(contact: Contact): Draft {
     email: contact.email ?? "",
     linkedin: contact.linkedin ?? "",
     source: contact.source ?? "",
+    ownerId: contact.ownerId ?? "",
     status: contact.status,
     lastContactedAt: toDateInput(contact.lastContactedAt),
   };
 }
+
 
 const ACTIVITY_TYPES: { value: ContactActivityType; label: string; icon: typeof StickyNote }[] = [
   { value: "note", label: "Note", icon: StickyNote },
@@ -129,6 +135,7 @@ export function ContactDetailSheet({
   const { workspace } = useWorkspace();
   const { user } = useAuth();
   const { data: companies } = useCompanies(workspace?.id ?? null);
+  const { data: members } = useMembers(workspace?.id ?? null);
 
   const sessionKey = open ? (contact?.id ?? "none") : "closed";
   const [seededKey, setSeededKey] = useState(sessionKey);
@@ -158,6 +165,7 @@ export function ContactDetailSheet({
   const { data: documents } = useDocumentsByContact(workspace?.id ?? null, contact?.id ?? null);
   const { data: deals } = useDealsByContact(workspace?.id ?? null, contact?.id ?? null);
   const companyById = new Map(companies.map((c) => [c.id, c]));
+  const memberById = new Map(members.map((m) => [m.id, m]));
 
   if (!contact || !draft) {
     return (
@@ -245,20 +253,32 @@ export function ContactDetailSheet({
   }
 
   const company = companyById.get(draft.companyId);
+  const owner = draft.ownerId ? memberById.get(draft.ownerId) : undefined;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-xl lg:max-w-2xl">
         {/* Header */}
         <div className="space-y-3 border-b border-border p-4 lg:p-5">
-          <div className="flex items-center gap-1.5 pr-8 text-xs text-muted-foreground">
-            {company && (
-              <span className="flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full" style={{ backgroundColor: company.color }} />
-                {company.name}
+          <div className="flex items-center justify-between gap-1.5 pr-8 text-xs text-muted-foreground">
+            <span className="flex flex-wrap items-center gap-1.5">
+              {company && (
+                <span className="flex items-center gap-1.5">
+                  <span className="size-1.5 rounded-full" style={{ backgroundColor: company.color }} />
+                  {company.name}
+                </span>
+              )}
+              {draft.title && <span>· {draft.title}</span>}
+            </span>
+            {owner && (
+              <span className="flex shrink-0 items-center gap-1.5">
+                <Avatar size="sm" className="size-5">
+                  {owner.photoURL && <AvatarImage src={owner.photoURL} alt={owner.displayName} />}
+                  <AvatarFallback className="text-[9px]">{initials(owner.displayName)}</AvatarFallback>
+                </Avatar>
+                {owner.displayName}
               </span>
             )}
-            {draft.title && <span>· {draft.title}</span>}
           </div>
 
           <Input
@@ -304,7 +324,9 @@ export function ContactDetailSheet({
         {/* Body */}
         <div className="flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
           {/* Properties */}
-          <div className="order-1 shrink-0 space-y-4 border-b border-border p-4 lg:order-2 lg:w-72 lg:overflow-y-auto lg:border-b-0 lg:border-l lg:p-5">
+          <div className="order-1 shrink-0 space-y-3 border-b border-border p-4 lg:order-2 lg:w-72 lg:overflow-y-auto lg:border-b-0 lg:border-l lg:p-5">
+            <SectionLabel>Contact info</SectionLabel>
+
             <div className="space-y-1.5">
               <Label>Company</Label>
               <Select
@@ -370,6 +392,8 @@ export function ContactDetailSheet({
               />
             </div>
 
+            <SectionLabel>Lead details</SectionLabel>
+
             <div className="space-y-1.5">
               <Label htmlFor="contact-source">Lead source</Label>
               <Input
@@ -385,6 +409,30 @@ export function ContactDetailSheet({
                   <option key={s} value={s} />
                 ))}
               </datalist>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Contact owner</Label>
+              <Select
+                value={draft.ownerId || "none"}
+                onValueChange={(v) => {
+                  const next = v === "none" ? "" : (v ?? "");
+                  set("ownerId", next);
+                  commit({ ownerId: next || undefined });
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>{() => owner?.displayName ?? "Unassigned"}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unassigned</SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
@@ -418,15 +466,17 @@ export function ContactDetailSheet({
               />
             </div>
 
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full gap-1.5 text-danger hover:text-danger"
-              onClick={handleDelete}
-            >
-              <Trash2 className="size-3.5" />
-              Delete contact
-            </Button>
+            <div className="pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full gap-1.5 text-danger hover:text-danger"
+                onClick={handleDelete}
+              >
+                <Trash2 className="size-3.5" />
+                Delete contact
+              </Button>
+            </div>
           </div>
 
           {/* Tabs: Timeline / Tasks / Documents / Deals */}

@@ -383,6 +383,8 @@ export interface Contact {
   linkedin?: string;
   /** Lead source, e.g. "Website form", "Referral", "Trade show". */
   source?: string;
+  /** WorkspaceMember id - the rep responsible for this relationship. */
+  ownerId?: string;
   /** Superseded by the contactActivity thread (see below) - kept only so
    * contacts written before that existed don't lose their note. */
   notes?: string;
