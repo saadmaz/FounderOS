@@ -14,6 +14,7 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,8 +41,14 @@ import { InvestmentFormDialog } from "@/components/finance/investment-form-dialo
 import { VendorFormDialog } from "@/components/finance/vendor-form-dialog";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { budgetPeriodRange, deleteBudget, useBudgets } from "@/lib/data/budgets";
-import { deleteExpense, setExpenseStatus, useExpenses } from "@/lib/data/expenses";
+import {
+  bulkMarkExpensesReimbursed,
+  deleteExpense,
+  setExpenseStatus,
+  useExpenses,
+} from "@/lib/data/expenses";
 import { deleteInvestment, useInvestments } from "@/lib/data/investments";
+import { useMembers } from "@/lib/data/members";
 import { deleteVendor, useVendors } from "@/lib/data/vendors";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { scrollMainToTop } from "@/lib/scroll";
@@ -53,6 +60,7 @@ import type {
   Investment,
   InvestmentStatus,
   Vendor,
+  WorkspaceMember,
 } from "@/lib/types";
 import {
   BUDGET_PERIODS,
@@ -79,6 +87,50 @@ function ExpenseStatusBadge({ status }: { status: ExpenseStatus }) {
     >
       <span className="size-1.5 shrink-0 rounded-full bg-current" />
       {EXPENSE_STATUSES.find((s) => s.value === status)?.label ?? status}
+    </span>
+  );
+}
+
+const DAY_MS = 86_400_000;
+
+// `Date.now()` is read impurely in exactly this one place (mirrors the
+// convention in meeting-card.tsx's meetingDateBucket) so ExpenseStatusHint
+// below doesn't call it directly during render.
+function daysSince(date: number, now = Date.now()): number {
+  return Math.floor((now - date) / DAY_MS);
+}
+
+/** Secondary text next to the status badge: how long a pending expense has
+ * been waiting (colored once it's been a while, so aging reimbursements
+ * are visible without opening each row), or when/by whom a reimbursed one
+ * was actually paid back. */
+function ExpenseStatusHint({
+  expense,
+  memberById,
+}: {
+  expense: Expense;
+  memberById: Map<string, WorkspaceMember>;
+}) {
+  if (expense.status === "reimbursed") {
+    if (!expense.reimbursedAt) return null;
+    const by = expense.reimbursedBy ? memberById.get(expense.reimbursedBy)?.displayName : undefined;
+    return (
+      <span className="text-xs text-muted-foreground-2" title={by ? `Reimbursed by ${by}` : undefined}>
+        {formatDate(expense.reimbursedAt)}
+      </span>
+    );
+  }
+  const days = daysSince(expense.date);
+  if (days <= 0) return null;
+  return (
+    <span
+      className={cn(
+        "text-xs tabular-nums",
+        days >= 30 ? "text-danger" : days >= 14 ? "text-warning" : "text-muted-foreground-2"
+      )}
+      title={`Logged ${days} day${days === 1 ? "" : "s"} ago, still pending`}
+    >
+      {days}d
     </span>
   );
 }
@@ -121,6 +173,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
   const { data: allVendors, loading: vendorsLoading } = useVendors(workspaceId);
   const vendors = useMemo(() => allVendors.filter((v) => v.companyId === company.id), [allVendors, company.id]);
   const { data: investments, loading: investmentsLoading } = useInvestments(workspaceId, company.id);
+  const { data: members } = useMembers(workspaceId);
 
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -130,6 +183,17 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [investmentDialogOpen, setInvestmentDialogOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
+  const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(new Set());
+
+  const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
+  const selectedPendingIds = useMemo(
+    () => expenses.filter((e) => e.status === "pending" && selectedExpenseIds.has(e.id)).map((e) => e.id),
+    [expenses, selectedExpenseIds]
+  );
+  const selectablePendingIds = useMemo(
+    () => expenses.filter((e) => e.status === "pending").map((e) => e.id),
+    [expenses]
+  );
 
   const totalPutIn = useMemo(
     () => expenses.reduce((sum, e) => sum + e.amount, 0),
@@ -152,8 +216,29 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
   }
   async function handleMarkReimbursed(expense: Expense) {
     if (!workspaceId) return;
-    await setExpenseStatus(workspaceId, expense.id, "reimbursed");
+    await setExpenseStatus(workspaceId, expense.id, "reimbursed", user?.uid);
     toast.success("Expense marked as reimbursed");
+  }
+  async function handleBulkMarkReimbursed() {
+    if (!workspaceId || selectedPendingIds.length === 0) return;
+    const count = selectedPendingIds.length;
+    await bulkMarkExpensesReimbursed(workspaceId, selectedPendingIds, user?.uid);
+    setSelectedExpenseIds(new Set());
+    toast.success(`${count} expense${count === 1 ? "" : "s"} marked as reimbursed`);
+  }
+  function toggleSelectAllPending() {
+    setSelectedExpenseIds((prev) => {
+      const allSelected = selectablePendingIds.every((id) => prev.has(id));
+      return allSelected ? new Set() : new Set(selectablePendingIds);
+    });
+  }
+  function toggleExpenseSelected(id: string) {
+    setSelectedExpenseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
   async function handleDeleteBudget(id: string) {
     if (!workspaceId) return;
@@ -225,9 +310,22 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
         {/* ---------------- Expenses ---------------- */}
         <TabsContent value="expenses" className="mt-4 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">
-              {expenses.length} expense{expenses.length === 1 ? "" : "s"}
-            </p>
+            {canEdit && selectedPendingIds.length > 0 ? (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium">{selectedPendingIds.length} selected</span>
+                <Button size="sm" className="gap-1.5" onClick={handleBulkMarkReimbursed}>
+                  <CircleCheck className="size-4" />
+                  Mark reimbursed
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedExpenseIds(new Set())}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {expenses.length} expense{expenses.length === 1 ? "" : "s"}
+              </p>
+            )}
             {canEdit && (
               <Button
                 size="sm"
@@ -256,6 +354,17 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
               <Table>
                 <TableHeader className="bg-surface">
                   <TableRow className="hover:bg-transparent">
+                    {canEdit && (
+                      <TableHead className="w-8">
+                        {selectablePendingIds.length > 0 && (
+                          <Checkbox
+                            checked={selectablePendingIds.every((id) => selectedExpenseIds.has(id))}
+                            onCheckedChange={toggleSelectAllPending}
+                            aria-label="Select all pending expenses"
+                          />
+                        )}
+                      </TableHead>
+                    )}
                     <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Date</TableHead>
                     <TableHead className="text-xs font-medium text-muted-foreground">Expense</TableHead>
                     <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Category</TableHead>
@@ -270,6 +379,17 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                 <TableBody>
                   {expenses.map((e) => (
                     <TableRow key={e.id} className="hover:bg-secondary/40">
+                      {canEdit && (
+                        <TableCell className="py-2">
+                          {e.status === "pending" && (
+                            <Checkbox
+                              checked={selectedExpenseIds.has(e.id)}
+                              onCheckedChange={() => toggleExpenseSelected(e.id)}
+                              aria-label={`Select ${e.title || "expense"}`}
+                            />
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
                         {formatDate(e.date)}
                       </TableCell>
@@ -307,8 +427,9 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                         {e.vendor || "—"}
                       </TableCell>
                       <TableCell className="py-2">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <ExpenseStatusBadge status={e.status} />
+                          <ExpenseStatusHint expense={e} memberById={memberById} />
                           {canEdit && e.status !== "reimbursed" && (
                             <Button
                               variant="outline"

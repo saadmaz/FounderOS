@@ -26,8 +26,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AttachmentField } from "@/components/finance/attachment-field";
 import { deleteCloudinaryAsset, uploadDocumentToCloudinary } from "@/lib/cloudinary";
-import { omitUndefined } from "@/lib/data/firestore-helpers";
-import { createExpense, updateExpense } from "@/lib/data/expenses";
+import { now, omitUndefined } from "@/lib/data/firestore-helpers";
+import { createExpense, setExpenseStatus, updateExpense } from "@/lib/data/expenses";
 import {
   EXPENSE_CATEGORIES,
   EXPENSE_STATUSES,
@@ -157,6 +157,11 @@ export function ExpenseFormDialog({
       const date = new Date(`${values.date}T00:00:00`).getTime();
       const receipts = await resolveReceipts();
       if (isEditing && expense) {
+        // Status is handled separately via setExpenseStatus, which is the
+        // one place that keeps reimbursedAt/reimbursedBy in sync (it can
+        // actually clear them with deleteField() - this update can only
+        // omit fields, never clear a stored one, so it must never touch
+        // status itself).
         await updateExpense(workspaceId, expense.id, omitUndefined({
           companyId: values.companyId,
           title: values.title,
@@ -165,12 +170,15 @@ export function ExpenseFormDialog({
           amount: Number(values.amount),
           currency: values.currency,
           date,
-          status: values.status,
           description: values.description || undefined,
           receipts,
         }));
+        if (values.status !== expense.status) {
+          await setExpenseStatus(workspaceId, expense.id, values.status, memberId);
+        }
         toast.success("Expense updated");
       } else {
+        const reimbursedNow = values.status === "reimbursed";
         await createExpense(workspaceId, omitUndefined({
           companyId: values.companyId,
           title: values.title,
@@ -180,6 +188,8 @@ export function ExpenseFormDialog({
           currency: values.currency,
           date,
           status: values.status,
+          reimbursedAt: reimbursedNow ? now() : undefined,
+          reimbursedBy: reimbursedNow ? memberId : undefined,
           description: values.description || undefined,
           receipts,
           createdBy: memberId,

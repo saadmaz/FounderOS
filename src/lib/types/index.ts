@@ -272,6 +272,11 @@ export interface Expense {
   date: number;
   description?: string;
   status: ExpenseStatus;
+  /** When `status` last became "reimbursed" and who marked it - set by
+   * setExpenseStatus/bulkMarkExpensesReimbursed (src/lib/data/expenses.ts),
+   * not hand-edited. Absent while status is "pending". */
+  reimbursedAt?: number;
+  reimbursedBy?: string; // WorkspaceMember id
   receipts?: FinanceAttachment[];
   createdBy: string; // WorkspaceMember id
   createdAt: number;

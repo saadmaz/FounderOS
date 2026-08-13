@@ -1,6 +1,16 @@
 "use client";
 
-import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  deleteField,
+  doc,
+  orderBy,
+  updateDoc,
+  where,
+  deleteDoc,
+  writeBatch,
+} from "firebase/firestore";
 import { deleteCloudinaryAsset } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase/client";
 import type { Expense, ExpenseStatus } from "@/lib/types";
@@ -48,8 +58,48 @@ export async function updateExpense(workspaceId: string, expenseId: string, patc
   );
 }
 
-export async function setExpenseStatus(workspaceId: string, expenseId: string, status: ExpenseStatus) {
-  return updateExpense(workspaceId, expenseId, { status });
+/** Flips an expense's status and keeps the reimbursement audit trail
+ * (reimbursedAt/reimbursedBy) in sync: stamped with `now()`/`memberId` when
+ * moving to "reimbursed", cleared with deleteField() otherwise - bypasses
+ * updateExpense/omitUndefined (which only ever *omits* undefined keys, never
+ * clears a stored one) since reverting to "pending" needs the old
+ * reimbursement date actually gone, not just unmentioned in this write. */
+export async function setExpenseStatus(
+  workspaceId: string,
+  expenseId: string,
+  status: ExpenseStatus,
+  memberId?: string
+) {
+  const reimbursing = status === "reimbursed";
+  return updateDoc(doc(db, path(workspaceId), expenseId), {
+    status,
+    updatedAt: now(),
+    reimbursedAt: reimbursing ? now() : deleteField(),
+    reimbursedBy: reimbursing && memberId ? memberId : deleteField(),
+  });
+}
+
+/** Same as setExpenseStatus("reimbursed") but for many expenses in one
+ * Firestore batch (a single payout covering several logged expenses),
+ * chunked at 400 writes/batch (Firestore's limit is 500). */
+export async function bulkMarkExpensesReimbursed(
+  workspaceId: string,
+  expenseIds: string[],
+  memberId?: string
+) {
+  const ts = now();
+  for (let i = 0; i < expenseIds.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const id of expenseIds.slice(i, i + 400)) {
+      batch.update(doc(db, path(workspaceId), id), {
+        status: "reimbursed" satisfies ExpenseStatus,
+        updatedAt: ts,
+        reimbursedAt: ts,
+        ...(memberId ? { reimbursedBy: memberId } : {}),
+      });
+    }
+    await batch.commit();
+  }
 }
 
 /** Deletes the expense and, best-effort, every attached receipt - a
