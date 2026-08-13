@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   FileText,
   FileVideo,
+  Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -25,27 +26,13 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
-import { UploadDialog } from "@/components/documents/upload-dialog";
+import { DocumentFormDialog } from "@/components/documents/document-form-dialog";
 import { useCompanies } from "@/lib/data/companies";
 import { deleteDocument, useDocuments } from "@/lib/data/documents";
 import { useMembers } from "@/lib/data/members";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatFileSize } from "@/lib/format";
 import type { Company, DocumentFile } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
-
-/** Formats bytes as a short human-readable size (KB/MB/GB). Kept local -
- * mirrors the workspace-wide Documents page's helper. */
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ["KB", "MB", "GB"];
-  let value = bytes / 1024;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex++;
-  }
-  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
-}
 
 function iconForFile(contentType: string, name: string) {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
@@ -80,6 +67,7 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
   const { data: members } = useMembers(workspace?.id ?? null);
   const { data: documents, loading } = useDocuments(workspace?.id ?? null, company.id);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<DocumentFile | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
@@ -147,25 +135,22 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
                   const uploader = memberById.get(d.uploadedBy);
                   return (
                     <TableRow key={d.id} className="hover:bg-secondary/40">
-                      <TableCell className="py-2">
+                      <TableCell className="py-2.5 whitespace-normal">
                         <a
                           href={d.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2.5"
+                          className="flex items-start gap-2.5"
                         >
-                          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
                             <Icon className="size-4 text-muted-foreground" />
                           </span>
                           <span className="min-w-0">
-                            <span className="block max-w-40 truncate text-sm font-medium hover:underline sm:max-w-64">
+                            <span className="block text-pretty wrap-break-word text-sm font-medium hover:underline">
                               {d.name}
                             </span>
                             {d.description && (
-                              <span
-                                className="block max-w-40 truncate text-xs text-muted-foreground sm:max-w-64"
-                                title={d.description}
-                              >
+                              <span className="line-clamp-2 wrap-break-word text-xs text-muted-foreground">
                                 {d.description}
                               </span>
                             )}
@@ -186,6 +171,15 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
                       </TableCell>
                       <TableCell className="py-2 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-muted-foreground-2 hover:text-foreground"
+                            onClick={() => setEditingDoc(d)}
+                            aria-label="Edit document"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -217,13 +211,22 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
       </div>
 
       {workspace && (
-        <UploadDialog
-          open={uploadOpen}
-          onOpenChange={setUploadOpen}
-          workspaceId={workspace.id}
-          companies={companies}
-          defaultCompanyId={company.id}
-        />
+        <>
+          <DocumentFormDialog
+            open={uploadOpen}
+            onOpenChange={setUploadOpen}
+            workspaceId={workspace.id}
+            companies={companies}
+            defaultCompanyId={company.id}
+          />
+          <DocumentFormDialog
+            open={Boolean(editingDoc)}
+            onOpenChange={(v) => !v && setEditingDoc(null)}
+            workspaceId={workspace.id}
+            companies={companies}
+            editingDocument={editingDoc}
+          />
+        </>
       )}
     </div>
   );

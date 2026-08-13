@@ -1,6 +1,6 @@
 "use client";
 
-import { addDoc, collection, deleteDoc, doc, orderBy, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, deleteField, doc, orderBy, updateDoc, where } from "firebase/firestore";
 import { trackEvent } from "@/lib/analytics";
 import { deleteCloudinaryAsset, uploadDocumentToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase/client";
@@ -26,7 +26,7 @@ export function useDocuments(workspaceId: string | null, companyId?: string) {
  */
 export async function uploadDocument(
   workspaceId: string,
-  input: { file: File; companyId?: string; description?: string; uploadedBy: string }
+  input: { file: File; name?: string; companyId?: string; description?: string; uploadedBy: string }
 ) {
   const { url, publicId, resourceType } = await uploadDocumentToCloudinary(
     input.file,
@@ -37,7 +37,7 @@ export async function uploadDocument(
   const ref = await addDoc(collection(db, path(workspaceId)), {
     workspaceId,
     ...(input.companyId ? { companyId: input.companyId } : {}),
-    name: input.file.name,
+    name: input.name?.trim() || input.file.name,
     ...(input.description ? { description: input.description } : {}),
     url,
     publicId,
@@ -49,6 +49,28 @@ export async function uploadDocument(
   });
   trackEvent("document_uploaded", { resource_type: resourceType, size: input.file.size });
   return ref;
+}
+
+/**
+ * Edits a document's metadata (title, description, company) - the
+ * underlying Cloudinary asset is untouched. `companyId` uses deleteField()
+ * rather than being omitted or written as `null`: updateDoc only ever
+ * touches the keys it's given, so clearing "no company" has to actually
+ * remove the field to match how uploadDocument never writes it in the
+ * first place.
+ */
+export async function updateDocument(
+  workspaceId: string,
+  documentId: string,
+  patch: { name: string; description: string; companyId?: string }
+) {
+  const result = await updateDoc(doc(db, path(workspaceId), documentId), {
+    name: patch.name,
+    description: patch.description,
+    companyId: patch.companyId ? patch.companyId : deleteField(),
+  });
+  trackEvent("document_updated");
+  return result;
 }
 
 /** Removes both the Cloudinary asset (via a server route - deleting needs
