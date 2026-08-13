@@ -66,8 +66,12 @@ export function UploadDialog({
       toast.success(`${file.name} uploaded`);
       reset();
       onOpenChange(false);
-    } catch {
-      toast.error("Couldn't upload the file. Try again.");
+    } catch (err) {
+      // Surface the real reason (Cloudinary preset/size error, Firestore
+      // permission-denied, ...) instead of a generic message - a bare
+      // "throws an error" report gives no way to tell which without this.
+      console.error("Document upload failed:", err);
+      toast.error(err instanceof Error ? err.message : "Couldn't upload the file. Try again.");
     } finally {
       setUploading(false);
     }
