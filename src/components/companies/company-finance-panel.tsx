@@ -40,7 +40,7 @@ import { InvestmentFormDialog } from "@/components/finance/investment-form-dialo
 import { VendorFormDialog } from "@/components/finance/vendor-form-dialog";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { budgetPeriodRange, deleteBudget, useBudgets } from "@/lib/data/budgets";
-import { deleteExpense, useExpenses } from "@/lib/data/expenses";
+import { deleteExpense, setExpenseStatus, useExpenses } from "@/lib/data/expenses";
 import { deleteInvestment, useInvestments } from "@/lib/data/investments";
 import { deleteVendor, useVendors } from "@/lib/data/vendors";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -155,6 +155,11 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
     if (!workspaceId) return;
     await deleteExpense(workspaceId, expense.id, expense.receipts);
     toast.success("Expense deleted");
+  }
+  async function handleMarkReimbursed(expense: Expense) {
+    if (!workspaceId) return;
+    await setExpenseStatus(workspaceId, expense.id, "reimbursed");
+    toast.success("Expense marked as reimbursed");
   }
   async function handleDeleteBudget(id: string) {
     if (!workspaceId) return;
@@ -308,7 +313,20 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                         {e.vendor || "—"}
                       </TableCell>
                       <TableCell className="py-2">
-                        <ExpenseStatusBadge status={e.status} />
+                        <div className="flex items-center gap-1.5">
+                          <ExpenseStatusBadge status={e.status} />
+                          {canEdit && e.status !== "reimbursed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 gap-1 px-2 text-xs"
+                              onClick={() => handleMarkReimbursed(e)}
+                            >
+                              <CircleCheck className="size-3" />
+                              Reimbursed
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="py-2 text-right text-sm font-medium">
                         {formatCurrency(e.amount, e.currency)}
