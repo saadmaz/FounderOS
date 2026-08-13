@@ -223,13 +223,15 @@ export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-// Pending -> Reimbursed - every expense you put in on a company's behalf is
-// expected to be paid back eventually, so this just tracks whether *you've*
-// gotten that money back yet, not a multi-step approval workflow.
+// Not Reimbursed -> Reimbursed - every expense you put in on a company's
+// behalf is expected to be paid back eventually, so this just tracks
+// whether *you've* gotten that money back yet, not a multi-step approval
+// workflow. Value stays "pending" (only the label changed) so existing
+// data and code that check `status === "pending"` don't need to change.
 export type ExpenseStatus = "pending" | "reimbursed";
 
 export const EXPENSE_STATUSES: { value: ExpenseStatus; label: string }[] = [
-  { value: "pending", label: "Pending" },
+  { value: "pending", label: "Not Reimbursed" },
   { value: "reimbursed", label: "Reimbursed" },
 ];
 
