@@ -2,7 +2,7 @@
 
 import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
-import type { Investment } from "@/lib/types";
+import type { Investment, InvestmentStatus } from "@/lib/types";
 import { now, omitUndefined } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
@@ -42,6 +42,28 @@ export async function updateInvestment(workspaceId: string, investmentId: string
       updatedAt: now(),
     })
   );
+}
+
+/** Quick-action counterpart to opening the full edit dialog just to flip
+ * one field - mirrors the Expenses "Reimbursed" button/setExpenseStatus
+ * pattern, sized to how much simpler this transition is (no audit trail to
+ * keep in sync, so a plain updateInvestment is enough here). */
+export async function setInvestmentStatus(
+  workspaceId: string,
+  investmentId: string,
+  status: InvestmentStatus
+) {
+  return updateInvestment(workspaceId, investmentId, { status });
+}
+
+/** Quick-action counterpart to opening the full edit dialog just to mark an
+ * investment to market. */
+export async function setInvestmentCurrentValue(
+  workspaceId: string,
+  investmentId: string,
+  currentValue: number
+) {
+  return updateInvestment(workspaceId, investmentId, { currentValue });
 }
 
 export async function deleteInvestment(workspaceId: string, investmentId: string) {

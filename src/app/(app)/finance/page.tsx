@@ -10,6 +10,7 @@ import {
   Landmark,
   MoreHorizontal,
   Paperclip,
+  Pencil,
   PiggyBank,
   Plus,
   Repeat,
@@ -52,6 +53,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { BudgetFormDialog } from "@/components/finance/budget-form-dialog";
 import { ExpenseFormDialog } from "@/components/finance/expense-form-dialog";
 import { InvestmentFormDialog } from "@/components/finance/investment-form-dialog";
+import { InvestmentValueDialog } from "@/components/finance/investment-value-dialog";
 import { VendorFormDialog } from "@/components/finance/vendor-form-dialog";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
@@ -70,7 +72,7 @@ import {
   setExpenseStatus,
   useExpenses,
 } from "@/lib/data/expenses";
-import { deleteInvestment, useInvestments } from "@/lib/data/investments";
+import { deleteInvestment, setInvestmentStatus, useInvestments } from "@/lib/data/investments";
 import { useMembers } from "@/lib/data/members";
 import { deleteVendor, useVendors } from "@/lib/data/vendors";
 import { formatCurrency, formatDate, formatMixedCurrencyTotal } from "@/lib/format";
@@ -251,6 +253,8 @@ export default function FinancePage() {
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [investmentDialogOpen, setInvestmentDialogOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
+  const [valueDialogOpen, setValueDialogOpen] = useState(false);
+  const [editingValueInvestment, setEditingValueInvestment] = useState<Investment | null>(null);
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(new Set());
 
   // Expenses-tab-only findability controls - unlike companyFilter, these
@@ -456,6 +460,11 @@ export default function FinancePage() {
     if (!workspaceId) return;
     await deleteInvestment(workspaceId, id);
     toast.success("Investment deleted");
+  }
+  async function handleMarkInvestmentStatus(id: string, status: "exited" | "written_off") {
+    if (!workspaceId) return;
+    await setInvestmentStatus(workspaceId, id, status);
+    toast.success(status === "exited" ? "Marked as exited" : "Marked as written off");
   }
 
   return (
@@ -1020,19 +1029,35 @@ export default function FinancePage() {
                             <InvestmentStatusBadge status={inv.status} />
                           </TableCell>
                           <TableCell className="hidden py-2 text-right text-sm sm:table-cell">
-                            {inv.currentValue !== undefined ? (
-                              <span
-                                className={cn(
-                                  "font-medium",
-                                  gain !== undefined && gain > 0 && "text-success",
-                                  gain !== undefined && gain < 0 && "text-danger"
-                                )}
-                              >
-                                {formatCurrency(inv.currentValue, inv.currency)}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
+                            <div className="flex items-center justify-end gap-1">
+                              {inv.currentValue !== undefined ? (
+                                <span
+                                  className={cn(
+                                    "font-medium",
+                                    gain !== undefined && gain > 0 && "text-success",
+                                    gain !== undefined && gain < 0 && "text-danger"
+                                  )}
+                                >
+                                  {formatCurrency(inv.currentValue, inv.currency)}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                              {canEdit && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-6"
+                                  aria-label="Update current value"
+                                  onClick={() => {
+                                    setEditingValueInvestment(inv);
+                                    setValueDialogOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="size-3" />
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="py-2 text-right text-sm font-medium">
                             {formatCurrency(inv.amount, inv.currency)}
@@ -1054,6 +1079,16 @@ export default function FinancePage() {
                                   >
                                     Edit
                                   </DropdownMenuItem>
+                                  {inv.status === "active" && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => handleMarkInvestmentStatus(inv.id, "exited")}>
+                                        Mark exited
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleMarkInvestmentStatus(inv.id, "written_off")}>
+                                        Mark written off
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                   <DropdownMenuItem
                                     variant="destructive"
                                     onClick={() => handleDeleteInvestment(inv.id)}
@@ -1214,6 +1249,12 @@ export default function FinancePage() {
             workspaceId={workspace.id}
             companies={companies}
             investment={editingInvestment}
+          />
+          <InvestmentValueDialog
+            open={valueDialogOpen}
+            onOpenChange={setValueDialogOpen}
+            workspaceId={workspace.id}
+            investment={editingValueInvestment}
           />
         </>
       )}
