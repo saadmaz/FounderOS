@@ -23,12 +23,14 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { ContactFormDialog } from "@/components/crm/contact-form-dialog";
 import { DealBoard } from "@/components/crm/deal-board";
+import { DealDetailSheet } from "@/components/crm/deal-detail-sheet";
 import { DealFormDialog } from "@/components/crm/deal-form-dialog";
 import { deleteContact, useContacts } from "@/lib/data/contacts";
 import { useDeals } from "@/lib/data/deals";
+import { useMembers } from "@/lib/data/members";
 import { formatDate } from "@/lib/format";
 import { scrollMainToTop } from "@/lib/scroll";
-import type { Company, Contact, Deal } from "@/lib/types";
+import type { Company, Contact } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const CONTACT_STATUS_STYLES: Record<Contact["status"], string> = {
@@ -51,6 +53,7 @@ export function CompanyCrmPanel({ company }: { company: Company }) {
   const { workspace } = useWorkspace();
   const { data: contacts, loading: contactsLoading } = useContacts(workspace?.id ?? null, company.id);
   const { data: deals, loading: dealsLoading } = useDeals(workspace?.id ?? null, company.id);
+  const { data: members } = useMembers(workspace?.id ?? null);
 
   const [tab, setTab] = useState<"contacts" | "pipeline">("contacts");
 
@@ -58,7 +61,8 @@ export function CompanyCrmPanel({ company }: { company: Company }) {
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
 
   const [dealDialogOpen, setDealDialogOpen] = useState(false);
-  const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+  const [editingDealId, setEditingDealId] = useState<string | null>(null);
+  const editingDeal = deals.find((d) => d.id === editingDealId) ?? null;
 
   function openNewContact() {
     setEditingContact(null);
@@ -69,11 +73,6 @@ export function CompanyCrmPanel({ company }: { company: Company }) {
     setContactDialogOpen(true);
   }
   function openNewDeal() {
-    setEditingDeal(null);
-    setDealDialogOpen(true);
-  }
-  function openEditDeal(deal: Deal) {
-    setEditingDeal(deal);
     setDealDialogOpen(true);
   }
 
@@ -219,7 +218,13 @@ export function CompanyCrmPanel({ company }: { company: Company }) {
               />
             </div>
           ) : (
-            <DealBoard deals={deals} contacts={contacts} workspaceId={workspace!.id} onCardClick={openEditDeal} />
+            <DealBoard
+              deals={deals}
+              contacts={contacts}
+              members={members}
+              workspaceId={workspace!.id}
+              onCardClick={(deal) => setEditingDealId(deal.id)}
+            />
           )}
         </TabsContent>
       </Tabs>
@@ -233,8 +238,14 @@ export function CompanyCrmPanel({ company }: { company: Company }) {
       <DealFormDialog
         open={dealDialogOpen}
         onOpenChange={setDealDialogOpen}
-        deal={editingDeal}
         defaultCompanyId={company.id}
+        onCreated={setEditingDealId}
+      />
+      <DealDetailSheet
+        open={Boolean(editingDeal)}
+        onOpenChange={(v) => !v && setEditingDealId(null)}
+        deal={editingDeal}
+        members={members}
       />
     </div>
   );

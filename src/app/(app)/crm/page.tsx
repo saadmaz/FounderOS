@@ -30,13 +30,15 @@ import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { ContactFormDialog } from "@/components/crm/contact-form-dialog";
 import { DealBoard } from "@/components/crm/deal-board";
+import { DealDetailSheet } from "@/components/crm/deal-detail-sheet";
 import { DealFormDialog } from "@/components/crm/deal-form-dialog";
 import { useCompanies } from "@/lib/data/companies";
 import { deleteContact, useContacts } from "@/lib/data/contacts";
 import { useDeals } from "@/lib/data/deals";
+import { useMembers } from "@/lib/data/members";
 import { formatDate } from "@/lib/format";
 import { scrollMainToTop } from "@/lib/scroll";
-import type { Contact, Deal } from "@/lib/types";
+import type { Contact } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { toast } from "sonner";
 
@@ -61,6 +63,7 @@ export default function CrmPage() {
     companyIdFilter
   );
   const { data: deals, loading: dealsLoading } = useDeals(workspace?.id ?? null, companyIdFilter);
+  const { data: members } = useMembers(workspace?.id ?? null);
 
   const [tab, setTab] = useState<"contacts" | "pipeline">("contacts");
 
@@ -68,7 +71,8 @@ export default function CrmPage() {
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
 
   const [dealDialogOpen, setDealDialogOpen] = useState(false);
-  const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+  const [editingDealId, setEditingDealId] = useState<string | null>(null);
+  const editingDeal = deals.find((d) => d.id === editingDealId) ?? null;
 
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
 
@@ -81,11 +85,6 @@ export default function CrmPage() {
     setContactDialogOpen(true);
   }
   function openNewDeal() {
-    setEditingDeal(null);
-    setDealDialogOpen(true);
-  }
-  function openEditDeal(deal: Deal) {
-    setEditingDeal(deal);
     setDealDialogOpen(true);
   }
 
@@ -272,8 +271,9 @@ export default function CrmPage() {
             <DealBoard
               deals={deals}
               contacts={contacts}
+              members={members}
               workspaceId={workspace!.id}
-              onCardClick={openEditDeal}
+              onCardClick={(deal) => setEditingDealId(deal.id)}
             />
           )}
         </TabsContent>
@@ -288,8 +288,14 @@ export default function CrmPage() {
       <DealFormDialog
         open={dealDialogOpen}
         onOpenChange={setDealDialogOpen}
-        deal={editingDeal}
         defaultCompanyId={companyIdFilter}
+        onCreated={setEditingDealId}
+      />
+      <DealDetailSheet
+        open={Boolean(editingDeal)}
+        onOpenChange={(v) => !v && setEditingDealId(null)}
+        deal={editingDeal}
+        members={members}
       />
     </>
   );

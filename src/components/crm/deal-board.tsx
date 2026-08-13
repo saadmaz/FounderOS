@@ -12,33 +12,41 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useDraggable } from "@dnd-kit/core";
+import { ArrowRight, Info } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAuth } from "@/lib/auth/auth-provider";
 import { updateDealStage } from "@/lib/data/deals";
-import { formatCurrency, formatDate } from "@/lib/format";
-import { DEAL_STAGES, type Contact, type Deal, type DealStage } from "@/lib/types";
+import { formatCurrency, formatDate, initials } from "@/lib/format";
+import { DEAL_STAGES, type Contact, type Deal, type DealStage, type WorkspaceMember } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const STAGE_DOTS: Record<DealStage, string> = {
-  lead: "bg-muted-foreground-2",
-  qualified: "bg-primary",
-  proposal: "bg-analytics-purple",
+  prospecting: "bg-muted-foreground-2",
+  qualification: "bg-analytics-cyan",
+  meeting: "bg-analytics-purple",
+  proposal: "bg-analytics-orange",
   negotiation: "bg-warning",
-  won: "bg-success",
-  lost: "bg-danger",
+  closed_won: "bg-success",
+  closed_lost: "bg-danger",
 };
 
 function DealCard({
   deal,
   contact,
+  owner,
   onClick,
 }: {
   deal: Deal;
   contact?: Contact;
+  owner?: WorkspaceMember;
   onClick?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: deal.id,
   });
+  const isClosed = deal.stage === "closed_won" || deal.stage === "closed_lost";
 
   return (
     <div
@@ -48,16 +56,53 @@ function DealCard({
       onClick={onClick}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(
-        "cursor-grab space-y-2 rounded-lg border border-border bg-card p-3 active:cursor-grabbing",
-        isDragging && "opacity-40"
+        "cursor-grab space-y-2.5 rounded-xl border border-border bg-card p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-white/10 hover:shadow-md active:cursor-grabbing",
+        isDragging && "opacity-40",
+        isClosed && "opacity-80"
       )}
     >
-      <p className="text-sm font-medium leading-snug">{deal.title}</p>
-      <p className="text-sm font-semibold">{formatCurrency(deal.value, deal.currency)}</p>
-      <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-        <span className="truncate">{contact?.name ?? "No contact"}</span>
+      <div className="flex items-start justify-between gap-2">
+        <p className="line-clamp-2 text-sm font-medium leading-snug">{deal.title}</p>
+        {deal.probability != null && (
+          <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground tabular-nums">
+            {deal.probability}%
+          </span>
+        )}
+      </div>
+
+      <p className="text-base font-semibold tracking-tight tabular-nums">
+        {formatCurrency(deal.value, deal.currency)}
+      </p>
+
+      {(contact || deal.source) && (
+        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+          <span className="truncate">{contact?.name ?? "No contact"}</span>
+          {deal.source && (
+            <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground-2">
+              {deal.source}
+            </span>
+          )}
+        </div>
+      )}
+
+      {deal.nextStep && (
+        <p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground-2">
+          <ArrowRight className="size-3 shrink-0" />
+          <span className="truncate">{deal.nextStep}</span>
+        </p>
+      )}
+
+      <div className="flex items-center justify-between gap-2 pt-0.5">
+        <Avatar size="sm" className="size-5">
+          {owner?.photoURL && <AvatarImage src={owner.photoURL} alt={owner.displayName} />}
+          <AvatarFallback className="text-[9px]">
+            {owner ? initials(owner.displayName) : "—"}
+          </AvatarFallback>
+        </Avatar>
         {deal.expectedCloseDate && (
-          <span className="shrink-0 text-muted-foreground-2">{formatDate(deal.expectedCloseDate)}</span>
+          <span className="shrink-0 text-[11px] text-muted-foreground-2">
+            {formatDate(deal.expectedCloseDate)}
+          </span>
         )}
       </div>
     </div>
@@ -67,19 +112,24 @@ function DealCard({
 function Column({
   stage,
   label,
+  description,
   dot,
   deals,
   contactById,
+  memberById,
   onCardClick,
 }: {
   stage: DealStage;
   label: string;
+  description: string;
   dot: string;
   deals: Deal[];
   contactById: Map<string, Contact>;
+  memberById: Map<string, WorkspaceMember>;
   onCardClick: (deal: Deal) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
+  const total = deals.reduce((sum, d) => sum + d.value, 0);
 
   return (
     <div
@@ -89,17 +139,29 @@ function Column({
         isOver && "border-primary/40 bg-primary/5"
       )}
     >
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
-        <span className={cn("size-2 rounded-full", dot)} />
+      <div className="flex items-center gap-1.5 border-b border-border px-3 py-2.5">
+        <span className={cn("size-2 shrink-0 rounded-full", dot)} />
         <span className="text-xs font-semibold">{label}</span>
+        <Tooltip>
+          <TooltipTrigger className="text-muted-foreground-2 hover:text-foreground">
+            <Info className="size-3" />
+          </TooltipTrigger>
+          <TooltipContent>{description}</TooltipContent>
+        </Tooltip>
         <span className="ml-auto text-xs text-muted-foreground-2">{deals.length}</span>
       </div>
+      {deals.length > 0 && (
+        <div className="border-b border-border px-3 py-1.5 text-[11px] font-medium text-muted-foreground tabular-nums">
+          {formatCurrency(total, deals[0]?.currency ?? "LKR")}
+        </div>
+      )}
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2 scrollbar-thin">
         {deals.map((d) => (
           <DealCard
             key={d.id}
             deal={d}
             contact={d.contactId ? contactById.get(d.contactId) : undefined}
+            owner={d.ownerId ? memberById.get(d.ownerId) : undefined}
             onClick={() => onCardClick(d)}
           />
         ))}
@@ -111,16 +173,20 @@ function Column({
 export function DealBoard({
   deals,
   contacts,
+  members,
   workspaceId,
   onCardClick,
 }: {
   deals: Deal[];
   contacts: Contact[];
+  members: WorkspaceMember[];
   workspaceId: string;
   onCardClick: (deal: Deal) => void;
 }) {
+  const { user } = useAuth();
   const [activeId, setActiveId] = useState<string | null>(null);
   const contactById = useMemo(() => new Map(contacts.map((c) => [c.id, c])), [contacts]);
+  const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   function handleDragStart(e: DragStartEvent) {
@@ -130,11 +196,11 @@ export function DealBoard({
   function handleDragEnd(e: DragEndEvent) {
     setActiveId(null);
     const { active, over } = e;
-    if (!over) return;
+    if (!over || !user) return;
     const deal = deals.find((d) => d.id === active.id);
     const newStage = over.id as DealStage;
     if (deal && deal.stage !== newStage) {
-      updateDealStage(workspaceId, deal.id, newStage);
+      updateDealStage(workspaceId, deal.id, deal.stage, newStage, user.uid);
     }
   }
 
@@ -148,9 +214,11 @@ export function DealBoard({
             key={col.value}
             stage={col.value}
             label={col.label}
+            description={col.description}
             dot={STAGE_DOTS[col.value]}
             deals={deals.filter((d) => d.stage === col.value)}
             contactById={contactById}
+            memberById={memberById}
             onCardClick={onCardClick}
           />
         ))}
@@ -160,6 +228,7 @@ export function DealBoard({
           <DealCard
             deal={activeDeal}
             contact={activeDeal.contactId ? contactById.get(activeDeal.contactId) : undefined}
+            owner={activeDeal.ownerId ? memberById.get(activeDeal.ownerId) : undefined}
           />
         ) : null}
       </DragOverlay>

@@ -122,6 +122,14 @@ service cloud.firestore {
         allow create, update, delete: if canContribute(workspaceId);
       }
 
+      // Flat like every other collection here (see documents/companyId)
+      // rather than nested under /deals/{dealId} - keeps every collection
+      // one level deep under the workspace, filtered by a plain field.
+      match /dealActivity/{activityId} {
+        allow read: if isMember(workspaceId);
+        allow create, delete: if canContribute(workspaceId);
+      }
+
       // ----- Documents -----
       match /documents/{documentId} {
         allow read: if isMember(workspaceId);

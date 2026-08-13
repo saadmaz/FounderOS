@@ -24,11 +24,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
 import { useContacts } from "@/lib/data/contacts";
-import { createDeal, deleteDeal, updateDeal } from "@/lib/data/deals";
+import { addDealActivity, createDeal } from "@/lib/data/deals";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
-import { DEAL_STAGES, type Deal } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const schema = z.object({
@@ -40,7 +40,6 @@ const schema = z.object({
     .min(1, "Value is required")
     .refine((v) => !Number.isNaN(Number(v)) && Number(v) >= 0, "Enter a valid amount"),
   currency: z.string().min(1),
-  stage: z.enum(["lead", "qualified", "proposal", "negotiation", "won", "lost"]),
   probability: z
     .string()
     .optional()
@@ -54,28 +53,41 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-function toDateInput(ms: number | null | undefined) {
-  if (!ms) return "";
-  return new Date(ms).toISOString().slice(0, 10);
-}
+const DEFAULT_VALUES: FormValues = {
+  title: "",
+  companyId: "",
+  contactId: "",
+  value: "0",
+  currency: "LKR",
+  probability: "",
+  expectedCloseDate: "",
+  notes: "",
+};
 
+/**
+ * Quick-add for a new deal - deliberately just the essentials (title,
+ * company/contact, value, probability, close date). Everything else
+ * (owner, source, exit criteria, next step, activity) lives in
+ * DealDetailSheet, which opens right after creating and is where a deal
+ * actually gets fleshed out and edited going forward.
+ */
 export function DealFormDialog({
   open,
   onOpenChange,
-  deal,
   defaultCompanyId,
-  defaultStage,
+  onCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  deal?: Deal | null;
   defaultCompanyId?: string;
-  defaultStage?: Deal["stage"];
+  /** Called with the new deal's id right after creation, so the caller can
+   * open DealDetailSheet on it immediately. */
+  onCreated?: (dealId: string) => void;
 }) {
   const { workspace } = useWorkspace();
+  const { user } = useAuth();
   const { data: companies } = useCompanies(workspace?.id ?? null);
   const [submitting, setSubmitting] = useState(false);
-  const isEditing = !!deal;
 
   const {
     register,
@@ -86,54 +98,20 @@ export function DealFormDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      title: "",
-      companyId: defaultCompanyId ?? "",
-      contactId: "",
-      value: "0",
-      currency: "LKR",
-      stage: defaultStage ?? "lead",
-      probability: "",
-      expectedCloseDate: "",
-      notes: "",
-    },
+    defaultValues: { ...DEFAULT_VALUES, companyId: defaultCompanyId ?? "" },
   });
 
   useEffect(() => {
     if (!open) return;
-    if (deal) {
-      reset({
-        title: deal.title,
-        companyId: deal.companyId,
-        contactId: deal.contactId ?? "",
-        value: String(deal.value),
-        currency: deal.currency,
-        stage: deal.stage,
-        probability: deal.probability != null ? String(deal.probability) : "",
-        expectedCloseDate: toDateInput(deal.expectedCloseDate),
-        notes: deal.notes ?? "",
-      });
-    } else {
-      reset({
-        title: "",
-        companyId: defaultCompanyId ?? "",
-        contactId: "",
-        value: "0",
-        currency: "LKR",
-        stage: defaultStage ?? "lead",
-        probability: "",
-        expectedCloseDate: "",
-        notes: "",
-      });
-    }
+    reset({ ...DEFAULT_VALUES, companyId: defaultCompanyId ?? "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, deal]);
+  }, [open, defaultCompanyId]);
 
   const companyId = watch("companyId");
   const { data: contacts } = useContacts(workspace?.id ?? null, companyId || undefined);
 
   async function onSubmit(values: FormValues) {
-    if (!workspace) return;
+    if (!workspace || !user) return;
     setSubmitting(true);
     try {
       const payload = omitUndefined({
@@ -142,38 +120,27 @@ export function DealFormDialog({
         title: values.title,
         value: Number(values.value),
         currency: values.currency,
-        stage: values.stage,
+        stage: "prospecting" as const,
         probability: values.probability ? Number(values.probability) : undefined,
         expectedCloseDate: values.expectedCloseDate
           ? new Date(values.expectedCloseDate).getTime()
           : null,
-        notes: values.notes || undefined,
       });
-      if (isEditing && deal) {
-        await updateDeal(workspace.id, deal.id, payload);
-        toast.success("Deal updated");
-      } else {
-        await createDeal(workspace.id, payload);
-        toast.success("Deal created");
+      const ref = await createDeal(workspace.id, payload, user.uid);
+      if (values.notes?.trim()) {
+        await addDealActivity(workspace.id, {
+          dealId: ref.id,
+          type: "note",
+          text: values.notes.trim(),
+          authorId: user.uid,
+        });
       }
+      toast.success("Deal created");
       reset();
       onOpenChange(false);
+      onCreated?.(ref.id);
     } catch {
-      toast.error(`Couldn't ${isEditing ? "update" : "create"} the deal. Try again.`);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!workspace || !deal) return;
-    setSubmitting(true);
-    try {
-      await deleteDeal(workspace.id, deal.id);
-      toast.success("Deal deleted");
-      onOpenChange(false);
-    } catch {
-      toast.error("Couldn't delete the deal. Try again.");
+      toast.error("Couldn't create the deal. Try again.");
     } finally {
       setSubmitting(false);
     }
@@ -183,7 +150,7 @@ export function DealFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit deal" : "New deal"}</DialogTitle>
+          <DialogTitle>New deal</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
@@ -272,36 +239,12 @@ export function DealFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Stage</Label>
-              <Select
-                value={watch("stage")}
-                onValueChange={(v) => setValue("stage", v as FormValues["stage"])}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue>
-                    {(v: FormValues["stage"]) =>
-                      DEAL_STAGES.find((s) => s.value === v)?.label ?? v
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {DEAL_STAGES.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Expected close</Label>
-              <DatePicker
-                value={watch("expectedCloseDate")}
-                onChange={(v) => setValue("expectedCloseDate", v)}
-              />
-            </div>
+          <div className="space-y-1.5">
+            <Label>Expected close</Label>
+            <DatePicker
+              value={watch("expectedCloseDate")}
+              onChange={(v) => setValue("expectedCloseDate", v)}
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -310,22 +253,11 @@ export function DealFormDialog({
           </div>
 
           <DialogFooter>
-            {isEditing && (
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-danger hover:text-danger sm:mr-auto"
-                disabled={submitting}
-                onClick={handleDelete}
-              >
-                Delete
-              </Button>
-            )}
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Saving…" : isEditing ? "Save changes" : "Create deal"}
+              {submitting ? "Creating…" : "Create deal"}
             </Button>
           </DialogFooter>
         </form>

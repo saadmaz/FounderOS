@@ -2,33 +2,41 @@
 
 import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
-import type { Deal, DealStage } from "@/lib/types";
+import { normalizeDealStage, type Deal, type DealActivity, type DealActivityType, type DealStage } from "@/lib/types";
 import { now } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/deals`;
+const activityPath = (workspaceId: string) => `workspaces/${workspaceId}/dealActivity`;
 
 export function useDeals(workspaceId: string | null, companyId?: string) {
   const constraints = companyId
     ? [where("companyId", "==", companyId), orderBy("createdAt", "desc")]
     : [orderBy("createdAt", "desc")];
-  return useCollection<Deal>(workspaceId ? path(workspaceId) : null, constraints, [
+  const result = useCollection<Deal>(workspaceId ? path(workspaceId) : null, constraints, [
     workspaceId,
     companyId,
   ]);
+  // Normalize on the way out so deals written under the old 6-stage
+  // pipeline still land in a real column instead of falling through every
+  // DEAL_STAGES filter - see normalizeDealStage's doc comment.
+  return { ...result, data: result.data.map((d) => ({ ...d, stage: normalizeDealStage(d.stage) })) };
 }
 
 export async function createDeal(
   workspaceId: string,
-  input: Pick<Deal, "companyId" | "title" | "value" | "currency" | "stage"> & Partial<Deal>
+  input: Pick<Deal, "companyId" | "title" | "value" | "currency" | "stage"> & Partial<Deal>,
+  actorId: string
 ) {
   const ts = now();
-  return addDoc(collection(db, path(workspaceId)), {
+  const ref = await addDoc(collection(db, path(workspaceId)), {
     ...input,
     workspaceId,
     createdAt: ts,
     updatedAt: ts,
   });
+  await addDealActivity(workspaceId, { dealId: ref.id, type: "created", authorId: actorId });
+  return ref;
 }
 
 export async function updateDeal(workspaceId: string, dealId: string, patch: Partial<Deal>) {
@@ -38,10 +46,54 @@ export async function updateDeal(workspaceId: string, dealId: string, patch: Par
   });
 }
 
-export async function updateDealStage(workspaceId: string, dealId: string, stage: DealStage) {
-  return updateDeal(workspaceId, dealId, { stage });
+/** Moves a deal to a new stage and logs the transition as a milestone in
+ * its activity timeline - `fromStage` is whatever the caller already has
+ * in hand (the board/sheet always has the current deal loaded), avoiding
+ * an extra read just to know what the old value was. */
+export async function updateDealStage(
+  workspaceId: string,
+  dealId: string,
+  fromStage: DealStage,
+  toStage: DealStage,
+  actorId: string
+) {
+  if (fromStage === toStage) return;
+  await updateDeal(workspaceId, dealId, { stage: toStage });
+  await addDealActivity(workspaceId, { dealId, type: "stage_change", fromStage, toStage, authorId: actorId });
 }
 
 export async function deleteDeal(workspaceId: string, dealId: string) {
   return deleteDoc(doc(db, path(workspaceId), dealId));
+}
+
+// ===================== Activity / notes thread =====================
+
+export function useDealActivity(workspaceId: string | null, dealId: string | null) {
+  return useCollection<DealActivity>(
+    workspaceId && dealId ? activityPath(workspaceId) : null,
+    [where("dealId", "==", dealId), orderBy("createdAt", "desc")],
+    [workspaceId, dealId]
+  );
+}
+
+export async function addDealActivity(
+  workspaceId: string,
+  input: {
+    dealId: string;
+    type: DealActivityType;
+    text?: string;
+    fromStage?: DealStage;
+    toStage?: DealStage;
+    authorId: string;
+  }
+) {
+  return addDoc(collection(db, activityPath(workspaceId)), {
+    ...input,
+    workspaceId,
+    createdAt: now(),
+  });
+}
+
+export async function deleteDealActivity(workspaceId: string, activityId: string) {
+  return deleteDoc(doc(db, activityPath(workspaceId), activityId));
 }

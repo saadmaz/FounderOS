@@ -382,16 +382,54 @@ export interface Contact {
   updatedAt: number;
 }
 
-export type DealStage = "lead" | "qualified" | "proposal" | "negotiation" | "won" | "lost";
+export type DealStage =
+  | "prospecting"
+  | "qualification"
+  | "meeting"
+  | "proposal"
+  | "negotiation"
+  | "closed_won"
+  | "closed_lost";
 
-export const DEAL_STAGES: { value: DealStage; label: string }[] = [
-  { value: "lead", label: "Lead" },
-  { value: "qualified", label: "Qualified" },
-  { value: "proposal", label: "Proposal" },
-  { value: "negotiation", label: "Negotiation" },
-  { value: "won", label: "Won" },
-  { value: "lost", label: "Lost" },
+export const DEAL_STAGES: { value: DealStage; label: string; description: string }[] = [
+  { value: "prospecting", label: "Prospecting", description: "Identifying target accounts or initial leads." },
+  {
+    value: "qualification",
+    label: "Qualification",
+    description: "Confirming the buyer has a real need, budget, and authority.",
+  },
+  { value: "meeting", label: "Meeting / Demo", description: "Presenting the product or service solution." },
+  { value: "proposal", label: "Proposal", description: "Delivering formal pricing, terms, and scope." },
+  { value: "negotiation", label: "Negotiation", description: "Adjusting final contract details and terms." },
+  { value: "closed_won", label: "Closed Won", description: "The deal was won." },
+  { value: "closed_lost", label: "Closed Lost", description: "The deal was lost." },
 ];
+
+/** Stages a deal can still be dragged into/out of on the board - the two
+ * closed stages are terminal outcomes, not a step in the flow. */
+export const OPEN_DEAL_STAGES = DEAL_STAGES.filter((s) => s.value !== "closed_won" && s.value !== "closed_lost");
+
+/** Maps this app's older 6-stage pipeline (lead/qualified/proposal/
+ * negotiation/won/lost) onto the current 7-stage one, so deals written
+ * before this change keep rendering in a sensible column instead of
+ * silently vanishing from the board because their `stage` no longer
+ * matches any DEAL_STAGES value. Anything already valid passes through. */
+const LEGACY_STAGE_MAP: Record<string, DealStage> = {
+  lead: "prospecting",
+  qualified: "qualification",
+  proposal: "proposal",
+  negotiation: "negotiation",
+  won: "closed_won",
+  lost: "closed_lost",
+};
+
+export function normalizeDealStage(stage: string): DealStage {
+  return (LEGACY_STAGE_MAP[stage] ?? stage) as DealStage;
+}
+
+/** Where the lead/deal originated - free-text `source` also accepts
+ * anything else a user types, this is just the quick-pick list. */
+export const DEAL_SOURCES = ["Inbound", "Referral", "Outbound", "Event", "Partner", "Other"] as const;
 
 export interface Deal {
   id: string;
@@ -404,9 +442,38 @@ export interface Deal {
   stage: DealStage;
   probability?: number; // 0-100
   expectedCloseDate?: number | null;
+  /** WorkspaceMember id - the rep responsible for this deal. */
+  ownerId?: string;
+  /** Origin channel of the lead, e.g. "Inbound", "Referral". Free text. */
+  source?: string;
+  /** Action-based rule for what has to happen to move this deal forward. */
+  exitCriteria?: string;
+  /** The next logged task or scheduled meeting for this deal. */
+  nextStep?: string;
+  nextStepDate?: number | null;
+  /** Superseded by the dealActivity thread (see below) - kept only so
+   * deals written before that existed don't lose their note. */
   notes?: string;
   createdAt: number;
   updatedAt: number;
+}
+
+/** A single entry in a deal's activity timeline - doubles as the "notes"
+ * thread (type "note") and an auto-generated history of what happened and
+ * when (type "created"/"stage_change"), plus manually-logged touchpoints
+ * ("call"/"email"/"meeting") in lieu of a real inbox/calendar sync. */
+export type DealActivityType = "note" | "call" | "email" | "meeting" | "stage_change" | "created";
+
+export interface DealActivity {
+  id: string;
+  workspaceId: string;
+  dealId: string;
+  type: DealActivityType;
+  text?: string;
+  fromStage?: DealStage;
+  toStage?: DealStage;
+  authorId: string;
+  createdAt: number;
 }
 
 // ===================== Documents =====================
