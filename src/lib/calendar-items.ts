@@ -42,6 +42,9 @@ export function buildCalendarItems(
   const items: CalendarItem[] = [];
 
   for (const e of events) {
+    // Archiving a company tucks its stuff out of the shared calendar view -
+    // still on the company's own page, just not cluttering everyone else's.
+    if (e.companyId && companyById.get(e.companyId)?.status === "archived") continue;
     items.push({
       id: `event-${e.id}`,
       kind: "event",
@@ -58,6 +61,7 @@ export function buildCalendarItems(
 
   for (const m of meetings) {
     if (m.status === "cancelled") continue;
+    if (companyById.get(m.companyId)?.status === "archived") continue;
     items.push({
       id: `meeting-${m.id}`,
       kind: "meeting",

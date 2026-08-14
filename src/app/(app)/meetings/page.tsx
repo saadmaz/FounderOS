@@ -26,13 +26,22 @@ export default function MeetingsPage() {
   const [notesFor, setNotesFor] = useState<Meeting | null>(null);
   const [viewingNotesFor, setViewingNotesFor] = useState<Meeting | null>(null);
 
+  // Archiving a company tucks its meetings out of this shared list - still
+  // visible on the company's own page, just not cluttering everyone else's.
+  const visibleMeetings = useMemo(() => {
+    const archivedCompanyIds = new Set(
+      companies.filter((c) => c.status === "archived").map((c) => c.id)
+    );
+    return meetings.filter((m) => !archivedCompanyIds.has(m.companyId));
+  }, [meetings, companies]);
+
   const upcoming = useMemo(
-    () => meetings.filter(isUpcoming).sort((a, b) => a.scheduledAt - b.scheduledAt),
-    [meetings]
+    () => visibleMeetings.filter(isUpcoming).sort((a, b) => a.scheduledAt - b.scheduledAt),
+    [visibleMeetings]
   );
   const past = useMemo(
-    () => meetings.filter((m) => !isUpcoming(m)).sort((a, b) => b.scheduledAt - a.scheduledAt),
-    [meetings]
+    () => visibleMeetings.filter((m) => !isUpcoming(m)).sort((a, b) => b.scheduledAt - a.scheduledAt),
+    [visibleMeetings]
   );
 
   async function handleStatus(meeting: Meeting, status: MeetingStatus) {
@@ -82,7 +91,7 @@ export default function MeetingsPage() {
               <div key={i} className="h-40 animate-pulse rounded-xl bg-muted" />
             ))}
           </div>
-        ) : meetings.length === 0 ? (
+        ) : visibleMeetings.length === 0 ? (
           <EmptyState
             icon={Calendar}
             title="No meetings yet"
