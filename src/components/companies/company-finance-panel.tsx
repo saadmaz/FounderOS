@@ -10,7 +10,6 @@ import {
   Landmark,
   MoreHorizontal,
   Paperclip,
-  Pencil,
   PiggyBank,
   Plus,
   Repeat,
@@ -53,7 +52,6 @@ import { StatCard } from "@/components/shared/stat-card";
 import { BudgetFormDialog } from "@/components/finance/budget-form-dialog";
 import { ExpenseFormDialog } from "@/components/finance/expense-form-dialog";
 import { InvestmentFormDialog } from "@/components/finance/investment-form-dialog";
-import { InvestmentValueDialog } from "@/components/finance/investment-value-dialog";
 import { VendorFormDialog } from "@/components/finance/vendor-form-dialog";
 import { useAuth } from "@/lib/auth/auth-provider";
 import {
@@ -257,8 +255,6 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [investmentDialogOpen, setInvestmentDialogOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
-  const [valueDialogOpen, setValueDialogOpen] = useState(false);
-  const [editingValueInvestment, setEditingValueInvestment] = useState<Investment | null>(null);
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(new Set());
 
   // Expenses-tab-only findability controls - never touch the Overview
@@ -911,7 +907,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             <EmptyState
               icon={Landmark}
               title="No investments logged"
-              description={`Track capital you've put into ${company.name} and what it's worth now.`}
+              description={`Track capital you've put into ${company.name}.`}
             />
           ) : (
             <div className="overflow-hidden rounded-xl border border-border shadow-sm">
@@ -919,11 +915,8 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                 <TableHeader className="bg-surface">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Date</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground">Type</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground">Investment</TableHead>
                     <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
-                    <TableHead className="hidden text-right text-xs font-medium text-muted-foreground sm:table-cell">
-                      Current Value
-                    </TableHead>
                     <TableHead className="text-right text-xs font-medium text-muted-foreground">
                       Amount
                     </TableHead>
@@ -931,109 +924,79 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {investments.map((inv) => {
-                    const gain =
-                      inv.currentValue !== undefined ? inv.currentValue - inv.amount : undefined;
-                    return (
-                      <TableRow key={inv.id} className="hover:bg-secondary/40">
-                        <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
-                          {formatDate(inv.date)}
-                        </TableCell>
-                        <TableCell className="py-2 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1.5">
-                            <span>{INVESTMENT_TYPES.find((t) => t.value === inv.type)?.label ?? inv.type}</span>
-                            {inv.documents?.map((d) => (
-                              <a
-                                key={d.publicId}
-                                href={d.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={`View document: ${d.name}`}
-                                className="shrink-0 text-muted-foreground-2 hover:text-foreground"
-                              >
-                                <Paperclip className="size-3.5" />
-                              </a>
-                            ))}
+                  {investments.map((inv) => (
+                    <TableRow key={inv.id} className="hover:bg-secondary/40">
+                      <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
+                        {formatDate(inv.date)}
+                      </TableCell>
+                      <TableCell className="max-w-36 py-2 sm:max-w-56">
+                        <div className="flex items-center gap-1.5">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{inv.description || "Untitled investment"}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              <span className="sm:hidden">{formatDate(inv.date)} · </span>
+                              {INVESTMENT_TYPES.find((t) => t.value === inv.type)?.label ?? inv.type}
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground-2 sm:hidden">{formatDate(inv.date)}</p>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <InvestmentStatusBadge status={inv.status} />
-                        </TableCell>
-                        <TableCell className="hidden py-2 text-right text-sm sm:table-cell">
-                          <div className="flex items-center justify-end gap-1">
-                            {inv.currentValue !== undefined ? (
-                              <span
-                                className={cn(
-                                  "font-medium",
-                                  gain !== undefined && gain > 0 && "text-success",
-                                  gain !== undefined && gain < 0 && "text-danger"
-                                )}
-                              >
-                                {formatCurrency(inv.currentValue, inv.currency)}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                            {canEdit && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-6"
-                                aria-label="Update current value"
+                          {inv.documents?.map((d) => (
+                            <a
+                              key={d.publicId}
+                              href={d.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`View document: ${d.name}`}
+                              className="shrink-0 text-muted-foreground-2 hover:text-foreground"
+                            >
+                              <Paperclip className="size-3.5" />
+                            </a>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <InvestmentStatusBadge status={inv.status} />
+                      </TableCell>
+                      <TableCell className="py-2 text-right text-sm font-medium">
+                        {formatCurrency(inv.amount, inv.currency)}
+                      </TableCell>
+                      {canEdit && (
+                        <TableCell className="py-2 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
+                            >
+                              <MoreHorizontal className="size-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
                                 onClick={() => {
-                                  setEditingValueInvestment(inv);
-                                  setValueDialogOpen(true);
+                                  setEditingInvestment(inv);
+                                  setInvestmentDialogOpen(true);
                                 }}
                               >
-                                <Pencil className="size-3" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-2 text-right text-sm font-medium">
-                          {formatCurrency(inv.amount, inv.currency)}
-                        </TableCell>
-                        {canEdit && (
-                          <TableCell className="py-2 text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
+                                Edit
+                              </DropdownMenuItem>
+                              {inv.status === "active" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleMarkInvestmentStatus(inv.id, "exited")}>
+                                    Mark exited
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleMarkInvestmentStatus(inv.id, "written_off")}>
+                                    Mark written off
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => handleDeleteInvestment(inv)}
                               >
-                                <MoreHorizontal className="size-4" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setEditingInvestment(inv);
-                                    setInvestmentDialogOpen(true);
-                                  }}
-                                >
-                                  Edit
-                                </DropdownMenuItem>
-                                {inv.status === "active" && (
-                                  <>
-                                    <DropdownMenuItem onClick={() => handleMarkInvestmentStatus(inv.id, "exited")}>
-                                      Mark exited
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleMarkInvestmentStatus(inv.id, "written_off")}>
-                                      Mark written off
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                <DropdownMenuItem
-                                  variant="destructive"
-                                  onClick={() => handleDeleteInvestment(inv)}
-                                >
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })}
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -1169,12 +1132,6 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
             workspaceId={workspace.id}
             companies={companies}
             investment={editingInvestment}
-          />
-          <InvestmentValueDialog
-            open={valueDialogOpen}
-            onOpenChange={setValueDialogOpen}
-            workspaceId={workspace.id}
-            investment={editingValueInvestment}
           />
         </>
       )}

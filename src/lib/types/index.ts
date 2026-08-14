@@ -365,20 +365,22 @@ export const INVESTMENT_STATUSES: { value: InvestmentStatus; label: string }[] =
   { value: "written_off", label: "Written Off" },
 ];
 
-/** Capital *you* put into a company/asset - `currentValue` is optional and
- * separate from `amount` (what was put in) so gain/loss can be shown once
- * it's known. */
+/** Capital *you* put into a company/asset - a log of what went in and when,
+ * not a mark-to-market tracker (no current value/ownership % - this app
+ * doesn't follow what the stake is worth now, only what you put in). */
 export interface Investment {
   id: string;
   workspaceId: string;
   companyId: string;
   type: InvestmentType;
   status: InvestmentStatus;
+  /** What this investment was, e.g. "Series A round in Acme Corp" - the
+   * scannable label a list of investments is read by, same role as
+   * Expense.title. */
+  description: string;
   amount: number;
   currency: string;
   date: number;
-  currentValue?: number;
-  ownershipPercent?: number;
   note?: string;
   /** Supporting documents - bank transfer confirmations, signed agreements,
    * cap table extracts, anything backing up the record. Broader than

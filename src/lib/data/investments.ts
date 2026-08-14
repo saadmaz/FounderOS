@@ -21,7 +21,7 @@ export function useInvestments(workspaceId: string | null, companyId?: string) {
 
 export async function createInvestment(
   workspaceId: string,
-  input: Pick<Investment, "companyId" | "type" | "status" | "amount" | "currency" | "date"> &
+  input: Pick<Investment, "companyId" | "type" | "status" | "description" | "amount" | "currency" | "date"> &
     Partial<Investment>
 ) {
   const ts = now();
@@ -55,16 +55,6 @@ export async function setInvestmentStatus(
   status: InvestmentStatus
 ) {
   return updateInvestment(workspaceId, investmentId, { status });
-}
-
-/** Quick-action counterpart to opening the full edit dialog just to mark an
- * investment to market. */
-export async function setInvestmentCurrentValue(
-  workspaceId: string,
-  investmentId: string,
-  currentValue: number
-) {
-  return updateInvestment(workspaceId, investmentId, { currentValue });
 }
 
 /** Deletes the investment and, best-effort, every attached document - a
