@@ -26,7 +26,7 @@ import { useMeetings } from "@/lib/data/meetings";
 import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatHours, sumHours, sumMeetingHours } from "@/lib/format";
+import { formatDate, formatHours, sumHours, sumMeetingHours } from "@/lib/format";
 import type { CompanyType } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { cn } from "@/lib/utils";
@@ -161,6 +161,7 @@ export default function DashboardPage() {
           weekday: "long",
           month: "long",
           day: "numeric",
+          year: "numeric",
         }).format(new Date())}
         actions={
           companies.length > 0 && (
@@ -282,11 +283,8 @@ export default function DashboardPage() {
                         />
                         <span className="flex-1 truncate text-sm">{t.title}</span>
                         <StatusBadge status={t.status} />
-                        <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
-                          {t.dueDate &&
-                            new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(
-                              t.dueDate
-                            )}
+                        <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
+                          {t.dueDate && formatDate(t.dueDate)}
                         </span>
                       </li>
                     );

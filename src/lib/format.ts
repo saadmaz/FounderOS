@@ -87,7 +87,7 @@ export function formatHours(hours: number) {
 
 export function formatDate(ms: number | null | undefined) {
   if (!ms) return "—";
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(ms);
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(ms);
 }
 
 export function formatDateTime(ms: number | null | undefined) {
@@ -95,6 +95,7 @@ export function formatDateTime(ms: number | null | undefined) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
+    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
   }).format(ms);

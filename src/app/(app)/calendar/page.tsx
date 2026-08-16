@@ -52,7 +52,7 @@ import {
 import { useCompanies } from "@/lib/data/companies";
 import { useMeetings } from "@/lib/data/meetings";
 import { useTasks } from "@/lib/data/tasks";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { recurrenceSummary } from "@/lib/recurrence";
 import type { CalendarEvent, Meeting } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -324,6 +324,7 @@ export default function CalendarPage() {
                           weekday: "long",
                           month: "long",
                           day: "numeric",
+                          year: "numeric",
                         }).format(selectedDate)}
                       </h2>
                       {selectedDayStart === today && (
@@ -504,10 +505,8 @@ export default function CalendarPage() {
                             )}
                           />
                           <span className="min-w-0 flex-1 truncate text-sm">{item.title}</span>
-                          <span className="w-14 shrink-0 text-right text-xs text-muted-foreground">
-                            {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(
-                              item.at
-                            )}
+                          <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
+                            {formatDate(item.at)}
                           </span>
                         </>
                       );
