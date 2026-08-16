@@ -10,25 +10,36 @@ import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/documents`;
 
+/** Newest-to-oldest by the user-editable `date` field, falling back to
+ * `createdAt` for documents uploaded before `date` existed. Sorted
+ * client-side (rather than an `orderBy("date")` query) so those older,
+ * dateless documents don't silently disappear from the list - Firestore's
+ * `orderBy` excludes any doc missing the ordered field entirely. */
+function sortByDate(docs: DocumentFile[]): DocumentFile[] {
+  return [...docs].sort((a, b) => (b.date ?? b.createdAt) - (a.date ?? a.createdAt));
+}
+
 export function useDocuments(workspaceId: string | null, companyId?: string) {
   const constraints = companyId
     ? [where("companyId", "==", companyId), orderBy("createdAt", "desc")]
     : [orderBy("createdAt", "desc")];
-  return useCollection<DocumentFile>(workspaceId ? path(workspaceId) : null, constraints, [
+  const result = useCollection<DocumentFile>(workspaceId ? path(workspaceId) : null, constraints, [
     workspaceId,
     companyId,
   ]);
+  return { ...result, data: sortByDate(result.data) };
 }
 
 /** Direct contactId query rather than piggybacking on useDocuments(companyId)
  * + a client-side filter - a document stays attached to its contact even if
  * that contact's company field is later changed. */
 export function useDocumentsByContact(workspaceId: string | null, contactId: string | null) {
-  return useCollection<DocumentFile>(
+  const result = useCollection<DocumentFile>(
     workspaceId && contactId ? path(workspaceId) : null,
     [where("contactId", "==", contactId), orderBy("createdAt", "desc")],
     [workspaceId, contactId]
   );
+  return { ...result, data: sortByDate(result.data) };
 }
 
 /**
@@ -44,6 +55,7 @@ export async function uploadDocument(
     contactId?: string;
     description?: string;
     uploadedBy: string;
+    date?: number;
   }
 ) {
   const { url, publicId, resourceType } = await uploadDocumentToCloudinary(
@@ -64,6 +76,7 @@ export async function uploadDocument(
     contentType: input.file.type || "application/octet-stream",
     size: input.file.size,
     uploadedBy: input.uploadedBy,
+    date: input.date ?? ts,
     createdAt: ts,
   });
   trackEvent("document_uploaded", { resource_type: resourceType, size: input.file.size });
@@ -81,12 +94,13 @@ export async function uploadDocument(
 export async function updateDocument(
   workspaceId: string,
   documentId: string,
-  patch: { name: string; description: string; companyId?: string }
+  patch: { name: string; description: string; companyId?: string; date: number }
 ) {
   const result = await updateDoc(doc(db, path(workspaceId), documentId), {
     name: patch.name,
     description: patch.description,
     companyId: patch.companyId ? patch.companyId : deleteField(),
+    date: patch.date,
   });
   trackEvent("document_updated");
   return result;

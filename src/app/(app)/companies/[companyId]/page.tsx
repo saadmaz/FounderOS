@@ -25,6 +25,7 @@ import { CompanyCrmPanel } from "@/components/companies/company-crm-panel";
 import { CompanyDocumentsPanel } from "@/components/companies/company-documents-panel";
 import { CompanyFinancePanel } from "@/components/companies/company-finance-panel";
 import { CompanyMeetingsPanel } from "@/components/companies/company-meetings-panel";
+import { CompanyNotesPanel } from "@/components/companies/company-notes-panel";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { ProjectList } from "@/components/projects/project-list";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
@@ -64,7 +65,16 @@ const LINK_LABELS: Record<keyof typeof LINK_ICONS, string> = {
   other: "Other",
 };
 
-const COMPANY_TABS = ["overview", "projects", "tasks", "meetings", "finance", "crm", "documents"] as const;
+const COMPANY_TABS = [
+  "overview",
+  "projects",
+  "tasks",
+  "meetings",
+  "finance",
+  "crm",
+  "documents",
+  "notes",
+] as const;
 
 // Same rationale as LINK_LABELS above - `capitalize` on the raw tab value
 // turns "crm" into "Crm" instead of the acronym "CRM", so it needs an
@@ -77,6 +87,7 @@ const TAB_LABELS: Record<(typeof COMPANY_TABS)[number], string> = {
   finance: "Finance",
   crm: "CRM",
   documents: "Documents",
+  notes: "Notes",
 };
 
 export default function CompanyDetailPage() {
@@ -105,7 +116,7 @@ export default function CompanyDetailPage() {
   ).length;
 
   if (companiesLoading) {
-    return <DetailPageSkeleton avatar tabs={7} />;
+    return <DetailPageSkeleton avatar tabs={8} />;
   }
   if (!company) return notFound();
 
@@ -261,6 +272,9 @@ export default function CompanyDetailPage() {
         </TabsContent>
         <TabsContent value="documents" className="flex min-w-0 flex-1">
           <CompanyDocumentsPanel company={company} />
+        </TabsContent>
+        <TabsContent value="notes" className="flex min-w-0 flex-1">
+          <CompanyNotesPanel company={company} />
         </TabsContent>
       </Tabs>
 

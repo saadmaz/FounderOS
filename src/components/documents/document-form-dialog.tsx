@@ -4,6 +4,7 @@ import { ExternalLink, Upload as UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,10 @@ import { useAuth } from "@/lib/auth/auth-provider";
 import { updateDocument, uploadDocument } from "@/lib/data/documents";
 import { formatFileSize } from "@/lib/format";
 import type { Company, DocumentFile } from "@/lib/types";
+
+function toDateInputValue(ms: number) {
+  return new Date(ms).toISOString().slice(0, 10);
+}
 
 /**
  * Create/edit dialog for a document. Uploading and editing share the same
@@ -64,10 +69,18 @@ export function DocumentFormDialog({
   const sessionKey = open ? (editingDocument?.id ?? "create") : "closed";
   const [seededKey, setSeededKey] = useState(sessionKey);
 
+  // Captured once (lazily, on mount) rather than calling Date.now() inline
+  // below - that argument is re-evaluated on every render, not just when
+  // React actually uses it, which would make render impure.
+  const [todayMs] = useState(() => Date.now());
+
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState(editingDocument?.name ?? "");
   const [companyId, setCompanyId] = useState<string>(editingDocument?.companyId ?? defaultCompanyId ?? "none");
   const [description, setDescription] = useState(editingDocument?.description ?? "");
+  const [date, setDate] = useState(() =>
+    toDateInputValue(editingDocument?.date ?? editingDocument?.createdAt ?? todayMs)
+  );
   const [submitting, setSubmitting] = useState(false);
 
   if (sessionKey !== seededKey) {
@@ -76,6 +89,7 @@ export function DocumentFormDialog({
     setName(editingDocument?.name ?? "");
     setDescription(editingDocument?.description ?? "");
     setCompanyId(editingDocument?.companyId ?? defaultCompanyId ?? "none");
+    setDate(toDateInputValue(editingDocument?.date ?? editingDocument?.createdAt ?? todayMs));
   }
 
   // The native file input is uncontrolled - clear its displayed value in
@@ -99,11 +113,13 @@ export function DocumentFormDialog({
     if (!canSubmit || submitting) return;
     setSubmitting(true);
     try {
+      const dateMs = new Date(`${date}T00:00:00`).getTime();
       if (isEditing && editingDocument) {
         await updateDocument(workspaceId, editingDocument.id, {
           name: trimmedName,
           description: trimmedDescription,
           companyId: companyId === "none" ? undefined : companyId,
+          date: dateMs,
         });
         toast.success("Document updated");
       } else if (file && user) {
@@ -114,6 +130,7 @@ export function DocumentFormDialog({
           contactId,
           description: trimmedDescription,
           uploadedBy: user.uid,
+          date: dateMs,
         });
         toast.success(`${trimmedName} uploaded`);
       }
@@ -191,6 +208,11 @@ export function DocumentFormDialog({
               disabled={submitting}
               maxLength={200}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Date</Label>
+            <DatePicker value={date} onChange={setDate} />
           </div>
 
           <div className="space-y-1.5">

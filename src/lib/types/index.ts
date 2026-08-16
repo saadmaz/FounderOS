@@ -83,6 +83,20 @@ export interface Company {
   archivedAt?: number | null;
 }
 
+/** A dated journal entry logged against a company - board updates,
+ * decisions, reminders. Distinct from Company.notes (a single free-text
+ * blurb edited via the company form): this is a list, each entry with its
+ * own user-chosen date, newest first. */
+export interface CompanyNote {
+  id: string;
+  workspaceId: string;
+  companyId: string;
+  date: number;
+  text: string;
+  authorId: string;
+  createdAt: number;
+}
+
 export type ProjectStatus =
   | "not_started"
   | "in_progress"
@@ -549,6 +563,11 @@ export interface DocumentFile {
   contentType: string;
   size: number;
   uploadedBy: string; // WorkspaceMember id
+  /** User-chosen document date (defaults to upload date, but editable -
+   * e.g. backdating a signed contract). Optional only because documents
+   * uploaded before this field existed don't have one; falls back to
+   * `createdAt` wherever it's read. */
+  date?: number;
   createdAt: number;
 }
 

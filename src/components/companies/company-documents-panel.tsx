@@ -125,7 +125,7 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
                   <TableHead className="text-xs font-medium text-muted-foreground">Name</TableHead>
                   <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Size</TableHead>
                   <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Uploaded by</TableHead>
-                  <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Uploaded</TableHead>
+                  <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Date</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -155,7 +155,7 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
                               </span>
                             )}
                             <span className="block text-xs text-muted-foreground sm:hidden">
-                              {formatFileSize(d.size)} · {formatDate(d.createdAt)}
+                              {formatFileSize(d.size)} · {formatDate(d.date ?? d.createdAt)}
                             </span>
                           </span>
                         </a>
@@ -167,7 +167,7 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
                         {uploader?.displayName ?? "—"}
                       </TableCell>
                       <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
-                        {formatDate(d.createdAt)}
+                        {formatDate(d.date ?? d.createdAt)}
                       </TableCell>
                       <TableCell className="py-2 text-right">
                         <div className="flex items-center justify-end gap-1">

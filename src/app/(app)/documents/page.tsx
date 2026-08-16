@@ -153,7 +153,7 @@ export default function DocumentsPage() {
                   <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Company</TableHead>
                   <TableHead className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Size</TableHead>
                   <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Uploaded by</TableHead>
-                  <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Uploaded</TableHead>
+                  <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Date</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -184,7 +184,7 @@ export default function DocumentsPage() {
                               </span>
                             )}
                             <span className="block text-xs text-muted-foreground sm:hidden">
-                              {formatFileSize(d.size)} · {company?.name ?? formatDate(d.createdAt)}
+                              {formatFileSize(d.size)} · {company?.name ?? formatDate(d.date ?? d.createdAt)}
                             </span>
                           </span>
                         </a>
@@ -209,7 +209,7 @@ export default function DocumentsPage() {
                         {uploader?.displayName ?? "—"}
                       </TableCell>
                       <TableCell className="hidden py-2 text-sm text-muted-foreground md:table-cell">
-                        {formatDate(d.createdAt)}
+                        {formatDate(d.date ?? d.createdAt)}
                       </TableCell>
                       <TableCell className="py-2 text-right">
                         <div className="flex items-center justify-end gap-1">

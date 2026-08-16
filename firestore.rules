@@ -141,6 +141,13 @@ service cloud.firestore {
         allow create, update, delete: if canContribute(workspaceId);
       }
 
+      // Flat like contactActivity/dealActivity above - a company's dated
+      // notes, filtered by companyId rather than nested under /companies.
+      match /companyNotes/{noteId} {
+        allow read: if isMember(workspaceId);
+        allow create, delete: if canContribute(workspaceId);
+      }
+
       // ----- Calendar -----
       match /calendarEvents/{eventId} {
         allow read: if isMember(workspaceId);
