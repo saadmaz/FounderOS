@@ -8,7 +8,7 @@
 
 async function uploadToCloudinary(
   file: File,
-  opts: { preset: string; endpoint: "image" | "auto"; folder?: string }
+  opts: { preset: string; endpoint: "image" | "raw"; folder?: string }
 ): Promise<{ url: string; publicId: string; resourceType: string }> {
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   if (!cloudName) {
@@ -45,16 +45,23 @@ export async function uploadImageToCloudinary(file: File, folder?: string): Prom
 /**
  * Documents - any file type (PDF, Office docs, zips, images, ...), via a
  * separate preset so its format/size limits can differ from the logo one.
- * `resource_type: auto` lets Cloudinary route the file to its image/video/raw
- * bucket; the caller needs `resourceType` back to delete it later, since
- * Cloudinary's destroy API is scoped per resource type.
+ * Always uploaded as `resource_type: raw` rather than `auto` - "auto" lets
+ * Cloudinary route the file into its image/video/raw buckets based on its
+ * own content sniffing, and PDFs land in the "image" bucket, where
+ * Cloudinary can reprocess/re-derive the asset's format (observed turning
+ * some PDFs into a stored ".ai" asset - AI files are themselves valid PDFs
+ * under the hood, so the sniffing isn't reliable). `raw` stores the exact
+ * bytes with the exact original extension, no reinterpretation - the file
+ * that downloads is always the file that was uploaded. The caller needs
+ * `resourceType` back to delete it later, since Cloudinary's destroy API is
+ * scoped per resource type.
  */
 export async function uploadDocumentToCloudinary(file: File, folder?: string) {
   const preset = process.env.NEXT_PUBLIC_CLOUDINARY_DOCS_UPLOAD_PRESET;
   if (!preset) {
     throw new Error("Cloudinary isn't configured - set NEXT_PUBLIC_CLOUDINARY_DOCS_UPLOAD_PRESET.");
   }
-  return uploadToCloudinary(file, { preset, endpoint: "auto", folder });
+  return uploadToCloudinary(file, { preset, endpoint: "raw", folder });
 }
 
 /**
