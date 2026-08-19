@@ -45,8 +45,9 @@ export function CompanyNotesPanel({ company }: { company: Company }) {
       });
       setText("");
       setDate(toDateInputValue(Date.now()));
-    } catch {
-      toast.error("Couldn't add the note. Try again.");
+    } catch (err) {
+      console.error("Failed to add company note:", err);
+      toast.error(err instanceof Error ? err.message : "Couldn't add the note. Try again.");
     } finally {
       setPosting(false);
     }
