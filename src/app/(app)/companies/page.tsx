@@ -107,8 +107,8 @@ export default function CompaniesPage() {
                       generic gray box. */}
                   <div
                     aria-hidden
-                    className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full opacity-[0.15] blur-2xl transition-opacity duration-200 group-hover:opacity-25"
-                    style={{ backgroundColor: c.color }}
+                    className="pointer-events-none absolute -right-8 -top-8 size-40 rounded-full opacity-[0.15] transition-opacity duration-200 group-hover:opacity-25"
+                    style={{ background: `radial-gradient(circle, ${c.color} 0%, ${c.color}00 70%)` }}
                   />
                   <div className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
                     <DropdownMenu>
