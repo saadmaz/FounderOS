@@ -261,26 +261,50 @@ export function ContactDetailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-xl lg:max-w-2xl">
         {/* Header */}
-        <div className="space-y-3 border-b border-border p-4 lg:p-5">
-          <div className="flex items-center justify-between gap-1.5 pr-8 text-xs text-muted-foreground">
-            <span className="flex flex-wrap items-center gap-1.5">
-              {company && (
-                <span className="flex items-center gap-1.5">
-                  <span className="size-1.5 rounded-full" style={{ backgroundColor: company.color }} />
-                  {company.name}
-                </span>
-              )}
-              {(draft.title || draft.prospectCompany) && (
-                <span>
-                  ·{" "}
-                  {draft.title && draft.prospectCompany
-                    ? `${draft.title} at ${draft.prospectCompany}`
-                    : (draft.title || draft.prospectCompany)}
-                </span>
-              )}
-            </span>
+        <div className="space-y-3.5 border-b border-border p-5 lg:p-6">
+          <div className="flex flex-wrap items-start gap-3 pr-8">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <Avatar size="lg" className="size-12 shrink-0 lg:size-14">
+                <AvatarFallback
+                  className="text-base font-semibold"
+                  style={
+                    company
+                      ? { backgroundColor: `${company.color}1f`, color: company.color }
+                      : undefined
+                  }
+                >
+                  {initials(draft.name || contact.name)}
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="min-w-0 flex-1 space-y-1 pt-1">
+                <Input
+                  value={draft.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  onBlur={() => commit({ name: draft.name.trim() || contact.name })}
+                  className="-ml-2 h-auto rounded-lg border border-transparent bg-transparent px-2 py-0.5 text-lg font-semibold shadow-none hover:bg-secondary/50 focus-visible:bg-transparent"
+                />
+                <div className="flex flex-wrap items-center gap-1.5 px-2 text-xs text-muted-foreground">
+                  {company && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="size-1.5 rounded-full" style={{ backgroundColor: company.color }} />
+                      {company.name}
+                    </span>
+                  )}
+                  {(draft.title || draft.prospectCompany) && (
+                    <span className="truncate">
+                      ·{" "}
+                      {draft.title && draft.prospectCompany
+                        ? `${draft.title} at ${draft.prospectCompany}`
+                        : (draft.title || draft.prospectCompany)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {owner && (
-              <span className="flex shrink-0 items-center gap-1.5">
+              <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary/60 py-1 pr-2.5 pl-1 text-xs text-muted-foreground">
                 <Avatar size="sm" className="size-5">
                   {owner.photoURL && <AvatarImage src={owner.photoURL} alt={owner.displayName} />}
                   <AvatarFallback className="text-[9px]">{initials(owner.displayName)}</AvatarFallback>
@@ -290,18 +314,11 @@ export function ContactDetailSheet({
             )}
           </div>
 
-          <Input
-            value={draft.name}
-            onChange={(e) => set("name", e.target.value)}
-            onBlur={() => commit({ name: draft.name.trim() || contact.name })}
-            className="h-auto rounded-lg border border-transparent bg-transparent px-2 py-1 text-lg font-semibold shadow-none hover:bg-secondary/50 focus-visible:bg-transparent"
-          />
-
-          <div className="flex flex-wrap items-center gap-2 px-2">
+          <div className="flex flex-wrap items-center gap-2">
             {draft.email && (
               <a
                 href={`mailto:${draft.email}`}
-                className="flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
               >
                 <Mail className="size-3.5" />
                 {draft.email}
@@ -310,7 +327,7 @@ export function ContactDetailSheet({
             {draft.phone && (
               <a
                 href={`tel:${draft.phone}`}
-                className="flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
               >
                 <Phone className="size-3.5" />
                 {draft.phone}
@@ -321,7 +338,7 @@ export function ContactDetailSheet({
                 href={draft.linkedin.startsWith("http") ? draft.linkedin : `https://${draft.linkedin}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
               >
                 <LinkedinLogo className="size-3.5" />
                 LinkedIn
@@ -333,7 +350,7 @@ export function ContactDetailSheet({
         {/* Body */}
         <div className="flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
           {/* Properties */}
-          <div className="order-1 shrink-0 space-y-3 border-b border-border p-4 lg:order-2 lg:w-72 lg:overflow-y-auto lg:border-b-0 lg:border-l lg:p-5">
+          <div className="order-2 shrink-0 space-y-3 border-t border-border p-4 lg:w-72 lg:overflow-y-auto lg:border-t-0 lg:border-l lg:p-5">
             <SectionLabel>Contact info</SectionLabel>
 
             <div className="space-y-1.5">
@@ -486,11 +503,11 @@ export function ContactDetailSheet({
               />
             </div>
 
-            <div className="pt-1">
+            <div className="border-t border-border pt-3">
               <Button
                 type="button"
                 variant="ghost"
-                className="w-full gap-1.5 text-danger hover:text-danger"
+                className="w-full gap-1.5 text-danger hover:bg-danger/10 hover:text-danger"
                 onClick={handleDelete}
               >
                 <Trash2 className="size-3.5" />
@@ -500,7 +517,7 @@ export function ContactDetailSheet({
           </div>
 
           {/* Tabs: Timeline / Tasks / Documents / Deals */}
-          <div className="order-2 flex-1 p-4 lg:order-1 lg:overflow-y-auto lg:p-5">
+          <div className="order-1 flex-1 p-4 lg:overflow-y-auto lg:p-5">
             <Tabs defaultValue="timeline">
               <TabsList>
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>

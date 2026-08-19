@@ -283,7 +283,7 @@ export function DealDetailSheet({
         {/* Body */}
         <div className="flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
           {/* Properties */}
-          <div className="order-1 shrink-0 space-y-3 border-b border-border p-4 lg:order-2 lg:w-72 lg:overflow-y-auto lg:border-b-0 lg:border-l lg:p-5">
+          <div className="order-2 shrink-0 space-y-3 border-t border-border p-4 lg:w-72 lg:overflow-y-auto lg:border-t-0 lg:border-l lg:p-5">
             <SectionLabel>Deal properties</SectionLabel>
 
             <div className="space-y-1.5">
@@ -464,11 +464,11 @@ export function DealDetailSheet({
               />
             </div>
 
-            <div className="pt-1">
+            <div className="border-t border-border pt-3">
               <Button
                 type="button"
                 variant="ghost"
-                className="w-full gap-1.5 text-danger hover:text-danger"
+                className="w-full gap-1.5 text-danger hover:bg-danger/10 hover:text-danger"
                 onClick={handleDelete}
               >
                 <Trash2 className="size-3.5" />
@@ -478,7 +478,7 @@ export function DealDetailSheet({
           </div>
 
           {/* Activity / notes thread */}
-          <div className="order-2 flex-1 space-y-4 p-4 lg:order-1 lg:overflow-y-auto lg:p-5">
+          <div className="order-1 flex-1 space-y-4 p-4 lg:overflow-y-auto lg:p-5">
             <div className="space-y-2 rounded-xl border border-border bg-surface/50 p-3">
               <div className="flex gap-1.5">
                 {ACTIVITY_TYPES.map((t) => (

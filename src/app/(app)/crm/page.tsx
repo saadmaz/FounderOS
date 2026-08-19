@@ -2,6 +2,7 @@
 
 import { MoreHorizontal, Plus, Trash2, TrendingUp, Users } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -37,7 +38,7 @@ import { useCompanies } from "@/lib/data/companies";
 import { deleteContact, useContacts } from "@/lib/data/contacts";
 import { useDeals } from "@/lib/data/deals";
 import { useMembers } from "@/lib/data/members";
-import { formatDate } from "@/lib/format";
+import { formatDate, initials } from "@/lib/format";
 import { scrollMainToTop } from "@/lib/scroll";
 import type { Contact, Deal } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -46,6 +47,11 @@ import { toast } from "sonner";
 const CONTACT_STATUS_STYLES: Record<Contact["status"], string> = {
   active: "bg-success/10 text-success",
   inactive: "bg-muted text-muted-foreground-2",
+};
+
+const CONTACT_STATUS_DOT: Record<Contact["status"], string> = {
+  active: "bg-success",
+  inactive: "bg-muted-foreground-2",
 };
 
 const CONTACT_STATUS_LABELS: Record<Contact["status"], string> = {
@@ -186,49 +192,69 @@ export default function CrmPage() {
                   <TableBody>
                     {contacts.map((contact) => {
                       const company = companyById.get(contact.companyId);
+                      const mobileSummary = [contact.title, company?.name].filter(Boolean).join(" · ");
                       return (
                         <TableRow
                           key={contact.id}
                           className="cursor-pointer hover:bg-secondary/40"
                           onClick={() => setEditingContactId(contact.id)}
                         >
-                          <TableCell className="max-w-36 py-2 text-sm font-medium sm:max-w-none">
-                            <span className="block truncate">{contact.name}</span>
-                            <p className="truncate text-xs font-normal text-muted-foreground sm:hidden">
-                              {contact.title ?? company?.name ?? " "}
-                            </p>
+                          <TableCell className="max-w-44 py-2.5 sm:max-w-none">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar className="hidden shrink-0 sm:flex">
+                                <AvatarFallback
+                                  className="text-xs font-medium"
+                                  style={
+                                    company
+                                      ? { backgroundColor: `${company.color}1f`, color: company.color }
+                                      : undefined
+                                  }
+                                >
+                                  {initials(contact.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <span className="block truncate text-sm font-medium">{contact.name}</span>
+                                {mobileSummary && (
+                                  <p className="truncate text-xs font-normal text-muted-foreground sm:hidden">
+                                    {mobileSummary}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           </TableCell>
-                          <TableCell className="hidden py-2 text-sm text-muted-foreground sm:table-cell">
+                          <TableCell className="hidden py-2.5 text-sm text-muted-foreground sm:table-cell">
                             {contact.title ?? "—"}
                           </TableCell>
-                          <TableCell className="hidden py-2 sm:table-cell">
+                          <TableCell className="hidden py-2.5 sm:table-cell">
                             <div className="flex items-center gap-2">
                               {company && (
                                 <span
-                                  className="size-2 rounded-full"
+                                  className="size-2 shrink-0 rounded-full"
                                   style={{ backgroundColor: company.color }}
                                 />
                               )}
-                              <span className="text-sm">{company?.name ?? "—"}</span>
+                              <span className="truncate text-sm">{company?.name ?? "—"}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="hidden py-2 text-sm text-muted-foreground md:table-cell">
+                          <TableCell className="hidden py-2.5 text-sm text-muted-foreground md:table-cell">
                             {contact.email ?? "—"}
                           </TableCell>
-                          <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
+                          <TableCell className="hidden py-2.5 text-sm text-muted-foreground lg:table-cell">
                             {contact.phone ?? "—"}
                           </TableCell>
-                          <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
+                          <TableCell className="hidden py-2.5 text-sm text-muted-foreground lg:table-cell">
                             {formatDate(contact.lastContactedAt)}
                           </TableCell>
-                          <TableCell className="py-2">
+                          <TableCell className="py-2.5">
                             <span
-                              className={`inline-flex w-fit items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${CONTACT_STATUS_STYLES[contact.status]}`}
+                              className={`inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${CONTACT_STATUS_STYLES[contact.status]}`}
                             >
+                              <span className={`size-1.5 rounded-full ${CONTACT_STATUS_DOT[contact.status]}`} />
                               {CONTACT_STATUS_LABELS[contact.status]}
                             </span>
                           </TableCell>
-                          <TableCell className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                          <TableCell className="py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}>
                                 <MoreHorizontal className="size-4" />
