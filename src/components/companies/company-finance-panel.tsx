@@ -711,12 +711,14 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                       <TableCell className="py-2">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <ExpenseStatusBadge status={e.status} />
-                          <ExpenseStatusHint expense={e} memberById={memberById} />
+                          <span className="hidden sm:inline">
+                            <ExpenseStatusHint expense={e} memberById={memberById} />
+                          </span>
                           {canEdit && e.status !== "reimbursed" && (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-6 gap-1 px-2 text-xs"
+                              className="hidden h-6 gap-1 px-2 text-xs sm:inline-flex"
                               onClick={() => handleMarkReimbursed(e)}
                             >
                               <CircleCheck className="size-3" />
@@ -737,6 +739,14 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                               <MoreHorizontal className="size-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              {e.status !== "reimbursed" && (
+                                <DropdownMenuItem
+                                  className="sm:hidden"
+                                  onClick={() => handleMarkReimbursed(e)}
+                                >
+                                  Mark reimbursed
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 onClick={() => {
                                   setEditingExpense(e);
