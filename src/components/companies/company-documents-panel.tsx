@@ -36,24 +36,27 @@ import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 function iconForFile(contentType: string, name: string) {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  if (contentType.startsWith("image/")) return FileImage;
-  if (contentType.startsWith("video/")) return FileVideo;
-  if (contentType.startsWith("audio/")) return FileAudio;
+  if (contentType.startsWith("image/"))
+    return { Icon: FileImage, iconClass: "text-analytics-pink", bgClass: "bg-analytics-pink/10" };
+  if (contentType.startsWith("video/"))
+    return { Icon: FileVideo, iconClass: "text-danger", bgClass: "bg-danger/10" };
+  if (contentType.startsWith("audio/"))
+    return { Icon: FileAudio, iconClass: "text-analytics-cyan", bgClass: "bg-analytics-cyan/10" };
   if (
     contentType.includes("zip") ||
     contentType.includes("compressed") ||
     ["zip", "rar", "7z", "tar", "gz"].includes(ext)
   )
-    return FileArchive;
+    return { Icon: FileArchive, iconClass: "text-warning", bgClass: "bg-warning/10" };
   if (
     contentType.includes("spreadsheet") ||
     contentType.includes("excel") ||
     ["xls", "xlsx", "csv"].includes(ext)
   )
-    return FileSpreadsheet;
+    return { Icon: FileSpreadsheet, iconClass: "text-success", bgClass: "bg-success/10" };
   if (contentType.includes("pdf") || contentType.startsWith("text/") || contentType.includes("document"))
-    return FileText;
-  return FileIcon;
+    return { Icon: FileText, iconClass: "text-analytics-orange", bgClass: "bg-analytics-orange/10" };
+  return { Icon: FileIcon, iconClass: "text-muted-foreground", bgClass: "bg-secondary" };
 }
 
 /**
@@ -131,7 +134,7 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
               </TableHeader>
               <TableBody>
                 {documents.map((d) => {
-                  const Icon = iconForFile(d.contentType, d.name);
+                  const { Icon, iconClass, bgClass } = iconForFile(d.contentType, d.name);
                   const uploader = memberById.get(d.uploadedBy);
                   return (
                     <TableRow key={d.id} className="hover:bg-secondary/40">
@@ -142,8 +145,8 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
                           rel="noopener noreferrer"
                           className="flex items-start gap-2.5"
                         >
-                          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
-                            <Icon className="size-4 text-muted-foreground" />
+                          <span className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${bgClass}`}>
+                            <Icon className={`size-4 ${iconClass}`} />
                           </span>
                           <span className="min-w-0">
                             <span className="block text-pretty wrap-break-word text-sm font-medium hover:underline">

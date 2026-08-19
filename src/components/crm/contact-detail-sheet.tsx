@@ -114,6 +114,22 @@ const ACTIVITY_ICON: Record<string, typeof StickyNote> = {
   created: Plus,
 };
 
+const ACTIVITY_ICON_COLOR: Record<string, string> = {
+  note: "text-analytics-orange",
+  call: "text-success",
+  email: "text-primary",
+  meeting: "text-analytics-purple",
+  created: "text-muted-foreground",
+};
+
+const ACTIVITY_ICON_BG: Record<string, string> = {
+  note: "bg-analytics-orange/10",
+  call: "bg-success/10",
+  email: "bg-primary/10",
+  meeting: "bg-analytics-purple/10",
+  created: "bg-secondary",
+};
+
 /**
  * The full contact workspace: editable properties plus tabs for everything
  * tied back to this person - timeline, open tasks, attached documents, and
@@ -317,7 +333,7 @@ export function ContactDetailSheet({
                 href={`mailto:${draft.email}`}
                 className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
               >
-                <Mail className="size-3.5" />
+                <Mail className="size-3.5 text-primary" />
                 {draft.email}
               </a>
             )}
@@ -326,7 +342,7 @@ export function ContactDetailSheet({
                 href={`tel:${draft.phone}`}
                 className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
               >
-                <Phone className="size-3.5" />
+                <Phone className="size-3.5 text-success" />
                 {draft.phone}
               </a>
             )}
@@ -337,7 +353,7 @@ export function ContactDetailSheet({
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
               >
-                <LinkedinLogo className="size-3.5" />
+                <LinkedinLogo className="size-3.5 text-analytics-cyan" />
                 LinkedIn
               </a>
             )}
@@ -579,8 +595,13 @@ export function ContactDetailSheet({
                       const isSystem = a.type === "created";
                       return (
                         <div key={a.id} className="group flex gap-2.5">
-                          <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary">
-                            <Icon className="size-3.5 text-muted-foreground" />
+                          <span
+                            className={cn(
+                              "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full",
+                              ACTIVITY_ICON_BG[a.type] ?? "bg-secondary",
+                            )}
+                          >
+                            <Icon className={cn("size-3.5", ACTIVITY_ICON_COLOR[a.type] ?? "text-muted-foreground")} />
                           </span>
                           <div className="min-w-0 flex-1 space-y-0.5">
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -705,7 +726,7 @@ export function ContactDetailSheet({
                         key={d.id}
                         className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2"
                       >
-                        <FileText className="size-4 shrink-0 text-muted-foreground" />
+                        <FileText className="size-4 shrink-0 text-analytics-orange" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{d.name}</p>
                           <p className="text-xs text-muted-foreground">{formatFileSize(d.size)}</p>

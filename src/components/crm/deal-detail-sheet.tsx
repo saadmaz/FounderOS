@@ -105,6 +105,24 @@ const ACTIVITY_ICON: Record<string, typeof StickyNote> = {
   created: Plus,
 };
 
+const ACTIVITY_ICON_COLOR: Record<string, string> = {
+  note: "text-analytics-orange",
+  call: "text-success",
+  email: "text-primary",
+  meeting: "text-analytics-purple",
+  stage_change: "text-muted-foreground",
+  created: "text-muted-foreground",
+};
+
+const ACTIVITY_ICON_BG: Record<string, string> = {
+  note: "bg-analytics-orange/10",
+  call: "bg-success/10",
+  email: "bg-primary/10",
+  meeting: "bg-analytics-purple/10",
+  stage_change: "bg-secondary",
+  created: "bg-secondary",
+};
+
 /**
  * The full deal workspace: editable properties, a stage stepper, and an
  * activity/notes timeline - opened by clicking a card on the board.
@@ -532,8 +550,13 @@ export function DealDetailSheet({
                   const isSystem = a.type === "created" || a.type === "stage_change";
                   return (
                     <div key={a.id} className="group flex gap-2.5">
-                      <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary">
-                        <Icon className="size-3.5 text-muted-foreground" />
+                      <span
+                        className={cn(
+                          "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full",
+                          ACTIVITY_ICON_BG[a.type] ?? "bg-secondary",
+                        )}
+                      >
+                        <Icon className={cn("size-3.5", ACTIVITY_ICON_COLOR[a.type] ?? "text-muted-foreground")} />
                       </span>
                       <div className="min-w-0 flex-1 space-y-0.5">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
