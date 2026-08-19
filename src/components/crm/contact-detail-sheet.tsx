@@ -262,56 +262,53 @@ export function ContactDetailSheet({
       <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-xl lg:max-w-2xl">
         {/* Header */}
         <div className="space-y-3.5 border-b border-border p-5 lg:p-6">
-          <div className="flex flex-wrap items-start gap-3 pr-8">
-            <div className="flex min-w-0 flex-1 items-start gap-3">
-              <Avatar size="lg" className="size-12 shrink-0 lg:size-14">
-                <AvatarFallback
-                  className="text-base font-semibold"
-                  style={
-                    company
-                      ? { backgroundColor: `${company.color}1f`, color: company.color }
-                      : undefined
-                  }
-                >
-                  {initials(draft.name || contact.name)}
-                </AvatarFallback>
-              </Avatar>
+          <div className="flex items-start gap-3 pr-8">
+            <Avatar size="lg" className="size-12 shrink-0 lg:size-14">
+              <AvatarFallback
+                className="text-base font-semibold"
+                style={
+                  company
+                    ? { backgroundColor: `${company.color}1f`, color: company.color }
+                    : undefined
+                }
+              >
+                {initials(draft.name || contact.name)}
+              </AvatarFallback>
+            </Avatar>
 
-              <div className="min-w-0 flex-1 space-y-1 pt-1">
-                <Input
-                  value={draft.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  onBlur={() => commit({ name: draft.name.trim() || contact.name })}
-                  className="-ml-2 h-auto rounded-lg border border-transparent bg-transparent px-2 py-0.5 text-lg font-semibold shadow-none hover:bg-secondary/50 focus-visible:bg-transparent"
-                />
-                <div className="flex flex-wrap items-center gap-1.5 px-2 text-xs text-muted-foreground">
-                  {company && (
-                    <span className="flex items-center gap-1.5">
-                      <span className="size-1.5 rounded-full" style={{ backgroundColor: company.color }} />
-                      {company.name}
-                    </span>
-                  )}
-                  {(draft.title || draft.prospectCompany) && (
-                    <span className="truncate">
-                      ·{" "}
-                      {draft.title && draft.prospectCompany
-                        ? `${draft.title} at ${draft.prospectCompany}`
-                        : (draft.title || draft.prospectCompany)}
-                    </span>
-                  )}
-                </div>
+            <div className="min-w-0 flex-1 space-y-1 pt-1">
+              <Input
+                value={draft.name}
+                onChange={(e) => set("name", e.target.value)}
+                onBlur={() => commit({ name: draft.name.trim() || contact.name })}
+                className="-ml-2 h-auto rounded-lg border border-transparent bg-transparent px-2 py-0.5 text-lg font-semibold shadow-none hover:bg-secondary/50 focus-visible:bg-transparent"
+              />
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 px-2 text-xs text-muted-foreground">
+                {company && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="size-1.5 rounded-full" style={{ backgroundColor: company.color }} />
+                    {company.name}
+                  </span>
+                )}
+                {(draft.title || draft.prospectCompany) && (
+                  <span className="truncate">
+                    ·{" "}
+                    {draft.title && draft.prospectCompany
+                      ? `${draft.title} at ${draft.prospectCompany}`
+                      : (draft.title || draft.prospectCompany)}
+                  </span>
+                )}
+                {owner && (
+                  <span className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-secondary/60 py-1 pr-2.5 pl-1 text-muted-foreground">
+                    <Avatar size="sm" className="size-5">
+                      {owner.photoURL && <AvatarImage src={owner.photoURL} alt={owner.displayName} />}
+                      <AvatarFallback className="text-[9px]">{initials(owner.displayName)}</AvatarFallback>
+                    </Avatar>
+                    {owner.displayName}
+                  </span>
+                )}
               </div>
             </div>
-
-            {owner && (
-              <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary/60 py-1 pr-2.5 pl-1 text-xs text-muted-foreground">
-                <Avatar size="sm" className="size-5">
-                  {owner.photoURL && <AvatarImage src={owner.photoURL} alt={owner.displayName} />}
-                  <AvatarFallback className="text-[9px]">{initials(owner.displayName)}</AvatarFallback>
-                </Avatar>
-                {owner.displayName}
-              </span>
-            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

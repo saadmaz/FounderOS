@@ -3,7 +3,7 @@
 import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import type { Contact, ContactActivity, ContactActivityType } from "@/lib/types";
-import { now } from "./firestore-helpers";
+import { now, withFieldDeletes } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/contacts`;
@@ -41,7 +41,7 @@ export async function updateContact(
   patch: Partial<Contact>
 ) {
   return updateDoc(doc(db, path(workspaceId), contactId), {
-    ...patch,
+    ...withFieldDeletes(patch),
     updatedAt: now(),
   });
 }
