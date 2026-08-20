@@ -3,7 +3,7 @@
 import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { normalizeDealStage, type Deal, type DealActivity, type DealActivityType, type DealStage } from "@/lib/types";
-import { now, withFieldDeletes } from "./firestore-helpers";
+import { now, omitUndefined, withFieldDeletes } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/deals`;
@@ -80,12 +80,20 @@ export async function deleteDeal(workspaceId: string, dealId: string) {
 
 // ===================== Activity / notes thread =====================
 
+/** Sorted by `date` (when it actually happened, for backdated entries)
+ * falling back to `createdAt` - client-side, like useCompanyNotes, so a
+ * backdated entry lands in its real chronological slot instead of always
+ * at the top. */
 export function useDealActivity(workspaceId: string | null, dealId: string | null) {
-  return useCollection<DealActivity>(
+  const result = useCollection<DealActivity>(
     workspaceId && dealId ? activityPath(workspaceId) : null,
     [where("dealId", "==", dealId), orderBy("createdAt", "desc")],
     [workspaceId, dealId]
   );
+  return {
+    ...result,
+    data: [...result.data].sort((a, b) => (b.date ?? b.createdAt) - (a.date ?? a.createdAt)),
+  };
 }
 
 export async function addDealActivity(
@@ -94,13 +102,14 @@ export async function addDealActivity(
     dealId: string;
     type: DealActivityType;
     text?: string;
+    date?: number;
     fromStage?: DealStage;
     toStage?: DealStage;
     authorId: string;
   }
 ) {
   return addDoc(collection(db, activityPath(workspaceId)), {
-    ...input,
+    ...omitUndefined(input),
     workspaceId,
     createdAt: now(),
   });

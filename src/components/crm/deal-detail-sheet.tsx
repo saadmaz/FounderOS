@@ -9,7 +9,7 @@ import {
   Trash2,
   Users as UsersIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ import {
   updateDealStage,
   useDealActivity,
 } from "@/lib/data/deals";
-import { formatCurrency, formatDateTime, initials } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime, initials } from "@/lib/format";
 import {
   DEAL_SOURCES,
   DEAL_STAGES,
@@ -152,6 +152,7 @@ export function DealDetailSheet({
   const [draft, setDraft] = useState<Draft | null>(deal ? draftFrom(deal) : null);
   const [activityType, setActivityType] = useState<DealActivityType>("note");
   const [activityText, setActivityText] = useState("");
+  const [activityDate, setActivityDate] = useState(() => toDateInput(Date.now()));
   const [posting, setPosting] = useState(false);
 
   if (sessionKey !== seededKey) {
@@ -160,6 +161,13 @@ export function DealDetailSheet({
     setActivityType("note");
     setActivityText("");
   }
+
+  // Date.now() is impure, so the "today" default for a fresh session is set
+  // here rather than in the render-time reset block above.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActivityDate(toDateInput(Date.now()));
+  }, [sessionKey]);
 
   const { data: contacts } = useContacts(workspace?.id ?? null, draft?.companyId || undefined);
   const { data: activity, loading: activityLoading } = useDealActivity(
@@ -216,9 +224,11 @@ export function DealDetailSheet({
         dealId: deal.id,
         type: activityType,
         text: activityText.trim(),
+        date: fromDateInput(activityDate) ?? undefined,
         authorId: user.uid,
       });
       setActivityText("");
+      setActivityDate(toDateInput(Date.now()));
     } catch {
       toast.error("Couldn't log that. Try again.");
     } finally {
@@ -497,7 +507,7 @@ export function DealDetailSheet({
 
           {/* Activity / notes thread */}
           <div className="order-1 flex-1 space-y-4 p-4 lg:overflow-y-auto lg:p-5">
-            <div className="space-y-2 rounded-xl border border-border bg-surface/50 p-3">
+            <div className="space-y-2.5 rounded-xl border border-border bg-surface/50 p-3.5 shadow-sm">
               <div className="flex gap-1.5">
                 {ACTIVITY_TYPES.map((t) => (
                   <button
@@ -524,7 +534,12 @@ export function DealDetailSheet({
                 value={activityText}
                 onChange={(e) => setActivityText(e.target.value)}
               />
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between gap-2">
+                <DatePicker
+                  value={activityDate}
+                  onChange={setActivityDate}
+                  className="h-7 w-32 text-xs"
+                />
                 <Button
                   type="button"
                   size="sm"
@@ -544,19 +559,25 @@ export function DealDetailSheet({
                   No activity yet - log a call, email, or note above.
                 </p>
               ) : (
-                activity.map((a) => {
+                activity.map((a, i) => {
                   const Icon = ACTIVITY_ICON[a.type] ?? MessageSquare;
                   const author = memberById.get(a.authorId);
                   const isSystem = a.type === "created" || a.type === "stage_change";
                   return (
-                    <div key={a.id} className="group flex gap-2.5">
+                    <div
+                      key={a.id}
+                      className="group -mx-2 flex gap-2.5 rounded-lg px-2 py-1 transition-colors hover:bg-secondary/40"
+                    >
                       <span
                         className={cn(
-                          "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full",
+                          "relative mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full",
                           ACTIVITY_ICON_BG[a.type] ?? "bg-secondary",
                         )}
                       >
                         <Icon className={cn("size-3.5", ACTIVITY_ICON_COLOR[a.type] ?? "text-muted-foreground")} />
+                        {i < activity.length - 1 && (
+                          <span className="absolute top-full left-1/2 h-3 w-px -translate-x-1/2 bg-border" />
+                        )}
                       </span>
                       <div className="min-w-0 flex-1 space-y-0.5">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -576,7 +597,7 @@ export function DealDetailSheet({
                             <span>logged a {a.type}</span>
                           )}
                           <span>·</span>
-                          <span>{formatDateTime(a.createdAt)}</span>
+                          <span>{a.date ? formatDate(a.date) : formatDateTime(a.createdAt)}</span>
                         </div>
                         {a.text && <p className="wrap-break-word text-sm">{a.text}</p>}
                       </div>

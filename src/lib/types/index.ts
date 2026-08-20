@@ -450,6 +450,10 @@ export interface ContactActivity {
   contactId: string;
   type: ContactActivityType;
   text?: string;
+  /** When the call/email/meeting/note actually happened, if backdated -
+   * distinct from createdAt (when it was logged). Falls back to createdAt
+   * for display/sort when absent. */
+  date?: number;
   authorId: string;
   createdAt: number;
 }
@@ -542,6 +546,10 @@ export interface DealActivity {
   dealId: string;
   type: DealActivityType;
   text?: string;
+  /** When the call/email/meeting/note actually happened, if backdated -
+   * distinct from createdAt (when it was logged). Falls back to createdAt
+   * for display/sort when absent. */
+  date?: number;
   fromStage?: DealStage;
   toStage?: DealStage;
   authorId: string;

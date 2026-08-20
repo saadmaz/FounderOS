@@ -3,7 +3,7 @@
 import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import type { Contact, ContactActivity, ContactActivityType } from "@/lib/types";
-import { now, withFieldDeletes } from "./firestore-helpers";
+import { now, omitUndefined, withFieldDeletes } from "./firestore-helpers";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/contacts`;
@@ -52,20 +52,28 @@ export async function deleteContact(workspaceId: string, contactId: string) {
 
 // ===================== Activity / notes thread =====================
 
+/** Sorted by `date` (when it actually happened, for backdated entries)
+ * falling back to `createdAt` - client-side, like useCompanyNotes, so a
+ * backdated entry lands in its real chronological slot instead of always
+ * at the top. */
 export function useContactActivity(workspaceId: string | null, contactId: string | null) {
-  return useCollection<ContactActivity>(
+  const result = useCollection<ContactActivity>(
     workspaceId && contactId ? activityPath(workspaceId) : null,
     [where("contactId", "==", contactId), orderBy("createdAt", "desc")],
     [workspaceId, contactId]
   );
+  return {
+    ...result,
+    data: [...result.data].sort((a, b) => (b.date ?? b.createdAt) - (a.date ?? a.createdAt)),
+  };
 }
 
 export async function addContactActivity(
   workspaceId: string,
-  input: { contactId: string; type: ContactActivityType; text?: string; authorId: string }
+  input: { contactId: string; type: ContactActivityType; text?: string; date?: number; authorId: string }
 ) {
   return addDoc(collection(db, activityPath(workspaceId)), {
-    ...input,
+    ...omitUndefined(input),
     workspaceId,
     createdAt: now(),
   });
