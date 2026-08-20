@@ -35,6 +35,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { DocumentFormDialog } from "@/components/documents/document-form-dialog";
+import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
 import { deleteDocument, useDocuments } from "@/lib/data/documents";
 import { useMembers } from "@/lib/data/members";
@@ -69,6 +70,7 @@ function iconForFile(contentType: string, name: string) {
 
 export default function DocumentsPage() {
   const { workspace } = useWorkspace();
+  const confirm = useConfirm();
   const { data: companies } = useCompanies(workspace?.id ?? null);
   const { data: members } = useMembers(workspace?.id ?? null);
   const [companyFilter, setCompanyFilter] = useState<string>("all");
@@ -89,7 +91,7 @@ export default function DocumentsPage() {
 
   async function handleDelete(docFile: DocumentFile) {
     if (!workspace) return;
-    if (!window.confirm(`Delete "${docFile.name}"? This can't be undone.`)) return;
+    if (!(await confirm(`Delete "${docFile.name}"? This can't be undone.`))) return;
     setDeletingId(docFile.id);
     try {
       await deleteDocument(workspace.id, docFile);

@@ -32,6 +32,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
 import {
   addContactActivity,
@@ -152,6 +153,7 @@ export function ContactDetailSheet({
 }) {
   const { workspace } = useWorkspace();
   const { user } = useAuth();
+  const confirm = useConfirm();
   const { data: companies } = useCompanies(workspace?.id ?? null);
   const { data: members } = useMembers(workspace?.id ?? null);
 
@@ -217,7 +219,7 @@ export function ContactDetailSheet({
 
   async function handleDelete() {
     if (!workspace || !contact) return;
-    if (!window.confirm(`Delete "${contact.name}"? This can't be undone.`)) return;
+    if (!(await confirm(`Delete "${contact.name}"? This can't be undone.`))) return;
     try {
       await deleteContact(workspace.id, contact.id);
       toast.success("Contact deleted");
@@ -271,7 +273,7 @@ export function ContactDetailSheet({
 
   async function handleDeleteDocument(doc: DocumentFile) {
     if (!workspace) return;
-    if (!window.confirm(`Delete "${doc.name}"? This can't be undone.`)) return;
+    if (!(await confirm(`Delete "${doc.name}"? This can't be undone.`))) return;
     try {
       await deleteDocument(workspace.id, doc);
       toast.success(`${doc.name} deleted`);

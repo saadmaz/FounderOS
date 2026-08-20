@@ -10,6 +10,7 @@ import { MeetingNotesDialog } from "@/components/meetings/meeting-notes-dialog";
 import { MeetingNotesViewDialog } from "@/components/meetings/meeting-notes-view-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
 import { deleteMeeting, deleteMeetingSeries, setMeetingStatus, useMeetings } from "@/lib/data/meetings";
 import { useMembers } from "@/lib/data/members";
@@ -18,6 +19,7 @@ import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 export default function MeetingsPage() {
   const { workspace } = useWorkspace();
+  const confirm = useConfirm();
   const { data: meetings, loading } = useMeetings(workspace?.id ?? null);
   const { data: companies } = useCompanies(workspace?.id ?? null);
   const { data: members } = useMembers(workspace?.id ?? null);
@@ -54,19 +56,17 @@ export default function MeetingsPage() {
 
   async function handleDelete(meeting: Meeting) {
     if (!workspace) return;
-    if (!window.confirm(`Delete "${meeting.title}"? This can't be undone.`)) return;
+    if (!(await confirm(`Delete "${meeting.title}"? This can't be undone.`))) return;
     await deleteMeeting(workspace.id, meeting.id);
     toast.success("Meeting deleted");
   }
 
   async function handleDeleteSeries(meeting: Meeting) {
     if (!workspace || !meeting.recurrence) return;
-    if (
-      !window.confirm(
-        `Delete all ${meeting.recurrence.count} meetings in "${meeting.title}"'s series? This can't be undone.`
-      )
-    )
-      return;
+    const ok = await confirm(
+      `Delete all ${meeting.recurrence.count} meetings in "${meeting.title}"'s series? This can't be undone.`
+    );
+    if (!ok) return;
     await deleteMeetingSeries(workspace.id, meeting.recurrence.groupId);
     toast.success("Series deleted");
   }

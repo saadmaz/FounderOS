@@ -49,6 +49,7 @@ import {
   deleteCalendarEventSeries,
   useCalendarEvents,
 } from "@/lib/data/calendar-events";
+import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
 import { useMeetings } from "@/lib/data/meetings";
 import { useTasks } from "@/lib/data/tasks";
@@ -74,6 +75,7 @@ function weekDaysOf(anchor: Date): Date[] {
 export default function CalendarPage() {
   const { workspace } = useWorkspace();
   const { user } = useAuth();
+  const confirm = useConfirm();
   const router = useRouter();
   const { data: events, loading: eventsLoading } = useCalendarEvents(workspace?.id ?? null);
   const { data: meetings, loading: meetingsLoading } = useMeetings(workspace?.id ?? null);
@@ -139,19 +141,17 @@ export default function CalendarPage() {
 
   async function handleDelete(event: CalendarEvent) {
     if (!workspace) return;
-    if (!window.confirm(`Delete "${event.title}"? This can't be undone.`)) return;
+    if (!(await confirm(`Delete "${event.title}"? This can't be undone.`))) return;
     await deleteCalendarEvent(workspace.id, event.id);
     toast.success("Event deleted");
   }
 
   async function handleDeleteSeries(event: CalendarEvent) {
     if (!workspace || !event.recurrence) return;
-    if (
-      !window.confirm(
-        `Delete all ${event.recurrence.count} events in "${event.title}"'s series? This can't be undone.`
-      )
-    )
-      return;
+    const ok = await confirm(
+      `Delete all ${event.recurrence.count} events in "${event.title}"'s series? This can't be undone.`
+    );
+    if (!ok) return;
     await deleteCalendarEventSeries(workspace.id, event.recurrence.groupId);
     toast.success("Series deleted");
   }

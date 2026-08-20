@@ -27,6 +27,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionLabel } from "@/components/crm/section-label";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
 import { useContacts } from "@/lib/data/contacts";
 import {
@@ -143,6 +144,7 @@ export function DealDetailSheet({
 }) {
   const { workspace } = useWorkspace();
   const { user } = useAuth();
+  const confirm = useConfirm();
   const { data: companies } = useCompanies(workspace?.id ?? null);
 
   // Render-time reset (not an effect) whenever a different deal is opened -
@@ -206,7 +208,7 @@ export function DealDetailSheet({
 
   async function handleDelete() {
     if (!workspace || !deal) return;
-    if (!window.confirm(`Delete "${deal.title}"? This can't be undone.`)) return;
+    if (!(await confirm(`Delete "${deal.title}"? This can't be undone.`))) return;
     try {
       await deleteDeal(workspace.id, deal.id);
       toast.success("Deal deleted");
