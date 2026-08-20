@@ -26,10 +26,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
+import { useMembers } from "@/lib/data/members";
 import { createProject, updateProject } from "@/lib/data/projects";
 import { priorityLabel } from "@/lib/labels";
 import { PRIORITIES, type Project } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
+
+const NO_OWNER = "unassigned";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required").max(150),
@@ -39,6 +42,7 @@ const schema = z.object({
   description: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  ownerId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -53,6 +57,7 @@ function defaultsFor(project?: Project | null, defaultCompanyId?: string): FormV
       description: project.description ?? "",
       startDate: project.startDate ? new Date(project.startDate).toISOString().slice(0, 10) : "",
       endDate: project.endDate ? new Date(project.endDate).toISOString().slice(0, 10) : "",
+      ownerId: project.ownerId ?? NO_OWNER,
     };
   }
   return {
@@ -63,6 +68,7 @@ function defaultsFor(project?: Project | null, defaultCompanyId?: string): FormV
     description: "",
     startDate: "",
     endDate: "",
+    ownerId: NO_OWNER,
   };
 }
 
@@ -79,6 +85,7 @@ export function ProjectFormDialog({
 }) {
   const { workspace } = useWorkspace();
   const { data: companies } = useCompanies(workspace?.id ?? null);
+  const { data: members } = useMembers(workspace?.id ?? null);
   const [submitting, setSubmitting] = useState(false);
   const isEditing = Boolean(project);
   const {
@@ -111,6 +118,7 @@ export function ProjectFormDialog({
         estimatedHours: values.estimatedHours ? Number(values.estimatedHours) : undefined,
         startDate: values.startDate ? new Date(values.startDate).getTime() : null,
         endDate: values.endDate ? new Date(values.endDate).getTime() : null,
+        ownerId: values.ownerId && values.ownerId !== NO_OWNER ? values.ownerId : undefined,
       });
       if (isEditing && project) {
         await updateProject(workspace.id, project.id, payload);
@@ -188,9 +196,31 @@ export function ProjectFormDialog({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="estimatedHours">Estimated hours (optional)</Label>
-            <Input id="estimatedHours" type="number" min={0} placeholder="80" {...register("estimatedHours")} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Owner (optional)</Label>
+              <Select value={watch("ownerId") ?? NO_OWNER} onValueChange={(v) => setValue("ownerId", v ?? NO_OWNER)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Unassigned">
+                    {(v: string) =>
+                      v === NO_OWNER ? "Unassigned" : (members.find((m) => m.id === v)?.displayName ?? "Unassigned")
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_OWNER}>Unassigned</SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="estimatedHours">Estimated hours (optional)</Label>
+              <Input id="estimatedHours" type="number" min={0} placeholder="80" {...register("estimatedHours")} />
+            </div>
           </div>
 
           <div className="space-y-1.5">

@@ -12,12 +12,13 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useDraggable } from "@dnd-kit/core";
-import { Pencil } from "lucide-react";
+import { ListChecks, Pencil, Repeat } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PriorityBadge } from "@/components/shared/status-badge";
 import { setTaskStatus } from "@/lib/data/tasks";
 import { formatDate } from "@/lib/format";
+import { recurrenceSummary } from "@/lib/recurrence";
 import type { Company, Task, TaskStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +72,29 @@ function TaskCard({
         </Button>
       )}
       <p className="pr-5 text-sm font-medium leading-snug">{task.title}</p>
+      {(task.recurrence || task.subtasks?.length || task.tags?.length) && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {task.recurrence && (
+            <span
+              className="inline-flex items-center text-muted-foreground-2"
+              title={recurrenceSummary(task.recurrence.frequency, task.recurrence.interval)}
+            >
+              <Repeat className="size-3" />
+            </span>
+          )}
+          {task.subtasks && task.subtasks.length > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground-2">
+              <ListChecks className="size-3" />
+              {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length}
+            </span>
+          )}
+          {task.tags?.slice(0, 2).map((tag) => (
+            <span key={tag} className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           {company && (

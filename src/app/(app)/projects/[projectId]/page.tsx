@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -21,6 +22,7 @@ import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { TaskTable } from "@/components/tasks/task-table";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
+import { useMembers } from "@/lib/data/members";
 import { deleteProject, updateProject, useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
@@ -35,6 +37,7 @@ export default function ProjectDetailPage() {
   const { workspace } = useWorkspace();
   const confirm = useConfirm();
   const { data: companies, loading: companiesLoading } = useCompanies(workspace?.id ?? null);
+  const { data: members } = useMembers(workspace?.id ?? null);
   const { data: projects, loading: projectsLoading } = useProjects(workspace?.id ?? null);
   const { data: allTasks } = useTasks(workspace?.id ?? null);
   const { data: timeEntries } = useTimeEntries(workspace?.id ?? null);
@@ -44,6 +47,7 @@ export default function ProjectDetailPage() {
 
   const project = projects.find((p) => p.id === projectId);
   const company = companies.find((c) => c.id === project?.companyId);
+  const owner = project?.ownerId ? members.find((m) => m.id === project.ownerId) : undefined;
   const tasks = useMemo(() => allTasks.filter((t) => t.projectId === projectId), [allTasks, projectId]);
 
   const actualHours = useMemo(() => {
@@ -111,6 +115,22 @@ export default function ProjectDetailPage() {
                   {project.startDate ? formatDate(project.startDate) : "—"}
                   {" – "}
                   {project.endDate ? formatDate(project.endDate) : "—"}
+                </span>
+              )}
+              {owner && (
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Avatar size="sm" className="size-5">
+                    <AvatarImage src={owner.photoURL} />
+                    <AvatarFallback className="text-[9px]">
+                      {(owner.displayName ?? "")
+                        .split(" ")
+                        .map((s) => s[0])
+                        .slice(0, 2)
+                        .join("")
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {owner.displayName}
                 </span>
               )}
             </div>

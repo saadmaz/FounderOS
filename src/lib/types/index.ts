@@ -151,6 +151,12 @@ export const TASK_STATUSES: { value: TaskStatus; label: string }[] = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
+export interface Subtask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface Task {
   id: string;
   workspaceId: string;
@@ -166,6 +172,9 @@ export interface Task {
   dueDate?: number | null;
   completedAt?: number | null;
   order: number; // for kanban column ordering
+  tags?: string[];
+  subtasks?: Subtask[];
+  recurrence?: Recurrence;
   createdAt: number;
   updatedAt: number;
 }

@@ -2,6 +2,7 @@
 
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,11 +19,21 @@ import {
 } from "@/components/ui/select";
 import { PriorityBadge } from "@/components/shared/status-badge";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
+import { useMembers } from "@/lib/data/members";
 import { deleteProject, updateProject } from "@/lib/data/projects";
 import { projectStatusLabel } from "@/lib/labels";
 import { PROJECT_STATUSES, type Company, type Project, type ProjectStatus, type Task } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+
+function initials(name?: string) {
+  return (name ?? "")
+    .split(" ")
+    .map((s) => s[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 export function ProjectList({
   projects,
@@ -40,6 +51,8 @@ export function ProjectList({
   onEdit?: (project: Project) => void;
 }) {
   const confirm = useConfirm();
+  const { data: members } = useMembers(workspaceId);
+  const memberById = new Map(members.map((m) => [m.id, m]));
   const companyById = new Map(companies.map((c) => [c.id, c]));
 
   async function handleDelete(project: Project) {
@@ -80,6 +93,14 @@ export function ProjectList({
 
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <PriorityBadge priority={p.priority} />
+              {p.ownerId && memberById.get(p.ownerId) && (
+                <Avatar size="sm" className="size-6" title={memberById.get(p.ownerId)?.displayName}>
+                  <AvatarImage src={memberById.get(p.ownerId)?.photoURL} />
+                  <AvatarFallback className="text-[10px]">
+                    {initials(memberById.get(p.ownerId)?.displayName)}
+                  </AvatarFallback>
+                </Avatar>
+              )}
               <div className="flex w-24 items-center gap-2 sm:w-32">
                 <Progress value={pct} className="h-1.5" />
                 <span className="w-8 shrink-0 text-right text-xs text-muted-foreground">{pct}%</span>

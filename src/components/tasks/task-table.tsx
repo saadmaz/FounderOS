@@ -8,9 +8,17 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Pencil, Trash2 } from "lucide-react";
+import { ArrowUpDown, CheckSquare, ListChecks, MoreHorizontal, Pencil, Repeat, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -28,9 +36,16 @@ import {
 } from "@/components/ui/table";
 import { PriorityBadge } from "@/components/shared/status-badge";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
-import { deleteTask, setTaskStatus } from "@/lib/data/tasks";
+import {
+  bulkDeleteTasks,
+  bulkSetTaskStatus,
+  deleteTask,
+  deleteTaskSeries,
+  setTaskStatus,
+} from "@/lib/data/tasks";
 import { formatDate } from "@/lib/format";
 import { taskStatusLabel } from "@/lib/labels";
+import { recurrenceSummary } from "@/lib/recurrence";
 import { TASK_STATUSES, type Company, type Task, type TaskStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -48,16 +63,72 @@ export function TaskTable({
   onEdit?: (task: Task) => void;
 }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "dueDate", desc: false }]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const confirm = useConfirm();
   const companyById = new Map(companies.map((c) => [c.id, c]));
   const today = new Date().setHours(0, 0, 0, 0);
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   async function handleDelete(task: Task) {
     if (!(await confirm(`Delete "${task.title}"? This can't be undone.`))) return;
     await deleteTask(workspaceId, task.id);
   }
 
+  async function handleDeleteSeries(task: Task) {
+    if (!task.recurrence) return;
+    if (
+      !(await confirm(
+        `Delete all ${task.recurrence.count} tasks in "${task.title}"'s series? This can't be undone.`
+      ))
+    )
+      return;
+    await deleteTaskSeries(workspaceId, task.recurrence.groupId);
+    toast.success("Series deleted");
+  }
+
+  async function handleBulkComplete() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    await bulkSetTaskStatus(workspaceId, ids, "completed");
+    toast.success(`${ids.length} task${ids.length === 1 ? "" : "s"} marked completed`);
+    setSelectedIds(new Set());
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!(await confirm(`Delete ${ids.length} task${ids.length === 1 ? "" : "s"}? This can't be undone.`))) return;
+    await bulkDeleteTasks(workspaceId, ids);
+    toast.success(`${ids.length} task${ids.length === 1 ? "" : "s"} deleted`);
+    setSelectedIds(new Set());
+  }
+
   const columns: ColumnDef<Task>[] = [
+    {
+      id: "select",
+      header: () => (
+        <Checkbox
+          checked={tasks.length > 0 && tasks.every((t) => selectedIds.has(t.id))}
+          onCheckedChange={(v) => setSelectedIds(v ? new Set(tasks.map((t) => t.id)) : new Set())}
+          aria-label="Select all tasks"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={selectedIds.has(row.original.id)}
+          onCheckedChange={() => toggleSelected(row.original.id)}
+          aria-label={`Select ${row.original.title}`}
+        />
+      ),
+    },
     {
       accessorKey: "title",
       header: "Task",
@@ -66,6 +137,7 @@ export function TaskTable({
         const company = companyById.get(t.companyId);
         const due = t.dueDate;
         const overdue = due && due < today && t.status !== "completed";
+        const hasMeta = Boolean(t.recurrence) || Boolean(t.subtasks?.length) || Boolean(t.tags?.length);
         return (
           <div className="flex items-center gap-2.5">
             {showCompany && (
@@ -83,6 +155,35 @@ export function TaskTable({
               >
                 {t.title}
               </span>
+              {hasMeta && (
+                <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                  {t.recurrence && (
+                    <span
+                      className="inline-flex items-center text-muted-foreground-2"
+                      title={recurrenceSummary(t.recurrence.frequency, t.recurrence.interval)}
+                    >
+                      <Repeat className="size-3" />
+                    </span>
+                  )}
+                  {t.subtasks && t.subtasks.length > 0 && (
+                    <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground-2">
+                      <ListChecks className="size-3" />
+                      {t.subtasks.filter((s) => s.done).length}/{t.subtasks.length}
+                    </span>
+                  )}
+                  {t.tags?.slice(0, 2).map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                  {t.tags && t.tags.length > 2 && (
+                    <span className="text-[10px] text-muted-foreground-2">+{t.tags.length - 2}</span>
+                  )}
+                </div>
+              )}
               {/* Priority/due date get their own columns from sm/md up - this
                * mirrors them compactly so nothing's lost on a phone. */}
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground sm:hidden">
@@ -159,30 +260,36 @@ export function TaskTable({
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => (
-        <div className="flex items-center justify-end gap-0.5">
-          {onEdit && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 text-muted-foreground-2 hover:text-foreground"
-              onClick={() => onEdit(row.original)}
-              aria-label="Edit task"
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 text-muted-foreground-2 hover:text-danger"
-            onClick={() => handleDelete(row.original)}
-            aria-label="Delete task"
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const t = row.original;
+        return (
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" aria-label="Task actions" />}>
+                <MoreHorizontal className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onEdit && (
+                  <DropdownMenuItem onClick={() => onEdit(t)}>
+                    <Pencil className="size-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem variant="destructive" onClick={() => handleDelete(t)}>
+                  <Trash2 className="size-4" />
+                  {t.recurrence ? "Delete this task" : "Delete"}
+                </DropdownMenuItem>
+                {t.recurrence && (
+                  <DropdownMenuItem variant="destructive" onClick={() => handleDeleteSeries(t)}>
+                    <Trash2 className="size-4" />
+                    Delete series
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
     },
   ];
 
@@ -209,6 +316,7 @@ export function TaskTable({
   // untruncated text, but Status/actions rendered off-screen with no
   // scrollbar cue that they're there.
   const RESPONSIVE_COLUMN_CLASS: Record<string, string> = {
+    select: "w-8",
     title: "max-w-32 sm:max-w-40 lg:max-w-56",
     companyId: "hidden sm:table-cell",
     priority: "hidden sm:table-cell",
@@ -216,48 +324,71 @@ export function TaskTable({
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
-      <div className="scrollbar-thin overflow-x-auto">
-        <Table>
-          <TableHeader className="bg-surface">
-            {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id} className="hover:bg-transparent">
-                {hg.headers.map((h) => (
-                  <TableHead
-                    key={h.id}
-                    className={cn(
-                      "text-xs font-medium text-muted-foreground",
-                      RESPONSIVE_COLUMN_CLASS[h.column.id]
-                    )}
-                  >
-                    {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} className="hover:bg-secondary/40">
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className={cn("py-2", RESPONSIVE_COLUMN_CLASS[cell.column.id])}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+    <div>
+      {selectedIds.size > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-medium">{selectedIds.size} selected</span>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleBulkComplete}>
+            <CheckSquare className="size-3.5" />
+            Mark completed
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-danger hover:text-danger"
+            onClick={handleBulkDelete}
+          >
+            <Trash2 className="size-3.5" />
+            Delete
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+            Cancel
+          </Button>
+        </div>
+      )}
+      <div className="overflow-hidden rounded-xl border border-border">
+        <div className="scrollbar-thin overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-surface">
+              {table.getHeaderGroups().map((hg) => (
+                <TableRow key={hg.id} className="hover:bg-transparent">
+                  {hg.headers.map((h) => (
+                    <TableHead
+                      key={h.id}
+                      className={cn(
+                        "text-xs font-medium text-muted-foreground",
+                        RESPONSIVE_COLUMN_CLASS[h.column.id]
+                      )}
+                    >
+                      {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} className="hover:bg-secondary/40">
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={cn("py-2", RESPONSIVE_COLUMN_CLASS[cell.column.id])}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+              {tasks.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
+                    No tasks yet.
                   </TableCell>
-                ))}
-              </TableRow>
-            ))}
-            {tasks.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
-                  No tasks yet.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );
