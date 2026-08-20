@@ -563,6 +563,7 @@ export interface DocumentFile {
   workspaceId: string;
   companyId?: string;
   contactId?: string;
+  dealId?: string;
   name: string;
   description?: string;
   url: string; // Cloudinary secure_url - stable, safe to use directly

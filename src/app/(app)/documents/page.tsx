@@ -37,6 +37,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DocumentFormDialog } from "@/components/documents/document-form-dialog";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
+import { useDeals } from "@/lib/data/deals";
 import { deleteDocument, useDocuments } from "@/lib/data/documents";
 import { useMembers } from "@/lib/data/members";
 import { formatDate, formatFileSize } from "@/lib/format";
@@ -72,6 +73,7 @@ export default function DocumentsPage() {
   const { workspace } = useWorkspace();
   const confirm = useConfirm();
   const { data: companies } = useCompanies(workspace?.id ?? null);
+  const { data: deals } = useDeals(workspace?.id ?? null);
   const { data: members } = useMembers(workspace?.id ?? null);
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const { data: documents, loading } = useDocuments(
@@ -83,6 +85,7 @@ export default function DocumentsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
+  const dealById = useMemo(() => new Map(deals.map((d) => [d.id, d])), [deals]);
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
   function handleDownload(docFile: DocumentFile) {
@@ -166,6 +169,7 @@ export default function DocumentsPage() {
                 {documents.map((d) => {
                   const { Icon, iconClass, bgClass } = iconForFile(d.contentType, d.name);
                   const company = d.companyId ? companyById.get(d.companyId) : undefined;
+                  const deal = d.dealId ? dealById.get(d.dealId) : undefined;
                   const uploader = memberById.get(d.uploadedBy);
                   return (
                     <TableRow key={d.id} className="hover:bg-secondary/40">
@@ -180,8 +184,18 @@ export default function DocumentsPage() {
                             <Icon className={`size-4 ${iconClass}`} />
                           </span>
                           <span className="min-w-0">
-                            <span className="block text-pretty wrap-break-word text-sm font-medium hover:underline">
-                              {d.name}
+                            <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                              <span className="text-pretty wrap-break-word text-sm font-medium hover:underline">
+                                {d.name}
+                              </span>
+                              {deal && (
+                                <span
+                                  className="shrink-0 rounded-full bg-analytics-purple/10 px-2 py-0.5 text-[10px] font-medium text-analytics-purple"
+                                  title={deal.title}
+                                >
+                                  Deal
+                                </span>
+                              )}
                             </span>
                             {d.description && (
                               <span className="line-clamp-2 wrap-break-word text-xs text-muted-foreground">

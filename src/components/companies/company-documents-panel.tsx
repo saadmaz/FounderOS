@@ -29,6 +29,7 @@ import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { DocumentFormDialog } from "@/components/documents/document-form-dialog";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
+import { useDeals } from "@/lib/data/deals";
 import { deleteDocument, useDocuments } from "@/lib/data/documents";
 import { useMembers } from "@/lib/data/members";
 import { formatDate, formatFileSize } from "@/lib/format";
@@ -69,6 +70,7 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
   const { workspace } = useWorkspace();
   const confirm = useConfirm();
   const { data: companies } = useCompanies(workspace?.id ?? null);
+  const { data: deals } = useDeals(workspace?.id ?? null, company.id);
   const { data: members } = useMembers(workspace?.id ?? null);
   const { data: documents, loading } = useDocuments(workspace?.id ?? null, company.id);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -76,6 +78,7 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
+  const dealById = useMemo(() => new Map(deals.map((d) => [d.id, d])), [deals]);
 
   function handleDownload(docFile: DocumentFile) {
     window.open(docFile.url, "_blank", "noopener,noreferrer");
@@ -137,6 +140,7 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
               <TableBody>
                 {documents.map((d) => {
                   const { Icon, iconClass, bgClass } = iconForFile(d.contentType, d.name);
+                  const deal = d.dealId ? dealById.get(d.dealId) : undefined;
                   const uploader = memberById.get(d.uploadedBy);
                   return (
                     <TableRow key={d.id} className="hover:bg-secondary/40">
@@ -151,8 +155,18 @@ export function CompanyDocumentsPanel({ company }: { company: Company }) {
                             <Icon className={`size-4 ${iconClass}`} />
                           </span>
                           <span className="min-w-0">
-                            <span className="block text-pretty wrap-break-word text-sm font-medium hover:underline">
-                              {d.name}
+                            <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                              <span className="text-pretty wrap-break-word text-sm font-medium hover:underline">
+                                {d.name}
+                              </span>
+                              {deal && (
+                                <span
+                                  className="shrink-0 rounded-full bg-analytics-purple/10 px-2 py-0.5 text-[10px] font-medium text-analytics-purple"
+                                  title={deal.title}
+                                >
+                                  Deal
+                                </span>
+                              )}
                             </span>
                             {d.description && (
                               <span className="line-clamp-2 wrap-break-word text-xs text-muted-foreground">

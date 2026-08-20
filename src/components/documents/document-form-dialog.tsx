@@ -45,6 +45,7 @@ export function DocumentFormDialog({
   editingDocument,
   defaultCompanyId,
   contactId,
+  dealId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -55,6 +56,9 @@ export function DocumentFormDialog({
   /** Attaches an uploaded file to this contact (e.g. opened from a
    * contact's Documents tab) - invisible in the form, no contact picker. */
   contactId?: string;
+  /** Same as contactId, for a deal's Documents tab (a proposal/quote sent
+   * for that deal). */
+  dealId?: string;
 }) {
   const { user } = useAuth();
   const isEditing = Boolean(editingDocument);
@@ -128,6 +132,7 @@ export function DocumentFormDialog({
           name: trimmedName,
           companyId: companyId === "none" ? undefined : companyId,
           contactId,
+          dealId,
           description: trimmedDescription,
           uploadedBy: user.uid,
           date: dateMs,

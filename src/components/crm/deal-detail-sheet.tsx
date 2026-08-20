@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Download,
+  FileText,
   Mail,
   MessageSquare,
   Phone,
@@ -24,7 +26,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { DocumentFormDialog } from "@/components/documents/document-form-dialog";
 import { SectionLabel } from "@/components/crm/section-label";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
@@ -38,12 +42,14 @@ import {
   updateDealStage,
   useDealActivity,
 } from "@/lib/data/deals";
-import { formatCurrency, formatDate, formatDateTime, initials } from "@/lib/format";
+import { deleteDocument, useDocumentsByDeal } from "@/lib/data/documents";
+import { formatCurrency, formatDate, formatDateTime, formatFileSize, initials } from "@/lib/format";
 import {
   DEAL_SOURCES,
   DEAL_STAGES,
   type Deal,
   type DealActivityType,
+  type DocumentFile,
   type WorkspaceMember,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -156,6 +162,7 @@ export function DealDetailSheet({
   const [activityText, setActivityText] = useState("");
   const [activityDate, setActivityDate] = useState(() => toDateInput(Date.now()));
   const [posting, setPosting] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   if (sessionKey !== seededKey) {
     setSeededKey(sessionKey);
@@ -176,6 +183,7 @@ export function DealDetailSheet({
     workspace?.id ?? null,
     deal?.id ?? null
   );
+  const { data: documents } = useDocumentsByDeal(workspace?.id ?? null, deal?.id ?? null);
   const memberById = new Map(members.map((m) => [m.id, m]));
   const companyById = new Map(companies.map((c) => [c.id, c]));
 
@@ -245,6 +253,21 @@ export function DealDetailSheet({
     );
   }
 
+  async function handleDownloadDocument(doc: DocumentFile) {
+    window.open(doc.url, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleDeleteDocument(doc: DocumentFile) {
+    if (!workspace) return;
+    if (!(await confirm(`Delete "${doc.name}"? This can't be undone.`))) return;
+    try {
+      await deleteDocument(workspace.id, doc);
+      toast.success(`${doc.name} deleted`);
+    } catch {
+      toast.error("Couldn't delete the file. Try again.");
+    }
+  }
+
   const company = companyById.get(draft.companyId);
   const contact = draft.contactId ? contacts.find((c) => c.id === draft.contactId) : undefined;
   const owner = draft.ownerId ? memberById.get(draft.ownerId) : undefined;
@@ -311,9 +334,9 @@ export function DealDetailSheet({
         </div>
 
         {/* Body */}
-        <div className="flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
           {/* Properties */}
-          <div className="order-2 shrink-0 space-y-3 border-t border-border p-4 lg:w-72 lg:overflow-y-auto lg:border-t-0 lg:border-l lg:p-5">
+          <div className="order-2 shrink-0 space-y-3 border-t border-border p-4 lg:w-72 lg:min-h-0 lg:overflow-y-auto lg:border-t-0 lg:border-l lg:p-5">
             <SectionLabel>Deal properties</SectionLabel>
 
             <div className="space-y-1.5">
@@ -507,122 +530,194 @@ export function DealDetailSheet({
             </div>
           </div>
 
-          {/* Activity / notes thread */}
-          <div className="order-1 flex-1 space-y-4 p-4 lg:overflow-y-auto lg:p-5">
-            <div className="space-y-2.5 rounded-xl border border-border bg-surface/50 p-3.5 shadow-sm">
-              <div className="flex gap-1.5">
-                {ACTIVITY_TYPES.map((t) => (
-                  <button
-                    key={t.value}
-                    type="button"
-                    onClick={() => setActivityType(t.value)}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                      activityType === t.value
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:border-white/25 hover:text-foreground"
-                    )}
-                  >
-                    <t.icon className="size-3.5" />
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-              <Textarea
-                rows={2}
-                placeholder={
-                  activityType === "note" ? "Add a note…" : `Log this ${activityType}…`
-                }
-                value={activityText}
-                onChange={(e) => setActivityText(e.target.value)}
-              />
-              <div className="flex items-center justify-between gap-2">
-                <DatePicker
-                  value={activityDate}
-                  onChange={setActivityDate}
-                  className="h-7 w-32 text-xs"
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={posting || !activityText.trim()}
-                  onClick={handlePostActivity}
-                >
-                  {posting ? "Logging…" : "Log"}
-                </Button>
-              </div>
-            </div>
+          {/* Timeline / Documents */}
+          <div className="order-1 flex-1 p-4 lg:min-h-0 lg:overflow-y-auto lg:p-5">
+            <Tabs defaultValue="timeline">
+              <TabsList>
+                <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                <TabsTrigger value="documents">
+                  Documents{documents.length > 0 ? ` (${documents.length})` : ""}
+                </TabsTrigger>
+              </TabsList>
 
-            <div className="space-y-3">
-              {activityLoading ? (
-                <p className="text-sm text-muted-foreground">Loading activity…</p>
-              ) : activity.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No activity yet - log a call, email, or note above.
-                </p>
-              ) : (
-                activity.map((a, i) => {
-                  const Icon = ACTIVITY_ICON[a.type] ?? MessageSquare;
-                  const author = memberById.get(a.authorId);
-                  const isSystem = a.type === "created" || a.type === "stage_change";
-                  return (
-                    <div
-                      key={a.id}
-                      className="group -mx-2 flex gap-2.5 rounded-lg px-2 py-1 transition-colors hover:bg-secondary/40"
-                    >
-                      <span
+              {/* ----- Timeline ----- */}
+              <TabsContent value="timeline" className="space-y-4 pt-3">
+                <div className="space-y-2.5 rounded-xl border border-border bg-surface/50 p-3.5 shadow-sm">
+                  <div className="flex gap-1.5">
+                    {ACTIVITY_TYPES.map((t) => (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setActivityType(t.value)}
                         className={cn(
-                          "relative mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full",
-                          ACTIVITY_ICON_BG[a.type] ?? "bg-secondary",
+                          "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                          activityType === t.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-white/25 hover:text-foreground"
                         )}
                       >
-                        <Icon className={cn("size-3.5", ACTIVITY_ICON_COLOR[a.type] ?? "text-muted-foreground")} />
-                        {i < activity.length - 1 && (
-                          <span className="absolute top-full left-1/2 h-3 w-px -translate-x-1/2 bg-border" />
-                        )}
-                      </span>
-                      <div className="min-w-0 flex-1 space-y-0.5">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground">
-                            {author?.displayName ?? "Someone"}
+                        <t.icon className="size-3.5" />
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  <Textarea
+                    rows={2}
+                    placeholder={
+                      activityType === "note" ? "Add a note…" : `Log this ${activityType}…`
+                    }
+                    value={activityText}
+                    onChange={(e) => setActivityText(e.target.value)}
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <DatePicker
+                      value={activityDate}
+                      onChange={setActivityDate}
+                      className="h-7 w-32 text-xs"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={posting || !activityText.trim()}
+                      onClick={handlePostActivity}
+                    >
+                      {posting ? "Logging…" : "Log"}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {activityLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading activity…</p>
+                  ) : activity.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No activity yet - log a call, email, or note above.
+                    </p>
+                  ) : (
+                    activity.map((a, i) => {
+                      const Icon = ACTIVITY_ICON[a.type] ?? MessageSquare;
+                      const author = memberById.get(a.authorId);
+                      const isSystem = a.type === "created" || a.type === "stage_change";
+                      return (
+                        <div
+                          key={a.id}
+                          className="group -mx-2 flex gap-2.5 rounded-lg px-2 py-1 transition-colors hover:bg-secondary/40"
+                        >
+                          <span
+                            className={cn(
+                              "relative mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full",
+                              ACTIVITY_ICON_BG[a.type] ?? "bg-secondary",
+                            )}
+                          >
+                            <Icon className={cn("size-3.5", ACTIVITY_ICON_COLOR[a.type] ?? "text-muted-foreground")} />
+                            {i < activity.length - 1 && (
+                              <span className="absolute top-full left-1/2 h-3 w-px -translate-x-1/2 bg-border" />
+                            )}
                           </span>
-                          {a.type === "stage_change" ? (
-                            <span>
-                              moved this to{" "}
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <span className="font-medium text-foreground">
-                                {DEAL_STAGES.find((s) => s.value === a.toStage)?.label ?? a.toStage}
+                                {author?.displayName ?? "Someone"}
                               </span>
-                            </span>
-                          ) : a.type === "created" ? (
-                            <span>created this deal</span>
-                          ) : (
-                            <span>logged a {a.type}</span>
+                              {a.type === "stage_change" ? (
+                                <span>
+                                  moved this to{" "}
+                                  <span className="font-medium text-foreground">
+                                    {DEAL_STAGES.find((s) => s.value === a.toStage)?.label ?? a.toStage}
+                                  </span>
+                                </span>
+                              ) : a.type === "created" ? (
+                                <span>created this deal</span>
+                              ) : (
+                                <span>logged a {a.type}</span>
+                              )}
+                              <span>·</span>
+                              <span>{a.date ? formatDate(a.date) : formatDateTime(a.createdAt)}</span>
+                            </div>
+                            {a.text && <p className="wrap-break-word text-sm">{a.text}</p>}
+                          </div>
+                          {!isSystem && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-6 shrink-0 opacity-0 group-hover:opacity-100"
+                              aria-label="Remove entry"
+                              onClick={() => handleDeleteActivity(a.id)}
+                            >
+                              <Trash2 className="size-3" />
+                            </Button>
                           )}
-                          <span>·</span>
-                          <span>{a.date ? formatDate(a.date) : formatDateTime(a.createdAt)}</span>
                         </div>
-                        {a.text && <p className="wrap-break-word text-sm">{a.text}</p>}
-                      </div>
-                      {!isSystem && (
+                      );
+                    })
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* ----- Documents ----- */}
+              <TabsContent value="documents" className="space-y-3 pt-3">
+                <div className="flex justify-end">
+                  <Button type="button" size="sm" className="gap-1.5" onClick={() => setUploadOpen(true)}>
+                    <Plus className="size-4" />
+                    Upload
+                  </Button>
+                </div>
+
+                {documents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No documents attached yet.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {documents.map((d) => (
+                      <div
+                        key={d.id}
+                        className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2"
+                      >
+                        <FileText className="size-4 shrink-0 text-analytics-orange" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{d.name}</p>
+                          <p className="text-xs text-muted-foreground">{formatFileSize(d.size)}</p>
+                        </div>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="size-6 shrink-0 opacity-0 group-hover:opacity-100"
-                          aria-label="Remove entry"
-                          onClick={() => handleDeleteActivity(a.id)}
+                          className="size-6 shrink-0 text-muted-foreground-2 hover:text-foreground"
+                          aria-label="Download document"
+                          onClick={() => handleDownloadDocument(d)}
                         >
-                          <Trash2 className="size-3" />
+                          <Download className="size-3.5" />
                         </Button>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-6 shrink-0 text-muted-foreground-2 hover:text-danger"
+                          aria-label="Delete document"
+                          onClick={() => handleDeleteDocument(d)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </SheetContent>
+
+      {workspace && (
+        <DocumentFormDialog
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          workspaceId={workspace.id}
+          companies={companies}
+          defaultCompanyId={deal.companyId}
+          dealId={deal.id}
+        />
+      )}
     </Sheet>
   );
 }

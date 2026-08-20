@@ -42,6 +42,19 @@ export function useDocumentsByContact(workspaceId: string | null, contactId: str
   return { ...result, data: sortByDate(result.data) };
 }
 
+/** Direct dealId query, same rationale as useDocumentsByContact above - a
+ * document sent for a specific deal (a proposal, a signed quote) stays
+ * attached to that deal regardless of which company/contact it's also
+ * tagged with. */
+export function useDocumentsByDeal(workspaceId: string | null, dealId: string | null) {
+  const result = useCollection<DocumentFile>(
+    workspaceId && dealId ? path(workspaceId) : null,
+    [where("dealId", "==", dealId), orderBy("createdAt", "desc")],
+    [workspaceId, dealId]
+  );
+  return { ...result, data: sortByDate(result.data) };
+}
+
 /**
  * Uploads the file to Cloudinary, then writes the metadata doc that the
  * rest of the app (list, filters, etc.) actually queries against.
@@ -53,6 +66,7 @@ export async function uploadDocument(
     name?: string;
     companyId?: string;
     contactId?: string;
+    dealId?: string;
     description?: string;
     uploadedBy: string;
     date?: number;
@@ -68,6 +82,7 @@ export async function uploadDocument(
     workspaceId,
     ...(input.companyId ? { companyId: input.companyId } : {}),
     ...(input.contactId ? { contactId: input.contactId } : {}),
+    ...(input.dealId ? { dealId: input.dealId } : {}),
     name: input.name?.trim() || input.file.name,
     ...(input.description ? { description: input.description } : {}),
     url,
