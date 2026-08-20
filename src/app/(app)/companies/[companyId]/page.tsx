@@ -23,7 +23,7 @@ import { CompanyClockWidget } from "@/components/companies/company-clock-widget"
 import { CompanyFormDialog } from "@/components/companies/company-form-dialog";
 import { CompanyCrmPanel } from "@/components/companies/company-crm-panel";
 import { CompanyDocumentsPanel } from "@/components/companies/company-documents-panel";
-import { CompanyFinancePanel } from "@/components/companies/company-finance-panel";
+import { FinancePanel } from "@/components/finance/finance-panel";
 import { CompanyMeetingsPanel } from "@/components/companies/company-meetings-panel";
 import { CompanyNotesPanel } from "@/components/companies/company-notes-panel";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
@@ -265,7 +265,7 @@ export default function CompanyDetailPage() {
           <CompanyMeetingsPanel company={company} />
         </TabsContent>
         <TabsContent value="finance" className="flex min-w-0 flex-1">
-          <CompanyFinancePanel company={company} />
+          <FinancePanel company={company} />
         </TabsContent>
         <TabsContent value="crm" className="flex min-w-0 flex-1">
           <CompanyCrmPanel company={company} />
