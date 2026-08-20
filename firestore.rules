@@ -199,6 +199,14 @@ service cloud.firestore {
         allow create, update, delete: if canManage(workspaceId);
       }
 
+      // Append-only progress-history log for goals (see GoalProgressEntry) -
+      // flat, filtered by goalId, same convention as dealActivity/
+      // contactActivity. No update/delete: it's a log, not editable state.
+      match /goalProgress/{entryId} {
+        allow read: if isMember(workspaceId);
+        allow create: if canManage(workspaceId);
+      }
+
       // ----- Ideas -----
       match /ideas/{ideaId} {
         allow read: if isMember(workspaceId);

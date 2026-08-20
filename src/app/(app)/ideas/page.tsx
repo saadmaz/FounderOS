@@ -1,10 +1,25 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowBigUp, Lightbulb, Plus } from "lucide-react";
+import { ArrowBigUp, Lightbulb, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -15,10 +30,13 @@ import {
 import { IdeaFormDialog } from "@/components/ideas/idea-form-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
-import { setIdeaStatus, upvoteIdea, useIdeas } from "@/lib/data/ideas";
+import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
+import { deleteIdea, priorityScore, setIdeaStatus, updateIdea, upvoteIdea, useIdeas } from "@/lib/data/ideas";
+import { createProject } from "@/lib/data/projects";
+import { createTask } from "@/lib/data/tasks";
 import { formatDate } from "@/lib/format";
-import { IDEA_STATUSES, type IdeaStatus } from "@/lib/types";
+import { IDEA_STATUSES, type Idea, type IdeaStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { cn } from "@/lib/utils";
 
@@ -36,15 +54,20 @@ const IDEA_STATUS_LABELS: Record<IdeaStatus, string> = Object.fromEntries(
 ) as Record<IdeaStatus, string>;
 
 const STATUS_FILTER_ALL = "all";
-type SortMode = "votes" | "newest";
+type SortMode = "votes" | "priority" | "newest";
 
 export default function IdeasPage() {
   const { workspace } = useWorkspace();
+  const confirm = useConfirm();
   const { data: ideas, loading } = useIdeas(workspace?.id ?? null);
   const { data: companies } = useCompanies(workspace?.id ?? null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>(STATUS_FILTER_ALL);
   const [sort, setSort] = useState<SortMode>("votes");
+  const [convertTarget, setConvertTarget] = useState<{ idea: Idea; type: "task" | "project" } | null>(null);
+  const [convertCompanyId, setConvertCompanyId] = useState("");
+  const [converting, setConverting] = useState(false);
 
   const companyName = (companyId?: string) =>
     companyId ? companies.find((c) => c.id === companyId)?.name : undefined;
@@ -55,6 +78,15 @@ export default function IdeasPage() {
     const sorted = [...filtered];
     if (sort === "votes") {
       sorted.sort((a, b) => b.votes - a.votes || b.createdAt - a.createdAt);
+    } else if (sort === "priority") {
+      sorted.sort((a, b) => {
+        const sa = priorityScore(a);
+        const sb = priorityScore(b);
+        if (sa === undefined && sb === undefined) return b.createdAt - a.createdAt;
+        if (sa === undefined) return 1;
+        if (sb === undefined) return -1;
+        return sb - sa || b.createdAt - a.createdAt;
+      });
     } else {
       sorted.sort((a, b) => b.createdAt - a.createdAt);
     }
@@ -69,6 +101,57 @@ export default function IdeasPage() {
   async function handleStatusChange(id: string, status: IdeaStatus) {
     if (!workspace) return;
     await setIdeaStatus(workspace.id, id, status);
+  }
+
+  async function handleDelete(idea: Idea) {
+    if (!workspace) return;
+    if (!(await confirm(`Delete "${idea.title}"? This can't be undone.`))) return;
+    try {
+      await deleteIdea(workspace.id, idea.id);
+      toast.success(`${idea.title} deleted`);
+    } catch {
+      toast.error("Couldn't delete the idea. Try again.");
+    }
+  }
+
+  function startConvert(idea: Idea, type: "task" | "project") {
+    if (idea.companyId) {
+      void doConvert(idea, type, idea.companyId);
+    } else {
+      setConvertCompanyId("");
+      setConvertTarget({ idea, type });
+    }
+  }
+
+  async function doConvert(idea: Idea, type: "task" | "project", companyId: string) {
+    if (!workspace) return;
+    setConverting(true);
+    try {
+      const description = idea.description || undefined;
+      const ref =
+        type === "task"
+          ? await createTask(workspace.id, {
+              companyId,
+              title: idea.title,
+              description,
+              priority: "medium",
+              status: "not_started",
+            })
+          : await createProject(workspace.id, {
+              companyId,
+              name: idea.title,
+              description,
+              priority: "medium",
+              status: "not_started",
+            });
+      await updateIdea(workspace.id, idea.id, { convertedTo: { type, id: ref.id } });
+      toast.success(`Converted to ${type}`);
+      setConvertTarget(null);
+    } catch {
+      toast.error(`Couldn't convert to ${type}. Try again.`);
+    } finally {
+      setConverting(false);
+    }
   }
 
   return (
@@ -105,11 +188,12 @@ export default function IdeasPage() {
           <Select value={sort} onValueChange={(v) => setSort((v as SortMode) ?? "votes")}>
             <SelectTrigger className="w-36">
               <SelectValue placeholder="Sort">
-                {(v: SortMode) => (v === "votes" ? "Top voted" : "Newest")}
+                {(v: SortMode) => (v === "votes" ? "Top voted" : v === "priority" ? "Priority" : "Newest")}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="votes">Top voted</SelectItem>
+              <SelectItem value="priority">Priority</SelectItem>
               <SelectItem value="newest">Newest</SelectItem>
             </SelectContent>
           </Select>
@@ -147,10 +231,34 @@ export default function IdeasPage() {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: i * 0.03 }}
-                className="flex flex-col rounded-xl border border-border bg-card p-5 transition-colors hover:border-border-hover"
+                className="group relative flex flex-col rounded-xl border border-border bg-card p-5 transition-colors hover:border-border-hover"
               >
+                <div className="absolute left-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" aria-label="Idea actions" />}>
+                      <MoreHorizontal className="size-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onClick={() => setEditingIdea(idea)}>
+                        <Pencil className="size-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => startConvert(idea, "task")}>
+                        Convert to task
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => startConvert(idea, "project")}>
+                        Convert to project
+                      </DropdownMenuItem>
+                      <DropdownMenuItem variant="destructive" onClick={() => handleDelete(idea)}>
+                        <Trash2 className="size-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  <div className="min-w-0 pl-8">
                     <p className="truncate text-sm font-semibold">{idea.title}</p>
                     {(companyName(idea.companyId) || idea.createdAt) && (
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -172,6 +280,14 @@ export default function IdeasPage() {
                   <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">{idea.description}</p>
                 )}
 
+                {(idea.impact !== undefined || idea.effort !== undefined) && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {idea.impact !== undefined && `Impact ${idea.impact}`}
+                    {idea.impact !== undefined && idea.effort !== undefined && " · "}
+                    {idea.effort !== undefined && `Effort ${idea.effort}`}
+                  </p>
+                )}
+
                 {idea.tags && idea.tags.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {idea.tags.map((tag) => (
@@ -180,6 +296,18 @@ export default function IdeasPage() {
                       </Badge>
                     ))}
                   </div>
+                )}
+
+                {idea.convertedTo && (
+                  <p className="mt-3 text-xs">
+                    {idea.convertedTo.type === "project" ? (
+                      <Link href={`/projects/${idea.convertedTo.id}`} className="font-medium text-primary hover:underline">
+                        → View project
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">→ Converted to a task</span>
+                    )}
+                  </p>
                 )}
 
                 <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-3">
@@ -214,6 +342,48 @@ export default function IdeasPage() {
       </div>
 
       <IdeaFormDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <IdeaFormDialog
+        open={Boolean(editingIdea)}
+        onOpenChange={(v) => !v && setEditingIdea(null)}
+        idea={editingIdea}
+      />
+
+      <Dialog open={Boolean(convertTarget)} onOpenChange={(v) => !v && setConvertTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Pick a company</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This idea isn&apos;t tied to a company yet - pick one to convert it to a{" "}
+            {convertTarget?.type ?? "task"}.
+          </p>
+          <Select value={convertCompanyId} onValueChange={(v) => setConvertCompanyId(v ?? "")}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select company">
+                {(v: string) => companies.find((c) => c.id === v)?.name ?? "Select company"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {companies.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setConvertTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!convertCompanyId || converting}
+              onClick={() => convertTarget && doConvert(convertTarget.idea, convertTarget.type, convertCompanyId)}
+            >
+              {converting ? "Converting…" : "Convert"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

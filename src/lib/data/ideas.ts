@@ -3,6 +3,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   increment,
   orderBy,
@@ -57,4 +58,17 @@ export async function upvoteIdea(workspaceId: string, ideaId: string) {
     votes: increment(1),
     updatedAt: now(),
   });
+}
+
+export async function deleteIdea(workspaceId: string, ideaId: string) {
+  return deleteDoc(doc(db, path(workspaceId), ideaId));
+}
+
+/** impact - effort: higher is better (high impact, low effort). Undefined
+ * when either isn't set, so the "priority" sort mode can push those last
+ * instead of treating a missing score as zero (which would misleadingly
+ * outrank a deliberately low-impact/high-effort idea). */
+export function priorityScore(idea: Pick<Idea, "impact" | "effort">): number | undefined {
+  if (typeof idea.impact !== "number" || typeof idea.effort !== "number") return undefined;
+  return idea.impact - idea.effort;
 }

@@ -716,8 +716,22 @@ export interface Goal {
   currentValue?: number;
   unit?: string; // e.g. "$", "customers", "%"
   targetDate?: number | null;
+  linkedTaskIds?: string[];
+  linkedProjectIds?: string[];
   createdAt: number;
   updatedAt: number;
+}
+
+/** One snapshot of a goal's currentValue at a point in time, written
+ * alongside every progress update - flat workspace-level collection filtered
+ * by goalId, same convention as DealActivity/ContactActivity, not an array
+ * appended to the Goal doc. Powers the progress trend chart. */
+export interface GoalProgressEntry {
+  id: string;
+  workspaceId: string;
+  goalId: string;
+  value: number;
+  recordedAt: number;
 }
 
 // ===================== Ideas =====================
@@ -742,6 +756,9 @@ export interface Idea {
   status: IdeaStatus;
   votes: number;
   tags?: string[];
+  impact?: number; // 1-5
+  effort?: number; // 1-5
+  convertedTo?: { type: "task" | "project"; id: string };
   createdBy: string;
   createdAt: number;
   updatedAt: number;

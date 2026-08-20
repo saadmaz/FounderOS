@@ -160,6 +160,14 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "goalProgress",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "goalId", "order": "ASCENDING" },
+        { "fieldPath": "recordedAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

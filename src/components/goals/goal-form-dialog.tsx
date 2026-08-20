@@ -24,9 +24,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useCompanies } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
+import { recordProgressSnapshot } from "@/lib/data/goal-progress";
 import { createGoal, deriveGoalStatus, updateGoal } from "@/lib/data/goals";
+import { useProjects } from "@/lib/data/projects";
+import { useTasks } from "@/lib/data/tasks";
 import { GOAL_CATEGORIES, GOAL_STATUSES, type Goal } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -42,6 +46,8 @@ const schema = z.object({
   currentValue: z.string().optional(),
   unit: z.string().optional(),
   targetDate: z.string().optional(),
+  linkedTaskIds: z.array(z.string()),
+  linkedProjectIds: z.array(z.string()),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -58,6 +64,8 @@ function defaultsFor(goal?: Goal | null, defaultCompanyId?: string): FormValues 
       currentValue: goal.currentValue !== undefined ? String(goal.currentValue) : "",
       unit: goal.unit ?? "",
       targetDate: goal.targetDate ? new Date(goal.targetDate).toISOString().slice(0, 10) : "",
+      linkedTaskIds: goal.linkedTaskIds ?? [],
+      linkedProjectIds: goal.linkedProjectIds ?? [],
     };
   }
   return {
@@ -70,6 +78,8 @@ function defaultsFor(goal?: Goal | null, defaultCompanyId?: string): FormValues 
     currentValue: "",
     unit: "",
     targetDate: "",
+    linkedTaskIds: [],
+    linkedProjectIds: [],
   };
 }
 
@@ -106,6 +116,32 @@ export function GoalFormDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, goal]);
 
+  const companyId = watch("companyId");
+  const linkedTaskIds = watch("linkedTaskIds");
+  const linkedProjectIds = watch("linkedProjectIds");
+  const { data: companyTasks } = useTasks(
+    workspace?.id ?? null,
+    companyId && companyId !== NO_COMPANY ? companyId : undefined
+  );
+  const { data: companyProjects } = useProjects(
+    workspace?.id ?? null,
+    companyId && companyId !== NO_COMPANY ? companyId : undefined
+  );
+
+  function toggleLinkedTask(id: string) {
+    setValue(
+      "linkedTaskIds",
+      linkedTaskIds.includes(id) ? linkedTaskIds.filter((t) => t !== id) : [...linkedTaskIds, id]
+    );
+  }
+
+  function toggleLinkedProject(id: string) {
+    setValue(
+      "linkedProjectIds",
+      linkedProjectIds.includes(id) ? linkedProjectIds.filter((p) => p !== id) : [...linkedProjectIds, id]
+    );
+  }
+
   async function onSubmit(values: FormValues) {
     if (!workspace) return;
     setSubmitting(true);
@@ -122,13 +158,24 @@ export function GoalFormDialog({
         currentValue,
         unit: values.unit || undefined,
         targetDate: values.targetDate ? new Date(`${values.targetDate}T00:00:00`).getTime() : null,
+        linkedTaskIds: values.linkedTaskIds.length > 0 ? values.linkedTaskIds : undefined,
+        linkedProjectIds: values.linkedProjectIds.length > 0 ? values.linkedProjectIds : undefined,
       });
+      const valueChanged = currentValue !== undefined && currentValue !== goal?.currentValue;
       if (isEditing && goal) {
         await updateGoal(workspace.id, goal.id, payload);
         toast.success("Goal updated");
       } else {
         await createGoal(workspace.id, payload);
         toast.success("Goal created");
+      }
+      if (valueChanged && workspace && currentValue !== undefined) {
+        const goalId = isEditing && goal ? goal.id : undefined;
+        // Only the edit path has an id to attach history to at this point -
+        // create's snapshot would need the just-created doc's id, which
+        // createGoal doesn't currently return; the nudge/set-progress paths
+        // on the goals page cover the common post-create case instead.
+        if (goalId) await recordProgressSnapshot(workspace.id, goalId, currentValue);
       }
       onOpenChange(false);
     } catch {
@@ -243,6 +290,58 @@ export function GoalFormDialog({
           <div className="space-y-1.5">
             <Label>Target date (optional)</Label>
             <DatePicker value={watch("targetDate")} onChange={(v) => setValue("targetDate", v)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Linked tasks (optional)</Label>
+            {companyTasks.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {companyId && companyId !== NO_COMPANY ? "No tasks for this company yet." : "No tasks yet."}
+              </p>
+            ) : (
+              <div className="max-h-36 space-y-1 overflow-x-hidden overflow-y-auto rounded-lg border border-border p-2">
+                {companyTasks.map((t) => (
+                  <label
+                    key={t.id}
+                    htmlFor={`linked-task-${t.id}`}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted"
+                  >
+                    <Checkbox
+                      id={`linked-task-${t.id}`}
+                      checked={linkedTaskIds.includes(t.id)}
+                      onCheckedChange={() => toggleLinkedTask(t.id)}
+                    />
+                    <span className="truncate">{t.title}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Linked projects (optional)</Label>
+            {companyProjects.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {companyId && companyId !== NO_COMPANY ? "No projects for this company yet." : "No projects yet."}
+              </p>
+            ) : (
+              <div className="max-h-36 space-y-1 overflow-x-hidden overflow-y-auto rounded-lg border border-border p-2">
+                {companyProjects.map((p) => (
+                  <label
+                    key={p.id}
+                    htmlFor={`linked-project-${p.id}`}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted"
+                  >
+                    <Checkbox
+                      id={`linked-project-${p.id}`}
+                      checked={linkedProjectIds.includes(p.id)}
+                      onCheckedChange={() => toggleLinkedProject(p.id)}
+                    />
+                    <span className="truncate">{p.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           <DialogFooter>
