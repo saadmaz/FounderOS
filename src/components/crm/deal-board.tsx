@@ -12,14 +12,14 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useDraggable } from "@dnd-kit/core";
-import { ArrowRight, Info } from "lucide-react";
+import { ArrowRight, Info, Mail, Phone, Plus, StickyNote, Users as UsersIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { updateDealStage } from "@/lib/data/deals";
-import { formatCurrency, formatDate, initials } from "@/lib/format";
-import { DEAL_STAGES, type Contact, type Deal, type DealStage, type WorkspaceMember } from "@/lib/types";
+import { updateDealStage, useLatestDealActivityByDeal } from "@/lib/data/deals";
+import { formatCurrency, formatDate, formatRelativeDate, initials } from "@/lib/format";
+import { DEAL_STAGES, type Contact, type Deal, type DealActivity, type DealStage, type WorkspaceMember } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const STAGE_DOTS: Record<DealStage, string> = {
@@ -32,21 +32,53 @@ const STAGE_DOTS: Record<DealStage, string> = {
   closed_lost: "bg-danger",
 };
 
+const ACTIVITY_ICON: Record<string, typeof StickyNote> = {
+  note: StickyNote,
+  call: Phone,
+  email: Mail,
+  meeting: UsersIcon,
+  stage_change: ArrowRight,
+  created: Plus,
+};
+
+const ACTIVITY_ICON_COLOR: Record<string, string> = {
+  note: "text-analytics-orange",
+  call: "text-success",
+  email: "text-primary",
+  meeting: "text-analytics-purple",
+  stage_change: "text-muted-foreground-2",
+  created: "text-muted-foreground-2",
+};
+
+/** One-line summary of a deal's most recent activity for its kanban card -
+ * a stage move reads as "Moved to Qualification", a logged touchpoint
+ * shows its note text (or a generic label if it has none). */
+function activitySummary(a: DealActivity): string {
+  if (a.type === "stage_change") {
+    return `Moved to ${DEAL_STAGES.find((s) => s.value === a.toStage)?.label ?? a.toStage}`;
+  }
+  if (a.type === "created") return "Deal created";
+  return a.text || `Logged a ${a.type}`;
+}
+
 function DealCard({
   deal,
   contact,
   owner,
+  lastActivity,
   onClick,
 }: {
   deal: Deal;
   contact?: Contact;
   owner?: WorkspaceMember;
+  lastActivity?: DealActivity;
   onClick?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: deal.id,
   });
   const isClosed = deal.stage === "closed_won" || deal.stage === "closed_lost";
+  const ActivityIcon = lastActivity ? (ACTIVITY_ICON[lastActivity.type] ?? StickyNote) : null;
 
   return (
     <div
@@ -92,6 +124,18 @@ function DealCard({
         </p>
       )}
 
+      {lastActivity && ActivityIcon && (
+        <div className="flex items-center gap-1.5 border-t border-border pt-2 text-[11px] text-muted-foreground-2">
+          <ActivityIcon
+            className={cn("size-3 shrink-0", ACTIVITY_ICON_COLOR[lastActivity.type] ?? "text-muted-foreground-2")}
+          />
+          <span className="min-w-0 flex-1 truncate">{activitySummary(lastActivity)}</span>
+          <span className="shrink-0">
+            {formatRelativeDate(lastActivity.date ?? lastActivity.createdAt)}
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2 pt-0.5">
         <Avatar size="sm" className="size-5">
           {owner?.photoURL && <AvatarImage src={owner.photoURL} alt={owner.displayName} />}
@@ -117,6 +161,7 @@ function Column({
   deals,
   contactById,
   memberById,
+  lastActivityByDeal,
   onCardClick,
 }: {
   stage: DealStage;
@@ -126,6 +171,7 @@ function Column({
   deals: Deal[];
   contactById: Map<string, Contact>;
   memberById: Map<string, WorkspaceMember>;
+  lastActivityByDeal: Map<string, DealActivity>;
   onCardClick: (deal: Deal) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
@@ -162,6 +208,7 @@ function Column({
             deal={d}
             contact={d.contactId ? contactById.get(d.contactId) : undefined}
             owner={d.ownerId ? memberById.get(d.ownerId) : undefined}
+            lastActivity={lastActivityByDeal.get(d.id)}
             onClick={() => onCardClick(d)}
           />
         ))}
@@ -187,6 +234,7 @@ export function DealBoard({
   const [activeId, setActiveId] = useState<string | null>(null);
   const contactById = useMemo(() => new Map(contacts.map((c) => [c.id, c])), [contacts]);
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
+  const lastActivityByDeal = useLatestDealActivityByDeal(workspaceId);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   function handleDragStart(e: DragStartEvent) {
@@ -219,6 +267,7 @@ export function DealBoard({
             deals={deals.filter((d) => d.stage === col.value)}
             contactById={contactById}
             memberById={memberById}
+            lastActivityByDeal={lastActivityByDeal}
             onCardClick={onCardClick}
           />
         ))}
@@ -229,6 +278,7 @@ export function DealBoard({
             deal={activeDeal}
             contact={activeDeal.contactId ? contactById.get(activeDeal.contactId) : undefined}
             owner={activeDeal.ownerId ? memberById.get(activeDeal.ownerId) : undefined}
+            lastActivity={lastActivityByDeal.get(activeDeal.id)}
           />
         ) : null}
       </DragOverlay>

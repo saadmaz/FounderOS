@@ -101,6 +101,20 @@ export function formatDateTime(ms: number | null | undefined) {
   }).format(ms);
 }
 
+/** "Today" / "Yesterday" / "3d ago" for anything in the last week, falling
+ * back to the plain date beyond that - for compact spots like a kanban
+ * card where a full timestamp doesn't fit. */
+export function formatRelativeDate(ms: number | null | undefined) {
+  if (!ms) return "—";
+  const dayMs = 86_400_000;
+  const startOfDay = (t: number) => new Date(t).setHours(0, 0, 0, 0);
+  const days = Math.round((startOfDay(Date.now()) - startOfDay(ms)) / dayMs);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days > 1 && days < 7) return `${days}d ago`;
+  return formatDate(ms);
+}
+
 /** Bytes as a short human-readable size (KB/MB/GB). Shared by every place
  * that lists uploaded files (Documents, per-company Documents, ...). */
 export function formatFileSize(bytes: number) {

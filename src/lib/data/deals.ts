@@ -1,6 +1,7 @@
 "use client";
 
 import { addDoc, collection, doc, orderBy, updateDoc, where, deleteDoc } from "firebase/firestore";
+import { useMemo } from "react";
 import { db } from "@/lib/firebase/client";
 import { normalizeDealStage, type Deal, type DealActivity, type DealActivityType, type DealStage } from "@/lib/types";
 import { now, omitUndefined, withFieldDeletes } from "./firestore-helpers";
@@ -94,6 +95,27 @@ export function useDealActivity(workspaceId: string | null, dealId: string | nul
     ...result,
     data: [...result.data].sort((a, b) => (b.date ?? b.createdAt) - (a.date ?? a.createdAt)),
   };
+}
+
+/** The single most recent activity entry per deal, across the whole
+ * workspace - one query for the board instead of one per card. Used to
+ * show "what/when" on each kanban card (a stage move, a logged call, ...)
+ * instead of leaving it blank when there's no next step set. */
+export function useLatestDealActivityByDeal(workspaceId: string | null) {
+  const result = useCollection<DealActivity>(
+    workspaceId ? activityPath(workspaceId) : null,
+    [orderBy("createdAt", "desc")],
+    [workspaceId]
+  );
+  return useMemo(() => {
+    const latest = new Map<string, DealActivity>();
+    for (const a of result.data) {
+      const current = latest.get(a.dealId);
+      const t = a.date ?? a.createdAt;
+      if (!current || t > (current.date ?? current.createdAt)) latest.set(a.dealId, a);
+    }
+    return latest;
+  }, [result.data]);
 }
 
 export async function addDealActivity(
