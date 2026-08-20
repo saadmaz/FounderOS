@@ -11,10 +11,13 @@ import { MeetingNotesViewDialog } from "@/components/meetings/meeting-notes-view
 import { CardGridSkeleton } from "@/components/shared/card-grid-skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
 import { deleteMeeting, deleteMeetingSeries, setMeetingStatus, useMeetings } from "@/lib/data/meetings";
 import { useMembers } from "@/lib/data/members";
+import { formatDate } from "@/lib/format";
+import { buildIcsEvent, downloadIcs } from "@/lib/ics";
 import type { Meeting, MeetingStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -28,6 +31,7 @@ export default function MeetingsPage() {
   const [editing, setEditing] = useState<Meeting | null>(null);
   const [notesFor, setNotesFor] = useState<Meeting | null>(null);
   const [viewingNotesFor, setViewingNotesFor] = useState<Meeting | null>(null);
+  const [convertingMeeting, setConvertingMeeting] = useState<Meeting | null>(null);
 
   // Archiving a company tucks its meetings out of this shared list - still
   // visible on the company's own page, just not cluttering everyone else's.
@@ -70,6 +74,15 @@ export default function MeetingsPage() {
     if (!ok) return;
     await deleteMeetingSeries(workspace.id, meeting.recurrence.groupId);
     toast.success("Series deleted");
+  }
+
+  function handleExportIcs(meeting: Meeting) {
+    const attendees = meeting.attendeeIds
+      .map((id) => members.find((m) => m.id === id))
+      .filter((m): m is NonNullable<typeof m> => Boolean(m));
+    const content = buildIcsEvent(meeting, attendees);
+    const filename = `${meeting.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "meeting"}.ics`;
+    downloadIcs(filename, content);
   }
 
   return (
@@ -123,6 +136,8 @@ export default function MeetingsPage() {
                       onDeleteSeries={handleDeleteSeries}
                       onOpenNotes={setNotesFor}
                       onViewNotes={setViewingNotesFor}
+                      onConvertToTask={setConvertingMeeting}
+                      onExportIcs={handleExportIcs}
                     />
                   ))}
                 </div>
@@ -148,6 +163,8 @@ export default function MeetingsPage() {
                       onDeleteSeries={handleDeleteSeries}
                       onOpenNotes={setNotesFor}
                       onViewNotes={setViewingNotesFor}
+                      onConvertToTask={setConvertingMeeting}
+                      onExportIcs={handleExportIcs}
                     />
                   ))}
                 </div>
@@ -182,6 +199,17 @@ export default function MeetingsPage() {
           />
         </>
       )}
+
+      <TaskFormDialog
+        open={Boolean(convertingMeeting)}
+        onOpenChange={(v) => !v && setConvertingMeeting(null)}
+        defaultCompanyId={convertingMeeting?.companyId}
+        defaultDescription={
+          convertingMeeting
+            ? `Follow-up from meeting: ${convertingMeeting.title} (${formatDate(convertingMeeting.scheduledAt)})`
+            : undefined
+        }
+      />
     </>
   );
 }

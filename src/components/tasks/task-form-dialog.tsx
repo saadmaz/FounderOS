@@ -73,7 +73,7 @@ const RECURRENCE_DEFAULTS = {
   recurrenceUntil: "",
 };
 
-function defaultsFor(task?: Task | null, defaultCompanyId?: string): FormValues {
+function defaultsFor(task?: Task | null, defaultCompanyId?: string, defaultDescription?: string): FormValues {
   if (task) {
     return {
       title: task.title,
@@ -100,7 +100,7 @@ function defaultsFor(task?: Task | null, defaultCompanyId?: string): FormValues 
     priority: "medium",
     status: "not_started",
     dueDate: "",
-    description: "",
+    description: defaultDescription ?? "",
     ownerId: NO_OWNER,
     estimatedHours: "",
     tags: "",
@@ -113,11 +113,16 @@ export function TaskFormDialog({
   open,
   onOpenChange,
   defaultCompanyId,
+  defaultDescription,
   task,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   defaultCompanyId?: string;
+  /** Prefills the description field when creating - e.g. a "Follow-up from
+   * meeting: ..." note when creating a task from a meeting. Ignored when
+   * editing an existing task. */
+  defaultDescription?: string;
   task?: Task | null;
 }) {
   const { workspace } = useWorkspace();
@@ -136,12 +141,12 @@ export function TaskFormDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: defaultsFor(task, defaultCompanyId),
+    defaultValues: defaultsFor(task, defaultCompanyId, defaultDescription),
   });
 
   useEffect(() => {
     if (!open) return;
-    reset(defaultsFor(task, defaultCompanyId));
+    reset(defaultsFor(task, defaultCompanyId, defaultDescription));
     setNewSubtaskTitle("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, task]);

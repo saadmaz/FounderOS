@@ -4,8 +4,10 @@ import { motion } from "framer-motion";
 import {
   Calendar,
   CalendarCheck,
+  CalendarPlus,
   CalendarSync,
   CalendarX2,
+  ListTodo,
   MapPin,
   MoreHorizontal,
   NotebookPen,
@@ -13,6 +15,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -95,6 +98,8 @@ export function MeetingCard({
   onDeleteSeries,
   onOpenNotes,
   onViewNotes,
+  onConvertToTask,
+  onExportIcs,
 }: {
   meeting: Meeting;
   index: number;
@@ -109,6 +114,8 @@ export function MeetingCard({
   /** Clicking the notes preview should open a read-only view, not drop
    * straight into editing - falls back to onOpenNotes if not provided. */
   onViewNotes?: (meeting: Meeting) => void;
+  onConvertToTask?: (meeting: Meeting) => void;
+  onExportIcs?: (meeting: Meeting) => void;
 }) {
   function memberFor(memberId: string) {
     return members.find((m) => m.id === memberId);
@@ -127,7 +134,12 @@ export function MeetingCard({
             {showCompany && company && (
               <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: company.color }} />
             )}
-            <p className="truncate text-sm font-semibold">{meeting.title}</p>
+            <Link
+              href={`/meetings/${meeting.id}`}
+              className="truncate text-sm font-semibold hover:underline"
+            >
+              {meeting.title}
+            </Link>
           </div>
           {showCompany && (
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -148,6 +160,18 @@ export function MeetingCard({
               <NotebookPen className="size-4" />
               {meeting.notes ? "Edit notes" : "Add notes"}
             </DropdownMenuItem>
+            {onConvertToTask && (
+              <DropdownMenuItem onClick={() => onConvertToTask(meeting)}>
+                <ListTodo className="size-4" />
+                Create follow-up task
+              </DropdownMenuItem>
+            )}
+            {onExportIcs && (
+              <DropdownMenuItem onClick={() => onExportIcs(meeting)}>
+                <CalendarPlus className="size-4" />
+                Add to calendar
+              </DropdownMenuItem>
+            )}
             {meeting.status !== "completed" && (
               <DropdownMenuItem onClick={() => onStatusChange(meeting, "completed")}>
                 <CalendarCheck className="size-4" />

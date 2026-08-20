@@ -10,9 +10,12 @@ import { MeetingFormDialog } from "@/components/meetings/meeting-form-dialog";
 import { MeetingNotesDialog } from "@/components/meetings/meeting-notes-dialog";
 import { MeetingNotesViewDialog } from "@/components/meetings/meeting-notes-view-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
+import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { deleteMeeting, deleteMeetingSeries, setMeetingStatus, useMeetings } from "@/lib/data/meetings";
 import { useMembers } from "@/lib/data/members";
+import { formatDate } from "@/lib/format";
+import { buildIcsEvent, downloadIcs } from "@/lib/ics";
 import { scrollMainToTop } from "@/lib/scroll";
 import type { Company, Meeting, MeetingStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -37,6 +40,7 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
   const [editing, setEditing] = useState<Meeting | null>(null);
   const [notesFor, setNotesFor] = useState<Meeting | null>(null);
   const [viewingNotesFor, setViewingNotesFor] = useState<Meeting | null>(null);
+  const [convertingMeeting, setConvertingMeeting] = useState<Meeting | null>(null);
   // Defaults to "today" - jumping into a company's meetings tab and having
   // to scroll past every past meeting to find what's happening today (or
   // scan the entire upcoming list) is the exact friction this filter removes.
@@ -74,6 +78,15 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
     if (!ok) return;
     await deleteMeetingSeries(workspace.id, meeting.recurrence.groupId);
     toast.success("Series deleted");
+  }
+
+  function handleExportIcs(meeting: Meeting) {
+    const attendees = meeting.attendeeIds
+      .map((id) => members.find((m) => m.id === id))
+      .filter((m): m is NonNullable<typeof m> => Boolean(m));
+    const content = buildIcsEvent(meeting, attendees);
+    const filename = `${meeting.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "meeting"}.ics`;
+    downloadIcs(filename, content);
   }
 
   return (
@@ -140,6 +153,8 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
                 onDeleteSeries={handleDeleteSeries}
                 onOpenNotes={setNotesFor}
                 onViewNotes={setViewingNotesFor}
+                onConvertToTask={setConvertingMeeting}
+                onExportIcs={handleExportIcs}
               />
             ))}
           </div>
@@ -172,6 +187,17 @@ export function CompanyMeetingsPanel({ company }: { company: Company }) {
           />
         </>
       )}
+
+      <TaskFormDialog
+        open={Boolean(convertingMeeting)}
+        onOpenChange={(v) => !v && setConvertingMeeting(null)}
+        defaultCompanyId={company.id}
+        defaultDescription={
+          convertingMeeting
+            ? `Follow-up from meeting: ${convertingMeeting.title} (${formatDate(convertingMeeting.scheduledAt)})`
+            : undefined
+        }
+      />
     </div>
   );
 }
