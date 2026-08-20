@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 const IDEA_STATUS_STYLES: Record<IdeaStatus, string> = {
   new: "bg-primary/10 text-primary",
   considering: "bg-analytics-purple/10 text-analytics-purple",
-  planned: "bg-analytics-purple/10 text-analytics-purple",
+  planned: "bg-analytics-cyan/10 text-analytics-cyan",
   in_progress: "bg-warning/10 text-warning",
   shipped: "bg-success/10 text-success",
   rejected: "bg-danger/10 text-danger",
@@ -147,7 +147,7 @@ export default function IdeasPage() {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: i * 0.03 }}
-                className="flex flex-col rounded-xl border border-border bg-card p-5 transition-colors hover:border-white/15"
+                className="flex flex-col rounded-xl border border-border bg-card p-5 transition-colors hover:border-border-hover"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">

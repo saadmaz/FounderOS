@@ -343,7 +343,7 @@ export function ContactDetailSheet({
             {draft.email && (
               <a
                 href={`mailto:${draft.email}`}
-                className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
+                className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-border-hover hover:text-foreground"
               >
                 <Mail className="size-3.5 text-primary" />
                 {draft.email}
@@ -352,7 +352,7 @@ export function ContactDetailSheet({
             {draft.phone && (
               <a
                 href={`tel:${draft.phone}`}
-                className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
+                className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-border-hover hover:text-foreground"
               >
                 <Phone className="size-3.5 text-success" />
                 {draft.phone}
@@ -363,7 +363,7 @@ export function ContactDetailSheet({
                 href={draft.linkedin.startsWith("http") ? draft.linkedin : `https://${draft.linkedin}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
+                className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-border-hover hover:text-foreground"
               >
                 <LinkedinLogo className="size-3.5 text-analytics-cyan" />
                 LinkedIn
@@ -568,7 +568,7 @@ export function ContactDetailSheet({
                           "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                           activityType === t.value
                             ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-white/25 hover:text-foreground"
+                            : "border-border text-muted-foreground hover:border-border-hover hover:text-foreground"
                         )}
                       >
                         <t.icon className="size-3.5" />
@@ -807,7 +807,7 @@ export function ContactDetailSheet({
                           key={d.id}
                           type="button"
                           onClick={() => onOpenDeal?.(d)}
-                          className="flex w-full items-center gap-2.5 rounded-lg border border-border px-3 py-2 text-left transition-colors hover:border-white/25"
+                          className="flex w-full items-center gap-2.5 rounded-lg border border-border px-3 py-2 text-left transition-colors hover:border-border-hover"
                         >
                           <TrendingUp className="size-4 shrink-0 text-muted-foreground" />
                           <span className="min-w-0 flex-1 truncate text-sm font-medium">{d.title}</span>

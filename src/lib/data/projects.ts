@@ -1,6 +1,6 @@
 "use client";
 
-import { addDoc, collection, doc, orderBy, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, orderBy, updateDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import type { Project } from "@/lib/types";
 import { now } from "./firestore-helpers";
@@ -41,4 +41,8 @@ export async function updateProject(
     ...patch,
     updatedAt: now(),
   });
+}
+
+export async function deleteProject(workspaceId: string, projectId: string) {
+  return deleteDoc(doc(db, path(workspaceId), projectId));
 }

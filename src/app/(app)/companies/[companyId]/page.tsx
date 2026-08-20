@@ -174,7 +174,7 @@ export default function CompanyDetailPage() {
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
+                    className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border-hover hover:text-foreground"
                   >
                     <Icon className="size-3.5" />
                     <span>{LINK_LABELS[key]}</span>

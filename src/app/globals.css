@@ -27,6 +27,8 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-ring-subtle: var(--ring-subtle);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -85,6 +87,13 @@
      since it's purely decorative (card/divider edges, not identifying a
      control's hit area). */
   --input: rgba(9, 9, 11, 0.4);
+  /* Theme-aware equivalents of the ad-hoc hover:border-white/* and
+     ring-white/* utilities that used to be sprinkled through CRM/Documents/
+     Finance/Companies - those were dark-mode-only affordances (near-
+     invisible on a light card), so hover/inset highlights now read from
+     these instead. */
+  --border-hover: rgba(9, 9, 11, 0.18);
+  --ring-subtle: rgba(9, 9, 11, 0.08);
   --ring: #2563EB;
   --success: #16A34A;
   --warning: #D97706;
@@ -130,6 +139,8 @@
   --destructive: #EF4444;
   --border: rgba(255, 255, 255, 0.06);
   --input: rgba(255, 255, 255, 0.35);
+  --border-hover: rgba(255, 255, 255, 0.15);
+  --ring-subtle: rgba(255, 255, 255, 0.05);
   --ring: #3B82F6;
   --success: #22C55E;
   --warning: #F59E0B;

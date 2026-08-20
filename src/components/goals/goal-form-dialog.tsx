@@ -26,7 +26,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
-import { createGoal, updateGoal } from "@/lib/data/goals";
+import { createGoal, deriveGoalStatus, updateGoal } from "@/lib/data/goals";
 import { GOAL_CATEGORIES, GOAL_STATUSES, type Goal } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -110,14 +110,16 @@ export function GoalFormDialog({
     if (!workspace) return;
     setSubmitting(true);
     try {
+      const targetValue = values.targetValue ? Number(values.targetValue) : undefined;
+      const currentValue = values.currentValue ? Number(values.currentValue) : undefined;
       const payload = omitUndefined({
         title: values.title,
         description: values.description || undefined,
         category: values.category,
-        status: values.status,
+        status: deriveGoalStatus(currentValue, targetValue, values.status),
         companyId: values.companyId && values.companyId !== NO_COMPANY ? values.companyId : undefined,
-        targetValue: values.targetValue ? Number(values.targetValue) : undefined,
-        currentValue: values.currentValue ? Number(values.currentValue) : undefined,
+        targetValue,
+        currentValue,
         unit: values.unit || undefined,
         targetDate: values.targetDate ? new Date(`${values.targetDate}T00:00:00`).getTime() : null,
       });

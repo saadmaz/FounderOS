@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -25,9 +26,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
-import { createProject } from "@/lib/data/projects";
+import { createProject, updateProject } from "@/lib/data/projects";
 import { priorityLabel } from "@/lib/labels";
-import { PRIORITIES } from "@/lib/types";
+import { PRIORITIES, type Project } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const schema = z.object({
@@ -36,22 +37,50 @@ const schema = z.object({
   priority: z.enum(["critical", "high", "medium", "low"]),
   estimatedHours: z.string().optional(),
   description: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
+
+function defaultsFor(project?: Project | null, defaultCompanyId?: string): FormValues {
+  if (project) {
+    return {
+      name: project.name,
+      companyId: project.companyId,
+      priority: project.priority,
+      estimatedHours: project.estimatedHours !== undefined ? String(project.estimatedHours) : "",
+      description: project.description ?? "",
+      startDate: project.startDate ? new Date(project.startDate).toISOString().slice(0, 10) : "",
+      endDate: project.endDate ? new Date(project.endDate).toISOString().slice(0, 10) : "",
+    };
+  }
+  return {
+    name: "",
+    companyId: defaultCompanyId ?? "",
+    priority: "medium",
+    estimatedHours: "",
+    description: "",
+    startDate: "",
+    endDate: "",
+  };
+}
 
 export function ProjectFormDialog({
   open,
   onOpenChange,
   defaultCompanyId,
+  project,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   defaultCompanyId?: string;
+  project?: Project | null;
 }) {
   const { workspace } = useWorkspace();
   const { data: companies } = useCompanies(workspace?.id ?? null);
   const [submitting, setSubmitting] = useState(false);
+  const isEditing = Boolean(project);
   const {
     register,
     handleSubmit,
@@ -61,37 +90,39 @@ export function ProjectFormDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      name: "",
-      companyId: defaultCompanyId ?? "",
-      priority: "medium",
-      estimatedHours: "",
-      description: "",
-    },
+    defaultValues: defaultsFor(project, defaultCompanyId),
   });
 
   useEffect(() => {
-    if (open && defaultCompanyId) setValue("companyId", defaultCompanyId);
+    if (!open) return;
+    reset(defaultsFor(project, defaultCompanyId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultCompanyId]);
+  }, [open, project]);
 
   async function onSubmit(values: FormValues) {
     if (!workspace) return;
     setSubmitting(true);
     try {
-      await createProject(workspace.id, omitUndefined({
+      const payload = omitUndefined({
         companyId: values.companyId,
         name: values.name,
         description: values.description || undefined,
         priority: values.priority,
-        status: "not_started",
         estimatedHours: values.estimatedHours ? Number(values.estimatedHours) : undefined,
-      }));
-      toast.success("Project created");
+        startDate: values.startDate ? new Date(values.startDate).getTime() : null,
+        endDate: values.endDate ? new Date(values.endDate).getTime() : null,
+      });
+      if (isEditing && project) {
+        await updateProject(workspace.id, project.id, payload);
+        toast.success("Project updated");
+      } else {
+        await createProject(workspace.id, { ...payload, status: "not_started" });
+        toast.success("Project created");
+      }
       reset();
       onOpenChange(false);
     } catch {
-      toast.error("Couldn't create the project. Try again.");
+      toast.error(isEditing ? "Couldn't update the project. Try again." : "Couldn't create the project. Try again.");
     } finally {
       setSubmitting(false);
     }
@@ -101,7 +132,7 @@ export function ProjectFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New project</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit project" : "New project"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
@@ -146,6 +177,17 @@ export function ProjectFormDialog({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Start date (optional)</Label>
+              <DatePicker value={watch("startDate")} onChange={(v) => setValue("startDate", v)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>End date (optional)</Label>
+              <DatePicker value={watch("endDate")} onChange={(v) => setValue("endDate", v)} />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="estimatedHours">Estimated hours (optional)</Label>
             <Input id="estimatedHours" type="number" min={0} placeholder="80" {...register("estimatedHours")} />
@@ -161,7 +203,7 @@ export function ProjectFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Creating…" : "Create project"}
+              {submitting ? "Saving…" : isEditing ? "Save changes" : "Create project"}
             </Button>
           </DialogFooter>
         </form>

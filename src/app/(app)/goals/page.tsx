@@ -22,8 +22,9 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { GoalFormDialog } from "@/components/goals/goal-form-dialog";
+import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
-import { deleteGoal, updateGoal, useGoals } from "@/lib/data/goals";
+import { deleteGoal, deriveGoalStatus, updateGoal, useGoals } from "@/lib/data/goals";
 import { formatDate } from "@/lib/format";
 import { GOAL_CATEGORIES, GOAL_STATUSES, type Goal, type GoalCategory, type GoalStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -90,6 +91,7 @@ function progressPercent(goal: Goal) {
 
 export default function GoalsPage() {
   const { workspace, role } = useWorkspace();
+  const confirm = useConfirm();
   const { data: goals, loading } = useGoals(workspace?.id ?? null);
   const { data: companies } = useCompanies(workspace?.id ?? null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -115,6 +117,7 @@ export default function GoalsPage() {
 
   async function handleDelete(goal: Goal) {
     if (!workspace) return;
+    if (!(await confirm(`Delete "${goal.title}"? This can't be undone.`))) return;
     try {
       await deleteGoal(workspace.id, goal.id);
       toast.success(`${goal.title} deleted`);
@@ -128,7 +131,10 @@ export default function GoalsPage() {
     const step = Math.max(1, Math.round(goal.targetValue / 20));
     const next = Math.max(0, (goal.currentValue ?? 0) + direction * step);
     try {
-      await updateGoal(workspace.id, goal.id, { currentValue: next });
+      await updateGoal(workspace.id, goal.id, {
+        currentValue: next,
+        status: deriveGoalStatus(next, goal.targetValue, goal.status),
+      });
     } catch {
       toast.error("Couldn't update progress.");
     }
@@ -220,7 +226,14 @@ export default function GoalsPage() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: i * 0.03 }}
-                  className="group relative flex flex-col rounded-xl border border-border bg-card p-5 transition-colors hover:border-white/15"
+                  className={cn(
+                    "group relative flex flex-col rounded-xl border bg-card p-5 transition-colors",
+                    g.status === "completed"
+                      ? "border-success/30 bg-success/[0.03] hover:border-success/40"
+                      : overdue
+                        ? "border-danger/30 bg-danger/[0.03] hover:border-danger/40"
+                        : "border-border hover:border-border-hover"
+                  )}
                 >
                   {canEdit && (
                     <div className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">

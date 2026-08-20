@@ -12,7 +12,9 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useDraggable } from "@dnd-kit/core";
+import { Pencil } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { PriorityBadge } from "@/components/shared/status-badge";
 import { setTaskStatus } from "@/lib/data/tasks";
 import { formatDate } from "@/lib/format";
@@ -27,7 +29,15 @@ const COLUMNS: { status: TaskStatus; label: string; dot: string }[] = [
   { status: "completed", label: "Completed", dot: "bg-success" },
 ];
 
-function TaskCard({ task, company }: { task: Task; company?: Company }) {
+function TaskCard({
+  task,
+  company,
+  onEdit,
+}: {
+  task: Task;
+  company?: Company;
+  onEdit?: (task: Task) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
   });
@@ -41,11 +51,26 @@ function TaskCard({ task, company }: { task: Task; company?: Company }) {
       {...attributes}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(
-        "cursor-grab space-y-2 rounded-lg border border-border bg-card p-3 active:cursor-grabbing",
+        "group relative cursor-grab space-y-2 rounded-lg border border-border bg-card p-3 active:cursor-grabbing",
         isDragging && "opacity-40"
       )}
     >
-      <p className="text-sm font-medium leading-snug">{task.title}</p>
+      {onEdit && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-1.5 top-1.5 size-6 opacity-0 transition-opacity group-hover:opacity-100"
+          aria-label="Edit task"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(task);
+          }}
+        >
+          <Pencil className="size-3" />
+        </Button>
+      )}
+      <p className="pr-5 text-sm font-medium leading-snug">{task.title}</p>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           {company && (
@@ -73,12 +98,14 @@ function Column({
   dot,
   tasks,
   companyById,
+  onEditTask,
 }: {
   status: TaskStatus;
   label: string;
   dot: string;
   tasks: Task[];
   companyById: Map<string, Company>;
+  onEditTask?: (task: Task) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
@@ -97,7 +124,7 @@ function Column({
       </div>
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2 scrollbar-thin">
         {tasks.map((t) => (
-          <TaskCard key={t.id} task={t} company={companyById.get(t.companyId)} />
+          <TaskCard key={t.id} task={t} company={companyById.get(t.companyId)} onEdit={onEditTask} />
         ))}
       </div>
     </div>
@@ -108,10 +135,12 @@ export function TaskBoard({
   tasks,
   companies,
   workspaceId,
+  onEditTask,
 }: {
   tasks: Task[];
   companies: Company[];
   workspaceId: string;
+  onEditTask?: (task: Task) => void;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
@@ -143,6 +172,7 @@ export function TaskBoard({
             {...col}
             tasks={tasks.filter((t) => t.status === col.status)}
             companyById={companyById}
+            onEditTask={onEditTask}
           />
         ))}
       </div>

@@ -44,6 +44,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CardGridSkeleton } from "@/components/shared/card-grid-skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ScrollableTabStrip } from "@/components/shared/scrollable-tabs";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
@@ -846,11 +847,7 @@ export default function FinancePage() {
             </div>
 
             {budgetsLoading ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-36 animate-pulse rounded-xl bg-muted" />
-                ))}
-              </div>
+              <CardGridSkeleton cardClassName="h-36" />
             ) : filteredBudgets.length === 0 ? (
               <EmptyState
                 icon={PiggyBank}
@@ -869,7 +866,7 @@ export default function FinancePage() {
                       key={b.id}
                       className={cn(
                         "relative rounded-xl border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
-                        overBudget ? "border-danger/30 bg-danger/[0.03] hover:border-danger/40" : "border-border hover:border-white/15"
+                        overBudget ? "border-danger/30 bg-danger/[0.03] hover:border-danger/40" : "border-border hover:border-border-hover"
                       )}
                     >
                       {canEdit && (

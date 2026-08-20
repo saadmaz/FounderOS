@@ -18,6 +18,7 @@ import { TaskTable } from "@/components/tasks/task-table";
 import { useCompanies } from "@/lib/data/companies";
 import { scrollMainToTop } from "@/lib/scroll";
 import { useTasks } from "@/lib/data/tasks";
+import type { Task } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ export default function TasksPage() {
   );
   const [view, setView] = useState<"table" | "board">("board");
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const openCount = useMemo(
     () => tasks.filter((t) => t.status !== "completed" && t.status !== "cancelled").length,
@@ -116,10 +118,20 @@ export default function TasksPage() {
           />
         </div>
       ) : view === "board" ? (
-        <TaskBoard tasks={tasks} companies={companies} workspaceId={workspace!.id} />
+        <TaskBoard
+          tasks={tasks}
+          companies={companies}
+          workspaceId={workspace!.id}
+          onEditTask={setEditingTask}
+        />
       ) : (
         <div className="flex-1 p-4 lg:p-6">
-          <TaskTable tasks={tasks} companies={companies} workspaceId={workspace!.id} />
+          <TaskTable
+            tasks={tasks}
+            companies={companies}
+            workspaceId={workspace!.id}
+            onEdit={setEditingTask}
+          />
         </div>
       )}
 
@@ -127,6 +139,11 @@ export default function TasksPage() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         defaultCompanyId={companyFilter === "all" ? undefined : companyFilter}
+      />
+      <TaskFormDialog
+        open={Boolean(editingTask)}
+        onOpenChange={(v) => !v && setEditingTask(null)}
+        task={editingTask}
       />
     </>
   );

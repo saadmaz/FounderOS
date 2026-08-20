@@ -83,7 +83,7 @@ export default function SettingsPage() {
           <div className="border-b border-border px-5 py-3.5">
             <h2 className="text-sm font-semibold">Members</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Role-based access controls what each member can see and edit.
+              Members and their roles.
             </p>
           </div>
           <ul className="divide-y divide-border">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CheckSquare, Clock, FolderKanban, Home, LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -17,14 +17,7 @@ import { signOut } from "@/lib/auth/actions";
 import { useCompanies } from "@/lib/data/companies";
 import { useUIStore } from "@/lib/store/ui-store";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
-
-const QUICK_LINKS = [
-  { label: "Dashboard", href: "/dashboard", icon: Home },
-  { label: "Companies", href: "/companies", icon: Building2 },
-  { label: "Projects", href: "/projects", icon: FolderKanban },
-  { label: "Tasks", href: "/tasks", icon: CheckSquare },
-  { label: "Time Tracking", href: "/time", icon: Clock },
-];
+import { ALL_NAV_ITEMS } from "./nav-config";
 
 export function CommandPalette() {
   const { commandPaletteOpen, setCommandPaletteOpen } = useUIStore();
@@ -60,7 +53,7 @@ export function CommandPalette() {
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Navigate">
-          {QUICK_LINKS.map((l) => (
+          {ALL_NAV_ITEMS.map((l) => (
             <CommandItem key={l.href} onSelect={() => go(l.href)}>
               <l.icon className="size-4" />
               {l.label}

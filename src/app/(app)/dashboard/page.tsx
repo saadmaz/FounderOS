@@ -12,6 +12,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
@@ -104,6 +113,42 @@ export default function DashboardPage() {
       sumMeetingHours(meetings.filter((m) => m.scheduledAt >= weekStart)),
     [timeEntries, meetings, weekStart]
   );
+  const hoursLastWeek = useMemo(() => {
+    const lastWeekStart = weekStart - 7 * 86400000;
+    return (
+      sumHours(timeEntries.filter((e) => e.startedAt >= lastWeekStart && e.startedAt < weekStart)) +
+      sumMeetingHours(meetings.filter((m) => m.scheduledAt >= lastWeekStart && m.scheduledAt < weekStart))
+    );
+  }, [timeEntries, meetings, weekStart]);
+  // Only shown when there's a real prior week to compare against - a
+  // fabricated "+100%" off a zero baseline would be exactly the kind of
+  // misleading stat this is meant to replace (see: the old notification bell).
+  const hoursDelta = useMemo(() => {
+    if (hoursLastWeek <= 0) return undefined;
+    const pct = Math.round(((hoursThisWeek - hoursLastWeek) / hoursLastWeek) * 100);
+    if (pct === 0) return undefined;
+    return { value: `${Math.abs(pct)}%`, positive: pct > 0 };
+  }, [hoursThisWeek, hoursLastWeek]);
+
+  // Daily hours (time entries + meetings) for the last 14 days, for the
+  // trend chart below the stat row.
+  const dailyHours = useMemo(() => {
+    const days = 14;
+    const points: { date: string; hours: number }[] = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const dayStart = today - i * 86400000;
+      const dayEnd = dayStart + 86400000;
+      const hours =
+        sumHours(timeEntries.filter((e) => e.startedAt >= dayStart && e.startedAt < dayEnd)) +
+        sumMeetingHours(meetings.filter((m) => m.scheduledAt >= dayStart && m.scheduledAt < dayEnd));
+      points.push({
+        date: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(dayStart)),
+        hours: Math.round(hours * 10) / 10,
+      });
+    }
+    return points;
+  }, [timeEntries, meetings, today]);
+  const hasHoursHistory = dailyHours.some((d) => d.hours > 0);
 
   const recentActivity = useMemo(
     () => [...tasks].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6),
@@ -219,8 +264,62 @@ export default function DashboardPage() {
             icon={Clock}
             accent="text-analytics-pink"
             accentBg="bg-analytics-pink/10"
+            delta={hoursDelta}
           />
         </div>
+
+        <section className="rounded-xl border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold">Hours Logged</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">Last 14 days, across all companies</p>
+          <div className="mt-4 h-48">
+            {hasHoursHistory ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={dailyHours} margin={{ left: -20 }}>
+                  <defs>
+                    <linearGradient id="dashboardHoursGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--analytics-pink)" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="var(--analytics-pink)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                    axisLine={{ stroke: "var(--border)" }}
+                    tickLine={false}
+                    interval={2}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={44}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                    formatter={(value) => [`${value}h`, "Hours"]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="hours"
+                    stroke="var(--analytics-pink)"
+                    strokeWidth={2}
+                    fill="url(#dashboardHoursGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                No hours logged in the last 14 days.
+              </div>
+            )}
+          </div>
+        </section>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <div className="space-y-6 xl:col-span-2">

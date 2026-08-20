@@ -8,6 +8,7 @@ import { MeetingCard, isUpcoming } from "@/components/meetings/meeting-card";
 import { MeetingFormDialog } from "@/components/meetings/meeting-form-dialog";
 import { MeetingNotesDialog } from "@/components/meetings/meeting-notes-dialog";
 import { MeetingNotesViewDialog } from "@/components/meetings/meeting-notes-view-dialog";
+import { CardGridSkeleton } from "@/components/shared/card-grid-skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
@@ -86,11 +87,7 @@ export default function MeetingsPage() {
 
       <div className="flex-1 p-4 lg:p-6">
         {loading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-40 animate-pulse rounded-xl bg-muted" />
-            ))}
-          </div>
+          <CardGridSkeleton cardClassName="h-40" />
         ) : visibleMeetings.length === 0 ? (
           <EmptyState
             icon={Calendar}

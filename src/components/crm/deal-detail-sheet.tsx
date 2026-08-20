@@ -324,7 +324,7 @@ export function DealDetailSheet({
                   "shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                   s.value === deal.stage
                     ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-transparent text-muted-foreground hover:border-white/25 hover:text-foreground"
+                    : "border-border bg-transparent text-muted-foreground hover:border-border-hover hover:text-foreground"
                 )}
               >
                 {s.label}
@@ -553,7 +553,7 @@ export function DealDetailSheet({
                           "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                           activityType === t.value
                             ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-white/25 hover:text-foreground"
+                            : "border-border text-muted-foreground hover:border-border-hover hover:text-foreground"
                         )}
                       >
                         <t.icon className="size-3.5" />

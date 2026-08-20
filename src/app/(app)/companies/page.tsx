@@ -99,7 +99,7 @@ export default function CompaniesPage() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: i * 0.03 }}
-                  className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-white/15 hover:shadow-lg"
+                  className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border-hover hover:shadow-lg"
                 >
                   {/* A soft wash of the company's own color in the corner -
                       distinguishes cards at a glance in a dense grid and
@@ -131,7 +131,7 @@ export default function CompaniesPage() {
                     <div className="flex items-center gap-3">
                       <Avatar
                         size="lg"
-                        className="size-10 shrink-0 rounded-lg shadow-sm ring-1 ring-inset ring-white/10"
+                        className="size-10 shrink-0 rounded-lg shadow-sm ring-1 ring-inset ring-ring-subtle"
                       >
                         <AvatarImage src={c.logoUrl} className="rounded-lg" />
                         <AvatarFallback

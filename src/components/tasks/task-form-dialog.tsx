@@ -26,11 +26,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanies } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
+import { useMembers } from "@/lib/data/members";
 import { useProjects } from "@/lib/data/projects";
-import { createTask } from "@/lib/data/tasks";
+import { createTask, updateTask } from "@/lib/data/tasks";
 import { priorityLabel, taskStatusLabel } from "@/lib/labels";
-import { PRIORITIES, TASK_STATUSES } from "@/lib/types";
+import { PRIORITIES, TASK_STATUSES, type Task } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
+
+const NO_OWNER = "unassigned";
 
 const schema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -40,22 +43,55 @@ const schema = z.object({
   status: z.enum(["not_started", "in_progress", "blocked", "in_review", "completed", "cancelled"]),
   dueDate: z.string().optional(),
   description: z.string().optional(),
+  ownerId: z.string().optional(),
+  estimatedHours: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
+
+function defaultsFor(task?: Task | null, defaultCompanyId?: string): FormValues {
+  if (task) {
+    return {
+      title: task.title,
+      companyId: task.companyId,
+      projectId: task.projectId ?? "",
+      priority: task.priority,
+      status: task.status,
+      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : "",
+      description: task.description ?? "",
+      ownerId: task.ownerId ?? NO_OWNER,
+      estimatedHours: task.estimatedHours !== undefined ? String(task.estimatedHours) : "",
+    };
+  }
+  return {
+    title: "",
+    companyId: defaultCompanyId ?? "",
+    projectId: "",
+    priority: "medium",
+    status: "not_started",
+    dueDate: "",
+    description: "",
+    ownerId: NO_OWNER,
+    estimatedHours: "",
+  };
+}
 
 export function TaskFormDialog({
   open,
   onOpenChange,
   defaultCompanyId,
+  task,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   defaultCompanyId?: string;
+  task?: Task | null;
 }) {
   const { workspace } = useWorkspace();
   const { data: companies } = useCompanies(workspace?.id ?? null);
+  const { data: members } = useMembers(workspace?.id ?? null);
   const [submitting, setSubmitting] = useState(false);
+  const isEditing = Boolean(task);
 
   const {
     register,
@@ -66,21 +102,14 @@ export function TaskFormDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      title: "",
-      companyId: defaultCompanyId ?? "",
-      projectId: "",
-      priority: "medium",
-      status: "not_started",
-      dueDate: "",
-      description: "",
-    },
+    defaultValues: defaultsFor(task, defaultCompanyId),
   });
 
   useEffect(() => {
-    if (open) reset({ ...watch(), companyId: defaultCompanyId ?? watch("companyId") });
+    if (!open) return;
+    reset(defaultsFor(task, defaultCompanyId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, task]);
 
   const companyId = watch("companyId");
   const { data: projects } = useProjects(workspace?.id ?? null, companyId || undefined);
@@ -89,7 +118,7 @@ export function TaskFormDialog({
     if (!workspace) return;
     setSubmitting(true);
     try {
-      await createTask(workspace.id, omitUndefined({
+      const payload = omitUndefined({
         companyId: values.companyId,
         projectId: values.projectId || undefined,
         title: values.title,
@@ -97,12 +126,19 @@ export function TaskFormDialog({
         status: values.status,
         priority: values.priority,
         dueDate: values.dueDate ? new Date(values.dueDate).getTime() : null,
-      }));
-      toast.success("Task created");
-      reset();
+        ownerId: values.ownerId && values.ownerId !== NO_OWNER ? values.ownerId : undefined,
+        estimatedHours: values.estimatedHours ? Number(values.estimatedHours) : undefined,
+      });
+      if (isEditing && task) {
+        await updateTask(workspace.id, task.id, payload);
+        toast.success("Task updated");
+      } else {
+        await createTask(workspace.id, payload);
+        toast.success("Task created");
+      }
       onOpenChange(false);
     } catch {
-      toast.error("Couldn't create the task. Try again.");
+      toast.error(isEditing ? "Couldn't update the task. Try again." : "Couldn't create the task. Try again.");
     } finally {
       setSubmitting(false);
     }
@@ -112,7 +148,7 @@ export function TaskFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New task</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit task" : "New task"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
@@ -203,6 +239,33 @@ export function TaskFormDialog({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Assignee (optional)</Label>
+              <Select value={watch("ownerId") ?? NO_OWNER} onValueChange={(v) => setValue("ownerId", v ?? NO_OWNER)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Unassigned">
+                    {(v: string) =>
+                      v === NO_OWNER ? "Unassigned" : (members.find((m) => m.id === v)?.displayName ?? "Unassigned")
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_OWNER}>Unassigned</SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="estimatedHours">Estimated hours (optional)</Label>
+              <Input id="estimatedHours" type="number" min={0} placeholder="4" {...register("estimatedHours")} />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="description">Description (optional)</Label>
             <Textarea id="description" rows={3} {...register("description")} />
@@ -213,7 +276,7 @@ export function TaskFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Creating…" : "Create task"}
+              {submitting ? "Saving…" : isEditing ? "Save changes" : "Create task"}
             </Button>
           </DialogFooter>
         </form>

@@ -1,6 +1,14 @@
 "use client";
 
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -9,10 +17,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PriorityBadge } from "@/components/shared/status-badge";
-import { updateProject } from "@/lib/data/projects";
+import { useConfirm } from "@/lib/confirm/confirm-provider";
+import { deleteProject, updateProject } from "@/lib/data/projects";
 import { projectStatusLabel } from "@/lib/labels";
 import { PROJECT_STATUSES, type Company, type Project, type ProjectStatus, type Task } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
 export function ProjectList({
   projects,
@@ -20,14 +30,27 @@ export function ProjectList({
   tasks,
   workspaceId,
   showCompany = true,
+  onEdit,
 }: {
   projects: Project[];
   companies: Company[];
   tasks: Task[];
   workspaceId: string;
   showCompany?: boolean;
+  onEdit?: (project: Project) => void;
 }) {
+  const confirm = useConfirm();
   const companyById = new Map(companies.map((c) => [c.id, c]));
+
+  async function handleDelete(project: Project) {
+    if (!(await confirm(`Delete "${project.name}"? This can't be undone.`))) return;
+    try {
+      await deleteProject(workspaceId, project.id);
+      toast.success(`${project.name} deleted`);
+    } catch {
+      toast.error("Couldn't delete the project. Try again.");
+    }
+  }
 
   return (
     <div className="divide-y divide-border rounded-xl border border-border bg-card">
@@ -77,6 +100,23 @@ export function ProjectList({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div onClick={(e) => e.preventDefault()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" aria-label="Project actions" />}>
+                    <MoreHorizontal className="size-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onEdit?.(p)}>
+                      <Pencil className="size-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem variant="destructive" onClick={() => handleDelete(p)}>
+                      <Trash2 className="size-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </Link>

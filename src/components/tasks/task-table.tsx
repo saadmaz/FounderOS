@@ -8,7 +8,7 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Trash2 } from "lucide-react";
+import { ArrowUpDown, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PriorityBadge } from "@/components/shared/status-badge";
+import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { deleteTask, setTaskStatus } from "@/lib/data/tasks";
 import { formatDate } from "@/lib/format";
 import { taskStatusLabel } from "@/lib/labels";
@@ -38,15 +39,23 @@ export function TaskTable({
   companies,
   workspaceId,
   showCompany = true,
+  onEdit,
 }: {
   tasks: Task[];
   companies: Company[];
   workspaceId: string;
   showCompany?: boolean;
+  onEdit?: (task: Task) => void;
 }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "dueDate", desc: false }]);
+  const confirm = useConfirm();
   const companyById = new Map(companies.map((c) => [c.id, c]));
   const today = new Date().setHours(0, 0, 0, 0);
+
+  async function handleDelete(task: Task) {
+    if (!(await confirm(`Delete "${task.title}"? This can't be undone.`))) return;
+    await deleteTask(workspaceId, task.id);
+  }
 
   const columns: ColumnDef<Task>[] = [
     {
@@ -151,15 +160,28 @@ export function TaskTable({
       id: "actions",
       header: "",
       cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7 text-muted-foreground-2 hover:text-danger"
-          onClick={() => deleteTask(workspaceId, row.original.id)}
-          aria-label="Delete task"
-        >
-          <Trash2 className="size-3.5" />
-        </Button>
+        <div className="flex items-center justify-end gap-0.5">
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 text-muted-foreground-2 hover:text-foreground"
+              onClick={() => onEdit(row.original)}
+              aria-label="Edit task"
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-muted-foreground-2 hover:text-danger"
+            onClick={() => handleDelete(row.original)}
+            aria-label="Delete task"
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        </div>
       ),
     },
   ];

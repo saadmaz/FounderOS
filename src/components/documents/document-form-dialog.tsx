@@ -185,7 +185,7 @@ export function DocumentFormDialog({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={submitting}
-                className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-4 py-6 text-center transition-colors hover:border-white/25 disabled:pointer-events-none disabled:opacity-50"
+                className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-4 py-6 text-center transition-colors hover:border-border-hover disabled:pointer-events-none disabled:opacity-50"
               >
                 <UploadIcon className="size-5 text-muted-foreground" />
                 <span className="text-sm break-all">

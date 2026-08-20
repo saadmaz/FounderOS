@@ -88,7 +88,7 @@ function DealCard({
       onClick={onClick}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(
-        "cursor-grab space-y-2.5 rounded-xl border border-border bg-card p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-white/10 hover:shadow-md active:cursor-grabbing",
+        "cursor-grab space-y-2.5 rounded-xl border border-border bg-card p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-border-hover hover:shadow-md active:cursor-grabbing",
         isDragging && "opacity-40",
         isClosed && "opacity-80"
       )}

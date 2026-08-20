@@ -18,6 +18,7 @@ import { ProjectList } from "@/components/projects/project-list";
 import { useCompanies } from "@/lib/data/companies";
 import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
+import type { Project } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 export default function ProjectsPage() {
@@ -30,6 +31,7 @@ export default function ProjectsPage() {
   );
   const { data: tasks } = useTasks(workspace?.id ?? null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   return (
     <>
@@ -78,7 +80,13 @@ export default function ProjectsPage() {
             }
           />
         ) : (
-          <ProjectList projects={projects} companies={companies} tasks={tasks} workspaceId={workspace!.id} />
+          <ProjectList
+            projects={projects}
+            companies={companies}
+            tasks={tasks}
+            workspaceId={workspace!.id}
+            onEdit={setEditingProject}
+          />
         )}
       </div>
 
@@ -86,6 +94,11 @@ export default function ProjectsPage() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         defaultCompanyId={companyFilter === "all" ? undefined : companyFilter}
+      />
+      <ProjectFormDialog
+        open={Boolean(editingProject)}
+        onOpenChange={(v) => !v && setEditingProject(null)}
+        project={editingProject}
       />
     </>
   );

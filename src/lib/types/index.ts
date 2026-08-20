@@ -134,8 +134,8 @@ export interface Project {
   status: ProjectStatus;
   ownerId?: string; // WorkspaceMember id
   estimatedHours?: number;
-  startDate?: number;
-  endDate?: number;
+  startDate?: number | null;
+  endDate?: number | null;
   createdAt: number;
   updatedAt: number;
 }

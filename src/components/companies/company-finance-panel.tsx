@@ -818,7 +818,7 @@ export function CompanyFinancePanel({ company }: { company: Company }) {
                     key={b.id}
                     className={cn(
                       "relative rounded-xl border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
-                      overBudget ? "border-danger/30 bg-danger/[0.03] hover:border-danger/40" : "border-border hover:border-white/15"
+                      overBudget ? "border-danger/30 bg-danger/[0.03] hover:border-danger/40" : "border-border hover:border-border-hover"
                     )}
                   >
                     {canEdit && (

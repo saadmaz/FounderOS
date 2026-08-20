@@ -97,7 +97,7 @@ export function AttachmentField({
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:border-white/25"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:border-border-hover"
       >
         <Upload className="size-3.5" />
         {hasAny ? "Attach more files" : "Attach files"}

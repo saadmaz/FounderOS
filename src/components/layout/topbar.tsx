@@ -83,14 +83,13 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
             render={<Button variant="ghost" size="icon" className="relative" aria-label="Notifications" />}
           >
             <Bell className="size-4" />
-            <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
           </PopoverTrigger>
           <PopoverContent align="end" className="w-72 p-0">
             <div className="border-b border-border px-3 py-2.5">
               <p className="text-sm font-medium">Notifications</p>
             </div>
             <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-              You&apos;re all caught up.
+              No notifications yet.
             </div>
           </PopoverContent>
         </Popover>
