@@ -47,6 +47,26 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == uid;
     }
 
+    // Invites: top-level (not nested under /workspaces) so an invitee who
+    // isn't a member yet - or isn't even signed in yet - can still load the
+    // invite page. The doc id is a random, unguessable Firestore auto-id and
+    // that's the real security boundary here: `get` is intentionally public
+    // (single doc, by exact known id), but `list` is restricted so invites
+    // can't be enumerated. Acceptance itself happens server-side via Firebase
+    // Admin (see src/app/api/workspace/accept-invite), not a client update -
+    // rules can only authorize by exact document path, and there's no path
+    // this rule could look up to confirm "a pending invite exists for this
+    // caller's email" without the invite id already known.
+    match /invites/{inviteId} {
+      allow get: if true;
+      allow list: if isOwnerOrAdmin(resource.data.workspaceId);
+      allow create: if isOwnerOrAdmin(request.resource.data.workspaceId) &&
+        request.resource.data.invitedBy == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      // Revoke only.
+      allow update, delete: if isOwnerOrAdmin(resource.data.workspaceId);
+    }
+
     match /workspaces/{workspaceId} {
       allow read: if isMember(workspaceId);
       allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;
@@ -58,8 +78,21 @@ service cloud.firestore {
         allow create: if isSignedIn() && request.auth.uid == memberId &&
           request.resource.data.role == 'owner' &&
           get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.createdBy == request.auth.uid;
-        // Inviting others / changing roles is owner/admin only.
-        allow create, update, delete: if isOwnerOrAdmin(workspaceId);
+        // Accepting an invite happens server-side via Firebase Admin (see
+        // src/app/api/workspace/accept-invite), which bypasses these rules
+        // entirely - there's no client-write path for a brand-new member to
+        // create their own non-owner doc.
+        // Adding/editing/removing others is owner/admin only, and can never
+        // touch the owner role - no demoting, removing, or newly assigning
+        // it through this UI (no owner transfer in this pass).
+        allow create: if isOwnerOrAdmin(workspaceId) && request.resource.data.role != 'owner';
+        // request.resource is null on delete - keep it out of that branch
+        // entirely rather than referencing it in a combined update+delete
+        // condition, which would make every delete fail closed.
+        allow update: if isOwnerOrAdmin(workspaceId) &&
+          resource.data.role != 'owner' &&
+          (!('role' in request.resource.data) || request.resource.data.role != 'owner');
+        allow delete: if isOwnerOrAdmin(workspaceId) && resource.data.role != 'owner';
       }
 
       match /companies/{companyId} {

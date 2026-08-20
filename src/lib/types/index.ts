@@ -6,6 +6,16 @@
 
 export type Role = "owner" | "admin" | "manager" | "employee" | "accountant" | "viewer";
 
+// "owner" deliberately excluded - bootstrap-only, no owner transfer/assignment
+// through the invite or member-management UI.
+export const ROLES: { value: Exclude<Role, "owner">; label: string }[] = [
+  { value: "admin", label: "Admin" },
+  { value: "manager", label: "Manager" },
+  { value: "employee", label: "Employee" },
+  { value: "accountant", label: "Accountant" },
+  { value: "viewer", label: "Viewer" },
+];
+
 export interface Workspace {
   id: string;
   name: string;
@@ -22,6 +32,21 @@ export interface WorkspaceMember {
   photoURL?: string;
   role: Role;
   createdAt: number;
+}
+
+export type InviteStatus = "pending" | "accepted" | "revoked";
+
+export interface Invite {
+  id: string;
+  workspaceId: string;
+  workspaceName: string; // denormalized: the invitee isn't a member yet and can't read the workspace doc
+  email: string; // lowercased
+  role: Exclude<Role, "owner">;
+  invitedBy: string; // uid
+  invitedByName: string;
+  status: InviteStatus;
+  createdAt: number;
+  expiresAt: number;
 }
 
 export type CompanyStatus = "active" | "paused" | "archived" | "exploring";

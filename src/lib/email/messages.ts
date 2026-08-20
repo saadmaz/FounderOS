@@ -45,6 +45,31 @@ export function verifyEmailEmail(link: string): EmailMessage {
   };
 }
 
+export function inviteEmail(
+  workspaceName: string,
+  inviterName: string,
+  roleLabel: string,
+  link: string
+): EmailMessage {
+  const heading = `You're invited to join ${workspaceName}`;
+  const paragraphs = [
+    `${inviterName} invited you to join ${workspaceName} on FounderOS as ${roleLabel === "Admin" ? "an" : "a"} ${roleLabel}.`,
+    "Click the button below to accept and set up your account. This invite expires in 7 days.",
+  ];
+  return {
+    subject: `You're invited to join ${workspaceName} on FounderOS`,
+    html: renderAuthEmail({
+      preheader: `${inviterName} invited you to join ${workspaceName} on FounderOS`,
+      heading,
+      paragraphs,
+      buttonLabel: "Accept invite",
+      buttonUrl: link,
+      footnote: "If you weren't expecting this invite, you can ignore this email.",
+    }),
+    text: renderAuthEmailText({ heading, paragraphs, buttonUrl: link }),
+  };
+}
+
 export function emailChangedNotice(oldEmail: string, link: string): EmailMessage {
   const heading = "Your account email is changing";
   const paragraphs = [

@@ -7,15 +7,20 @@
  *
  * Used to generate action links (password reset, email verification) for
  * emails we send ourselves via Resend, instead of Firebase Auth's own
- * built-in email sender - see src/lib/email/.
+ * built-in email sender - see src/lib/email/. getAdminFirestore() is the one
+ * exception to this app's otherwise client-SDK-first Firestore access: it's
+ * used solely by src/app/api/workspace/accept-invite, which needs to write a
+ * new member doc for a user Firestore rules can't yet authorize by any
+ * lookup path (see that route for why).
  *
- * Initialization is lazy (on first call to getAdminAuth), not at module
- * load, so importing this file doesn't crash routes that don't actually
- * need it before the service account env vars are configured.
+ * Initialization is lazy (on first call to getAdminAuth/getAdminFirestore),
+ * not at module load, so importing this file doesn't crash routes that don't
+ * actually need it before the service account env vars are configured.
  */
 import "server-only";
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
 let app: App | undefined;
 
@@ -44,4 +49,8 @@ function getAdminApp(): App {
 
 export function getAdminAuth(): Auth {
   return getAuth(getAdminApp());
+}
+
+export function getAdminFirestore(): Firestore {
+  return getFirestore(getAdminApp());
 }

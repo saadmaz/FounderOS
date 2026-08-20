@@ -108,6 +108,44 @@ export async function updateUserProfile(
   });
 }
 
+/** Sends the invite email for an invite doc already created client-side
+ * (see src/lib/data/invites.ts) - see src/app/api/workspace/invite for why
+ * this needs a server route rather than sending straight from the client. */
+export async function sendInviteEmail(inviteId: string) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not signed in");
+  const idToken = await user.getIdToken();
+  const res = await fetch("/api/workspace/invite", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ inviteId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? `Failed to send invite email (${res.status})`);
+  }
+}
+
+/** Accepts an invite: writes the new member doc and moves the caller's
+ * workspace pointer, both server-side via Firebase Admin - see
+ * src/app/api/workspace/accept-invite for why Firestore rules alone can't
+ * authorize this write. */
+export async function acceptInvite(inviteId: string) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not signed in");
+  const idToken = await user.getIdToken();
+  const res = await fetch("/api/workspace/accept-invite", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ inviteId }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error ?? `Failed to accept invite (${res.status})`);
+  }
+  return body as { ok: true; workspaceId: string };
+}
+
 export async function changeUserPassword(currentPassword: string, newPassword: string) {
   const user = auth.currentUser;
   if (!user?.email) throw new Error("Not signed in");

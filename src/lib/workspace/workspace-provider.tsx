@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { ensureWorkspaceForUser, getMember, getWorkspace } from "@/lib/data/workspace";
+import { useUIStore } from "@/lib/store/ui-store";
 import type { Role, Workspace } from "@/lib/types";
 
 interface WorkspaceContextValue {
@@ -22,9 +23,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
+  const bootstrapLocked = useUIStore((s) => s.workspaceBootstrapLocked);
 
   useEffect(() => {
     if (authLoading || !user) return;
+    // Held by the invite-acceptance page while it signs up/accepts on this
+    // user's behalf - see the lock's own doc comment in ui-store.ts. Stay in
+    // `loading` rather than bootstrapping a workspace out from under it; this
+    // effect re-runs the moment the lock releases (it's a dependency below).
+    if (bootstrapLocked) return;
     let cancelled = false;
     // Reset to loading when the user changes (e.g. re-auth) - initial
     // mount is already `true` from useState's default above.
@@ -53,7 +60,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user, authLoading]);
+  }, [user, authLoading, bootstrapLocked]);
 
   // No signed-in user: nothing to load, and any previously loaded
   // workspace from a prior session no longer applies.
