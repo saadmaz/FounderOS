@@ -60,7 +60,7 @@ export default function InvitePage() {
   }, [user, invite]);
 
   const roleLabel = invite ? (ROLES.find((r) => r.value === invite.role)?.label ?? invite.role) : "";
-  const expired = invite ? Date.now() > invite.expiresAt : false;
+  const expired = invite ? new Date().getTime() > invite.expiresAt : false;
 
   async function handleAccept() {
     setError(null);
