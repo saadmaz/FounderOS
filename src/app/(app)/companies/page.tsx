@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Archive, ArchiveRestore, Building2, MoreHorizontal, Pencil, Plus } from "lucide-react";
+import { Archive, ArchiveRestore, Building2, Clock, ListTodo, MoreHorizontal, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,7 +74,7 @@ export default function CompaniesPage() {
         {loading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-40 animate-pulse rounded-xl bg-muted" />
+              <div key={i} className="h-44 animate-pulse rounded-2xl bg-muted" />
             ))}
           </div>
         ) : active.length === 0 ? (
@@ -99,15 +99,22 @@ export default function CompaniesPage() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: i * 0.03 }}
-                  className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border-hover hover:shadow-lg"
+                  style={{ "--company": c.color } as CSSProperties}
+                  className="group relative isolate flex flex-col overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:border-[color-mix(in_srgb,var(--company),transparent_55%)] hover:shadow-xl dark:hover:bg-[color-mix(in_oklch,var(--card),white_4%)] dark:hover:shadow-none"
                 >
-                  {/* A soft wash of the company's own color in the corner -
+                  {/* A hairline brand-color accent fading out across the top
+                      edge, plus a soft wash of the same color in the corner -
                       distinguishes cards at a glance in a dense grid and
                       reads as a deliberate, branded surface rather than a
                       generic gray box. */}
                   <div
                     aria-hidden
-                    className="pointer-events-none absolute -right-8 -top-8 size-40 rounded-full opacity-[0.15] transition-opacity duration-200 group-hover:opacity-25"
+                    className="pointer-events-none absolute inset-x-0 top-0 h-[3px] opacity-70 transition-opacity duration-300 group-hover:opacity-100"
+                    style={{ background: `linear-gradient(90deg, ${c.color}, ${c.color}00 85%)` }}
+                  />
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -right-8 -top-8 size-40 rounded-full opacity-[0.15] transition-opacity duration-300 group-hover:opacity-25"
                     style={{ background: `radial-gradient(circle, ${c.color} 0%, ${c.color}00 70%)` }}
                   />
                   <div className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
@@ -127,42 +134,48 @@ export default function CompaniesPage() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <Link href={`/companies/${c.id}`} className="relative flex flex-col">
+                  <Link href={`/companies/${c.id}`} className="relative flex flex-1 flex-col">
                     <div className="flex items-center gap-3">
                       <Avatar
                         size="lg"
-                        className="size-10 shrink-0 rounded-lg shadow-sm ring-1 ring-inset ring-ring-subtle"
+                        className="size-11 shrink-0 rounded-xl shadow-sm ring-1 ring-inset ring-ring-subtle transition-transform duration-300 group-hover:scale-[1.04]"
                       >
-                        <AvatarImage src={c.logoUrl} className="rounded-lg" />
+                        <AvatarImage src={c.logoUrl} className="rounded-xl" />
                         <AvatarFallback
-                          className="rounded-lg text-sm font-semibold text-white"
+                          className="rounded-xl text-sm font-semibold text-white"
                           style={{ backgroundColor: c.color }}
                         >
                           {c.name[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">{c.name}</p>
+                        <p className="truncate text-[0.95rem] font-semibold tracking-tight">{c.name}</p>
                         <p className="truncate text-xs text-muted-foreground">
                           {c.industry ?? "—"}
                         </p>
                       </div>
                     </div>
                     {c.description && (
-                      <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{c.description}</p>
+                      <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                        {c.description}
+                      </p>
                     )}
-                    <div className="mt-4 flex items-center gap-2">
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
                       <StatusBadge status={c.status} />
-                      <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                         {companyTypeLabel(c.type)}
                       </span>
                     </div>
-                    <div className="mt-4 flex items-center gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
-                      <span>
-                        <strong className="font-semibold text-foreground">{open}</strong> open
+                    <div className="mt-4 flex flex-1 items-end gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        <ListTodo className="size-3.5 text-muted-foreground-2" />
+                        <strong className="font-semibold tabular-nums text-foreground">{open}</strong> open
                       </span>
-                      <span>
-                        <strong className="font-semibold text-foreground">{formatHours(hours)}</strong>{" "}
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock className="size-3.5 text-muted-foreground-2" />
+                        <strong className="font-semibold tabular-nums text-foreground">
+                          {formatHours(hours)}
+                        </strong>{" "}
                         logged
                       </span>
                     </div>
@@ -182,7 +195,7 @@ export default function CompaniesPage() {
               {archived.map((c) => (
                 <div
                   key={c.id}
-                  className="flex items-center justify-between rounded-xl border border-border bg-card/50 p-4 opacity-70"
+                  className="flex items-center justify-between rounded-2xl border border-border bg-card/50 p-4 opacity-70 transition-opacity hover:opacity-100"
                 >
                   <div className="flex items-center gap-3">
                     <Avatar size="lg" className="size-8 shrink-0 rounded-lg">
