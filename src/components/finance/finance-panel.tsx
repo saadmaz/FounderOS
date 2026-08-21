@@ -9,7 +9,6 @@ import {
   Download,
   Landmark,
   MoreHorizontal,
-  Paperclip,
   PiggyBank,
   Plus,
   Repeat,
@@ -51,9 +50,11 @@ import { ScrollableTabStrip } from "@/components/shared/scrollable-tabs";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
+import { AttachmentPreview } from "@/components/finance/attachment-preview";
 import { BudgetFormDialog } from "@/components/finance/budget-form-dialog";
 import { ExpenseFormDialog } from "@/components/finance/expense-form-dialog";
 import { InvestmentFormDialog } from "@/components/finance/investment-form-dialog";
+import { MarkReimbursedDialog } from "@/components/finance/mark-reimbursed-dialog";
 import { VendorFormDialog } from "@/components/finance/vendor-form-dialog";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
@@ -117,15 +118,6 @@ function ExpenseStatusBadge({ status }: { status: ExpenseStatus }) {
   );
 }
 
-const DAY_MS = 86_400_000;
-
-// `Date.now()` is read impurely in exactly this one place (mirrors the
-// convention in meeting-card.tsx's meetingDateBucket) so ExpenseStatusHint
-// below doesn't call it directly during render.
-function daysSince(date: number, now = Date.now()): number {
-  return Math.floor((now - date) / DAY_MS);
-}
-
 /** Whether a budget's *current* period (the one covering right now, not a
  * past or future one) is over its allocation - a budget that was over
  * budget three months ago shouldn't keep nagging forever. */
@@ -139,10 +131,9 @@ function isCurrentPeriodOverBudget(
   return budgetActualSpend(budget, expenses) > budget.allocatedAmount;
 }
 
-/** Secondary text next to the status badge: how long a pending expense has
- * been waiting (colored once it's been a while, so aging reimbursements
- * are visible without opening each row), or when/by whom a reimbursed one
- * was actually paid back. */
+/** Secondary text next to the status badge: when/by whom a reimbursed
+ * expense was actually paid back. Nothing is shown for pending expenses -
+ * the badge alone is enough there. */
 function ExpenseStatusHint({
   expense,
   memberById,
@@ -150,26 +141,11 @@ function ExpenseStatusHint({
   expense: Expense;
   memberById: Map<string, WorkspaceMember>;
 }) {
-  if (expense.status === "reimbursed") {
-    if (!expense.reimbursedAt) return null;
-    const by = expense.reimbursedBy ? memberById.get(expense.reimbursedBy)?.displayName : undefined;
-    return (
-      <span className="text-xs text-muted-foreground-2" title={by ? `Reimbursed by ${by}` : undefined}>
-        {formatDate(expense.reimbursedAt)}
-      </span>
-    );
-  }
-  const days = daysSince(expense.date);
-  if (days <= 0) return null;
+  if (expense.status !== "reimbursed" || !expense.reimbursedAt) return null;
+  const by = expense.reimbursedBy ? memberById.get(expense.reimbursedBy)?.displayName : undefined;
   return (
-    <span
-      className={cn(
-        "text-xs tabular-nums",
-        days >= 30 ? "text-danger" : days >= 14 ? "text-warning" : "text-muted-foreground-2"
-      )}
-      title={`Logged ${days} day${days === 1 ? "" : "s"} ago, still pending`}
-    >
-      {days}d
+    <span className="text-xs text-muted-foreground-2" title={by ? `Reimbursed by ${by}` : undefined}>
+      {formatDate(expense.reimbursedAt)}
     </span>
   );
 }
@@ -266,6 +242,11 @@ export function FinancePanel({ company }: { company?: Company }) {
   const [investmentDialogOpen, setInvestmentDialogOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(new Set());
+  // Expense id(s) awaiting a reimbursed-on date in MarkReimbursedDialog - a
+  // single id from a row's "Reimbursed" button, or several from the bulk
+  // action, but either way one confirm flow instead of stamping `now()`
+  // immediately on click.
+  const [reimburseTargetIds, setReimburseTargetIds] = useState<string[] | null>(null);
 
   // Expenses-tab-only findability controls - unlike companyFilter, these
   // never touch the Overview totals or the other tabs, only what's listed
@@ -410,17 +391,18 @@ export function FinancePanel({ company }: { company?: Company }) {
     await deleteExpense(workspaceId, expense.id, expense.receipts);
     toast.success("Expense deleted");
   }
-  async function handleMarkReimbursed(expense: Expense) {
-    if (!workspaceId) return;
-    await setExpenseStatus(workspaceId, expense.id, "reimbursed", user?.uid);
-    toast.success("Expense marked as reimbursed");
-  }
-  async function handleBulkMarkReimbursed() {
-    if (!workspaceId || selectedPendingIds.length === 0) return;
-    const count = selectedPendingIds.length;
-    await bulkMarkExpensesReimbursed(workspaceId, selectedPendingIds, user?.uid);
-    setSelectedExpenseIds(new Set());
-    toast.success(`${count} expense${count === 1 ? "" : "s"} marked as reimbursed`);
+  /** Runs once a reimbursed-on date is confirmed in MarkReimbursedDialog for
+   * whatever id(s) are currently in reimburseTargetIds. */
+  async function handleConfirmReimbursed(reimbursedAt: number) {
+    if (!workspaceId || !reimburseTargetIds) return;
+    const ids = reimburseTargetIds;
+    if (ids.length > 1) {
+      await bulkMarkExpensesReimbursed(workspaceId, ids, user?.uid, reimbursedAt);
+      setSelectedExpenseIds(new Set());
+    } else {
+      await setExpenseStatus(workspaceId, ids[0], "reimbursed", user?.uid, reimbursedAt);
+    }
+    toast.success(`${ids.length} expense${ids.length === 1 ? "" : "s"} marked as reimbursed`);
   }
   function toggleSelectAllPending() {
     setSelectedExpenseIds((prev) => {
@@ -580,7 +562,7 @@ export function FinancePanel({ company }: { company?: Company }) {
                   <span className="font-medium">
                     {selectedPendingIds.length} selected
                   </span>
-                  <Button size="sm" className="gap-1.5" onClick={handleBulkMarkReimbursed}>
+                  <Button size="sm" className="gap-1.5" onClick={() => setReimburseTargetIds(selectedPendingIds)}>
                     <CircleCheck className="size-4" />
                     Mark reimbursed
                   </Button>
@@ -789,18 +771,7 @@ export function FinancePanel({ company }: { company?: Company }) {
                                 <Repeat className="size-3.5" />
                               </span>
                             )}
-                            {e.receipts?.map((r) => (
-                              <a
-                                key={r.publicId}
-                                href={r.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={`View receipt: ${r.name}`}
-                                className="shrink-0 text-muted-foreground-2 hover:text-foreground"
-                              >
-                                <Paperclip className="size-3.5" />
-                              </a>
-                            ))}
+                            <AttachmentPreview attachments={e.receipts} label="Receipts" />
                           </div>
                         </TableCell>
                         <TableCell className="hidden py-2 text-sm capitalize text-muted-foreground lg:table-cell">
@@ -820,7 +791,7 @@ export function FinancePanel({ company }: { company?: Company }) {
                                 variant="outline"
                                 size="sm"
                                 className={cn("h-6 gap-1 px-2 text-xs", company && "hidden sm:inline-flex")}
-                                onClick={() => handleMarkReimbursed(e)}
+                                onClick={() => setReimburseTargetIds([e.id])}
                               >
                                 <CircleCheck className="size-3" />
                                 Reimbursed
@@ -828,7 +799,7 @@ export function FinancePanel({ company }: { company?: Company }) {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="py-2 text-right text-sm font-medium">
+                        <TableCell className="py-2 text-right text-sm font-medium tabular-nums">
                           {formatCurrency(e.amount, e.currency)}
                         </TableCell>
                         {canEdit && (
@@ -841,7 +812,7 @@ export function FinancePanel({ company }: { company?: Company }) {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 {company && e.status !== "reimbursed" && (
-                                  <DropdownMenuItem className="sm:hidden" onClick={() => handleMarkReimbursed(e)}>
+                                  <DropdownMenuItem className="sm:hidden" onClick={() => setReimburseTargetIds([e.id])}>
                                     Mark reimbursed
                                   </DropdownMenuItem>
                                 )}
@@ -1071,24 +1042,13 @@ export function FinancePanel({ company }: { company?: Company }) {
                                 {INVESTMENT_TYPES.find((t) => t.value === inv.type)?.label ?? inv.type}
                               </p>
                             </div>
-                            {inv.documents?.map((d) => (
-                              <a
-                                key={d.publicId}
-                                href={d.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={`View document: ${d.name}`}
-                                className="shrink-0 text-muted-foreground-2 hover:text-foreground"
-                              >
-                                <Paperclip className="size-3.5" />
-                              </a>
-                            ))}
+                            <AttachmentPreview attachments={inv.documents} label="Documents" />
                           </div>
                         </TableCell>
                         <TableCell className="py-2">
                           <InvestmentStatusBadge status={inv.status} />
                         </TableCell>
-                        <TableCell className="py-2 text-right text-sm font-medium">
+                        <TableCell className="py-2 text-right text-sm font-medium tabular-nums">
                           {formatCurrency(inv.amount, inv.currency)}
                         </TableCell>
                         {canEdit && (
@@ -1287,6 +1247,12 @@ export function FinancePanel({ company }: { company?: Company }) {
             workspaceId={workspace.id}
             companies={companies}
             investment={editingInvestment}
+          />
+          <MarkReimbursedDialog
+            open={reimburseTargetIds !== null}
+            onOpenChange={(v) => !v && setReimburseTargetIds(null)}
+            count={reimburseTargetIds?.length ?? 1}
+            onConfirm={handleConfirmReimbursed}
           />
         </>
       )}

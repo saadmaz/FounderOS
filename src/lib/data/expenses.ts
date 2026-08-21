@@ -60,22 +60,25 @@ export async function updateExpense(workspaceId: string, expenseId: string, patc
 }
 
 /** Flips an expense's status and keeps the reimbursement audit trail
- * (reimbursedAt/reimbursedBy) in sync: stamped with `now()`/`memberId` when
- * moving to "reimbursed", cleared with deleteField() otherwise - bypasses
- * updateExpense/omitUndefined (which only ever *omits* undefined keys, never
- * clears a stored one) since reverting to "pending" needs the old
- * reimbursement date actually gone, not just unmentioned in this write. */
+ * (reimbursedAt/reimbursedBy) in sync: stamped with `reimbursedAt` (defaults
+ * to `now()`, but callers can pass a user-picked date so a reimbursement
+ * that actually happened earlier isn't misrecorded as today) / `memberId`
+ * when moving to "reimbursed", cleared with deleteField() otherwise -
+ * bypasses updateExpense/omitUndefined (which only ever *omits* undefined
+ * keys, never clears a stored one) since reverting to "pending" needs the
+ * old reimbursement date actually gone, not just unmentioned in this write. */
 export async function setExpenseStatus(
   workspaceId: string,
   expenseId: string,
   status: ExpenseStatus,
-  memberId?: string
+  memberId?: string,
+  reimbursedAt?: number
 ) {
   const reimbursing = status === "reimbursed";
   return updateDoc(doc(db, path(workspaceId), expenseId), {
     status,
     updatedAt: now(),
-    reimbursedAt: reimbursing ? now() : deleteField(),
+    reimbursedAt: reimbursing ? (reimbursedAt ?? now()) : deleteField(),
     reimbursedBy: reimbursing && memberId ? memberId : deleteField(),
   });
 }
@@ -102,15 +105,17 @@ export async function setExpenseRecurring(
 export async function bulkMarkExpensesReimbursed(
   workspaceId: string,
   expenseIds: string[],
-  memberId?: string
+  memberId?: string,
+  reimbursedAt?: number
 ) {
-  const ts = now();
+  const ts = reimbursedAt ?? now();
+  const updatedAt = now();
   for (let i = 0; i < expenseIds.length; i += 400) {
     const batch = writeBatch(db);
     for (const id of expenseIds.slice(i, i + 400)) {
       batch.update(doc(db, path(workspaceId), id), {
         status: "reimbursed" satisfies ExpenseStatus,
-        updatedAt: ts,
+        updatedAt,
         reimbursedAt: ts,
         ...(memberId ? { reimbursedBy: memberId } : {}),
       });
