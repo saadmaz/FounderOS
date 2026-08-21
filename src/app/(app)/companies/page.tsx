@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Archive, ArchiveRestore, Building2, MoreHorizontal, Pencil, Plus } from "lucide-react";
+import { Archive, ArchiveRestore, Building2, Clock, ListTodo, MoreHorizontal, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
@@ -74,7 +74,7 @@ export default function CompaniesPage() {
         {loading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-48 animate-pulse rounded-lg bg-muted" />
+              <div key={i} className="h-44 animate-pulse rounded-xl bg-muted" />
             ))}
           </div>
         ) : active.length === 0 ? (
@@ -96,16 +96,11 @@ export default function CompaniesPage() {
               return (
                 <motion.div
                   key={c.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.15, delay: i * 0.02 }}
-                  className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors duration-150 hover:border-border-hover hover:bg-surface/60"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: i * 0.03 }}
+                  className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border-hover hover:shadow-md"
                 >
-                  {/* A solid brand-color rail down the left edge - reads as a
-                      category/identity marker the way infra and monitoring
-                      dashboards flag entities with a colored rail, rather
-                      than a soft decorative glow. */}
-                  <div aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ backgroundColor: c.color }} />
                   <div className="absolute right-3 top-3 z-10 opacity-0 transition-opacity group-hover:opacity-100">
                     <DropdownMenu>
                       <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" aria-label="Company actions" />}>
@@ -124,55 +119,48 @@ export default function CompaniesPage() {
                     </DropdownMenu>
                   </div>
                   <Link href={`/companies/${c.id}`} className="flex flex-1 flex-col">
-                    <div className="flex items-center gap-3 border-b border-border py-3.5 pr-10 pl-5">
-                      <Avatar size="lg" className="size-9 shrink-0 rounded-md ring-1 ring-inset ring-ring-subtle">
-                        <AvatarImage src={c.logoUrl} className="rounded-md" />
+                    <div className="flex items-center gap-3">
+                      {/* A softly-tinted badge (the brand color at low
+                          opacity, full-strength for the initial/icon on top)
+                          reads as a refined, considered surface - a flat
+                          solid-color block doesn't. */}
+                      <Avatar size="lg" className="size-10 shrink-0 rounded-lg">
+                        <AvatarImage src={c.logoUrl} className="rounded-lg" />
                         <AvatarFallback
-                          className="rounded-md font-mono text-xs font-semibold uppercase text-white"
-                          style={{ backgroundColor: c.color }}
+                          className="rounded-lg text-sm font-semibold"
+                          style={{ backgroundColor: `${c.color}1A`, color: c.color }}
                         >
                           {c.name[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold leading-tight">{c.name}</p>
-                        <p className="truncate font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground-2">
-                          {c.industry || "Unclassified"}
-                        </p>
+                        <p className="truncate text-sm font-semibold tracking-tight">{c.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{c.industry || "No industry set"}</p>
                       </div>
                     </div>
 
-                    <div className="flex-1 px-5 py-3.5">
-                      {c.description && (
-                        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                          {c.description}
-                        </p>
-                      )}
-                      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                        <StatusBadge status={c.status} />
-                        <span className="rounded-sm border border-border px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide text-muted-foreground-2">
-                          {companyTypeLabel(c.type)}
-                        </span>
-                      </div>
+                    {c.description && (
+                      <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                        {c.description}
+                      </p>
+                    )}
+
+                    <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
+                      <StatusBadge status={c.status} />
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+                        {companyTypeLabel(c.type)}
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-2 divide-x divide-border border-t border-border">
-                      <div className="px-5 py-3">
-                        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground-2">
-                          Open
-                        </p>
-                        <p className="mt-0.5 font-mono text-lg leading-none font-semibold tabular-nums">
-                          {open}
-                        </p>
-                      </div>
-                      <div className="px-5 py-3">
-                        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground-2">
-                          Logged
-                        </p>
-                        <p className="mt-0.5 font-mono text-lg leading-none font-semibold tabular-nums">
-                          {formatHours(hours)}
-                        </p>
-                      </div>
+                    <div className="mt-4 flex flex-1 items-end gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        <ListTodo className="size-3.5 text-muted-foreground-2" />
+                        <span className="font-semibold tabular-nums text-foreground">{open}</span> open
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock className="size-3.5 text-muted-foreground-2" />
+                        <span className="font-semibold tabular-nums text-foreground">{formatHours(hours)}</span> logged
+                      </span>
                     </div>
                   </Link>
                 </motion.div>
@@ -190,14 +178,14 @@ export default function CompaniesPage() {
               {archived.map((c) => (
                 <div
                   key={c.id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-card/50 p-4 opacity-70 transition-opacity hover:opacity-100"
+                  className="flex items-center justify-between rounded-xl border border-border bg-card/50 p-4 opacity-70 transition-opacity hover:opacity-100"
                 >
                   <div className="flex items-center gap-3">
-                    <Avatar size="lg" className="size-8 shrink-0 rounded-md">
-                      <AvatarImage src={c.logoUrl} className="rounded-md" />
+                    <Avatar size="lg" className="size-8 shrink-0 rounded-lg">
+                      <AvatarImage src={c.logoUrl} className="rounded-lg" />
                       <AvatarFallback
-                        className="rounded-md font-mono text-xs font-semibold uppercase text-white"
-                        style={{ backgroundColor: c.color }}
+                        className="rounded-lg text-xs font-semibold"
+                        style={{ backgroundColor: `${c.color}1A`, color: c.color }}
                       >
                         {c.name[0]}
                       </AvatarFallback>
