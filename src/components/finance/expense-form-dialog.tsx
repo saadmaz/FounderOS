@@ -27,7 +27,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AttachmentField } from "@/components/finance/attachment-field";
 import { deleteCloudinaryAsset, uploadDocumentToCloudinary } from "@/lib/cloudinary";
-import { now, omitUndefined } from "@/lib/data/firestore-helpers";
+import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createExpense, setExpenseRecurring, setExpenseStatus, updateExpense } from "@/lib/data/expenses";
 import {
   BUDGET_PERIODS,
@@ -50,6 +50,9 @@ const schema = z.object({
   currency: z.string().min(1),
   date: z.string().min(1),
   status: z.enum(["pending", "reimbursed"]),
+  // Only read when status is "reimbursed" - always kept populated (defaults
+  // to today) so there's nothing to validate conditionally.
+  reimbursedAt: z.string().min(1),
   recurring: z.boolean(),
   recurringInterval: z.enum(["monthly", "quarterly", "yearly"]),
   description: z.string().optional(),
@@ -66,6 +69,7 @@ const emptyDefaults = (companies: Company[]): FormValues => ({
   currency: companies[0]?.currency ?? "LKR",
   date: new Date().toISOString().slice(0, 10),
   status: "pending",
+  reimbursedAt: new Date().toISOString().slice(0, 10),
   recurring: false,
   recurringInterval: "monthly",
   description: "",
@@ -124,6 +128,7 @@ export function ExpenseFormDialog({
         currency: expense.currency,
         date: new Date(expense.date).toISOString().slice(0, 10),
         status: expense.status,
+        reimbursedAt: new Date(expense.reimbursedAt ?? Date.now()).toISOString().slice(0, 10),
         recurring: Boolean(expense.recurringInterval),
         recurringInterval: expense.recurringInterval ?? "monthly",
         description: expense.description ?? "",
@@ -163,6 +168,7 @@ export function ExpenseFormDialog({
     setSubmitting(true);
     try {
       const date = new Date(`${values.date}T00:00:00`).getTime();
+      const reimbursedAt = new Date(`${values.reimbursedAt}T00:00:00`).getTime();
       const receipts = await resolveReceipts();
       const newInterval = values.recurring ? values.recurringInterval : undefined;
       if (isEditing && expense) {
@@ -182,8 +188,16 @@ export function ExpenseFormDialog({
           description: values.description || undefined,
           receipts,
         }));
-        if (values.status !== expense.status) {
-          await setExpenseStatus(workspaceId, expense.id, values.status, memberId);
+        // Re-stamps reimbursedAt whenever status just became "reimbursed" or
+        // the date was corrected on an expense that already was - the second
+        // case is exactly what's otherwise missing: a way to back-date a
+        // reimbursement instead of it staying stuck at whenever it was first
+        // marked.
+        if (
+          values.status !== expense.status ||
+          (values.status === "reimbursed" && reimbursedAt !== expense.reimbursedAt)
+        ) {
+          await setExpenseStatus(workspaceId, expense.id, values.status, memberId, reimbursedAt);
         }
         if (newInterval !== (expense.recurringInterval ?? undefined)) {
           await setExpenseRecurring(workspaceId, expense.id, newInterval);
@@ -200,7 +214,7 @@ export function ExpenseFormDialog({
           currency: values.currency,
           date,
           status: values.status,
-          reimbursedAt: reimbursedNow ? now() : undefined,
+          reimbursedAt: reimbursedNow ? reimbursedAt : undefined,
           reimbursedBy: reimbursedNow ? memberId : undefined,
           recurringInterval: newInterval,
           description: values.description || undefined,
@@ -345,6 +359,13 @@ export function ExpenseFormDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {watch("status") === "reimbursed" && (
+            <div className="space-y-1.5">
+              <Label>Reimbursed on</Label>
+              <DatePicker value={watch("reimbursedAt")} onChange={(v) => setValue("reimbursedAt", v)} />
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="description">Description (optional)</Label>
