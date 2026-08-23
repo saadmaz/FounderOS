@@ -186,113 +186,6 @@ function ExpenseSortHeader({
   );
 }
 
-/** Mobile stand-in for a row of the Expenses table - a table's columns can
- * hide as the viewport shrinks, but a phone still needs every field a
- * desktop row shows (date, company, category, vendor, status, amount,
- * actions), so this renders the same data as a self-contained card instead
- * of relying on a sideways scroll to reach the rest of the row. */
-function ExpenseMobileCard({
-  expense: e,
-  company,
-  companyById,
-  memberById,
-  currentUserId,
-  canEdit,
-  selected,
-  onToggleSelect,
-  onMarkReimbursed,
-  onEdit,
-  onDelete,
-}: {
-  expense: Expense;
-  company?: Company;
-  companyById: Map<string, Company>;
-  memberById: Map<string, WorkspaceMember>;
-  currentUserId?: string;
-  canEdit: boolean;
-  selected: boolean;
-  onToggleSelect: () => void;
-  onMarkReimbursed: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const meta = [
-    formatDate(e.date),
-    !company ? (companyById.get(e.companyId)?.name ?? "—") : null,
-    EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category,
-    e.vendor,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
-    <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-      <div className="flex items-start gap-2.5">
-        {canEdit && e.status === "pending" && (
-          <Checkbox
-            checked={selected}
-            onCheckedChange={onToggleSelect}
-            aria-label={`Select ${e.title || "expense"}`}
-            className="mt-0.5 shrink-0"
-          />
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="min-w-0 truncate text-sm font-medium">{e.title || e.description || "Untitled expense"}</p>
-            <span className="shrink-0 text-sm font-semibold tabular-nums">
-              {formatCurrency(e.amount, e.currency)}
-            </span>
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {!company && (
-              <span
-                className="mr-1 inline-block size-1.5 rounded-full align-middle"
-                style={{ backgroundColor: companyById.get(e.companyId)?.color ?? "#71717A" }}
-              />
-            )}
-            {meta}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <ExpenseStatusBadge status={e.status} />
-              <ExpenseStatusHint expense={e} memberById={memberById} />
-              {e.recurringInterval && (
-                <span title={`Repeats every ${e.recurringInterval}`} className="inline-flex items-center text-muted-foreground-2">
-                  <Repeat className="size-3.5" />
-                </span>
-              )}
-              <AttachmentPreview attachments={e.receipts} label="Receipts" />
-            </div>
-            {canEdit && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={<Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label="More actions" />}
-                >
-                  <MoreHorizontal className="size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {e.status !== "reimbursed" && (
-                    <DropdownMenuItem onClick={onMarkReimbursed}>Mark reimbursed</DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
-                  <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-          {e.createdBy !== currentUserId && memberById.get(e.createdBy) && (
-            <p className="mt-1.5 truncate text-xs text-muted-foreground-2">
-              Logged by {memberById.get(e.createdBy)?.displayName}
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 const INVESTMENT_STATUS_STYLES: Record<InvestmentStatus, string> = {
   active: "bg-primary/10 text-primary",
   exited: "bg-success/10 text-success",
@@ -310,140 +203,6 @@ function InvestmentStatusBadge({ status }: { status: InvestmentStatus }) {
       <span className="size-1.5 shrink-0 rounded-full bg-current" />
       {INVESTMENT_STATUSES.find((s) => s.value === status)?.label ?? status}
     </span>
-  );
-}
-
-/** Mobile stand-in for a row of the Investments table - same reasoning as
- * ExpenseMobileCard above. */
-function InvestmentMobileCard({
-  investment: inv,
-  company,
-  companyById,
-  canEdit,
-  onEdit,
-  onMarkExited,
-  onMarkWrittenOff,
-  onDelete,
-}: {
-  investment: Investment;
-  company?: Company;
-  companyById: Map<string, Company>;
-  canEdit: boolean;
-  onEdit: () => void;
-  onMarkExited: () => void;
-  onMarkWrittenOff: () => void;
-  onDelete: () => void;
-}) {
-  const meta = [
-    formatDate(inv.date),
-    !company ? (companyById.get(inv.companyId)?.name ?? "—") : null,
-    INVESTMENT_TYPES.find((t) => t.value === inv.type)?.label ?? inv.type,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
-    <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-      <div className="flex items-start gap-2.5">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="min-w-0 truncate text-sm font-medium">{inv.description || "Untitled investment"}</p>
-            <span className="shrink-0 text-sm font-semibold tabular-nums">
-              {formatCurrency(inv.amount, inv.currency)}
-            </span>
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {!company && (
-              <span
-                className="mr-1 inline-block size-1.5 rounded-full align-middle"
-                style={{ backgroundColor: companyById.get(inv.companyId)?.color ?? "#71717A" }}
-              />
-            )}
-            {meta}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <InvestmentStatusBadge status={inv.status} />
-              <AttachmentPreview attachments={inv.documents} label="Documents" />
-            </div>
-            {canEdit && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={<Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label="More actions" />}
-                >
-                  <MoreHorizontal className="size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
-                  {inv.status === "active" && (
-                    <>
-                      <DropdownMenuItem onClick={onMarkExited}>Mark exited</DropdownMenuItem>
-                      <DropdownMenuItem onClick={onMarkWrittenOff}>Mark written off</DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Mobile stand-in for a row of the Vendors table - same reasoning as
- * ExpenseMobileCard above. */
-function VendorMobileCard({
-  vendor: v,
-  company,
-  companyById,
-  canEdit,
-  onEdit,
-  onDelete,
-}: {
-  vendor: Vendor;
-  company?: Company;
-  companyById: Map<string, Company>;
-  canEdit: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{v.name}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {[!company ? (companyById.get(v.companyId)?.name ?? "—") : null, v.category]
-              .filter(Boolean)
-              .join(" · ") || "—"}
-          </p>
-          <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-            <p className="truncate">{v.contactEmail ?? "—"}</p>
-            <p className="truncate">{v.contactPhone ?? "—"}</p>
-            <p className="truncate">{v.website ?? "—"}</p>
-          </div>
-        </div>
-        {canEdit && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label="More actions" />}
-            >
-              <MoreHorizontal className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -923,185 +682,152 @@ export function FinancePanel({ company }: { company?: Company }) {
                 description="Try a different search or clear the filters above."
               />
             ) : (
-              <>
-                {canEdit && selectablePendingIds.length > 0 && (
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground sm:hidden">
-                    <Checkbox
-                      checked={selectablePendingIds.every((id) => selectedExpenseIds.has(id))}
-                      onCheckedChange={toggleSelectAllPending}
-                      aria-label="Select all pending expenses"
-                    />
-                    Select all pending
-                  </label>
-                )}
-                <div className="space-y-2 sm:hidden">
-                  {visibleExpenses.map((e) => (
-                    <ExpenseMobileCard
-                      key={e.id}
-                      expense={e}
-                      company={company}
-                      companyById={companyById}
-                      memberById={memberById}
-                      currentUserId={user?.uid}
-                      canEdit={canEdit}
-                      selected={selectedExpenseIds.has(e.id)}
-                      onToggleSelect={() => toggleExpenseSelected(e.id)}
-                      onMarkReimbursed={() => setReimburseTargetIds([e.id])}
-                      onEdit={() => {
-                        setEditingExpense(e);
-                        setExpenseDialogOpen(true);
-                      }}
-                      onDelete={() => handleDeleteExpense(e)}
-                    />
-                  ))}
-                </div>
-                <div className="hidden overflow-hidden rounded-xl border border-border shadow-sm sm:block">
-                  <Table>
-                    <TableHeader className="bg-surface">
-                      <TableRow className="hover:bg-transparent">
+              <div className="overflow-hidden rounded-xl border border-border shadow-sm">
+                <Table>
+                  <TableHeader className="bg-surface">
+                    <TableRow className="hover:bg-transparent">
+                      {canEdit && (
+                        <TableHead className="w-8">
+                          {selectablePendingIds.length > 0 && (
+                            <Checkbox
+                              checked={selectablePendingIds.every((id) => selectedExpenseIds.has(id))}
+                              onCheckedChange={toggleSelectAllPending}
+                              aria-label="Select all pending expenses"
+                            />
+                          )}
+                        </TableHead>
+                      )}
+                      <TableHead>
+                        <ExpenseSortHeader label="Date" sortKey="date" sort={expenseSort} onSort={toggleExpenseSort} />
+                      </TableHead>
+                      {!company && (
+                        <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
+                      )}
+                      <TableHead className="text-xs font-medium text-muted-foreground">Expense</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Category</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Vendor</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
+                      <TableHead className="text-right">
+                        <ExpenseSortHeader label="Amount" sortKey="amount" sort={expenseSort} onSort={toggleExpenseSort} align="right" />
+                      </TableHead>
+                      {canEdit && <TableHead />}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visibleExpenses.map((e) => (
+                      <TableRow key={e.id} className="hover:bg-secondary/40">
                         {canEdit && (
-                          <TableHead className="w-8">
-                            {selectablePendingIds.length > 0 && (
+                          <TableCell className="py-2">
+                            {e.status === "pending" && (
                               <Checkbox
-                                checked={selectablePendingIds.every((id) => selectedExpenseIds.has(id))}
-                                onCheckedChange={toggleSelectAllPending}
-                                aria-label="Select all pending expenses"
+                                checked={selectedExpenseIds.has(e.id)}
+                                onCheckedChange={() => toggleExpenseSelected(e.id)}
+                                aria-label={`Select ${e.title || "expense"}`}
                               />
                             )}
-                          </TableHead>
+                          </TableCell>
                         )}
-                        <TableHead>
-                          <ExpenseSortHeader label="Date" sortKey="date" sort={expenseSort} onSort={toggleExpenseSort} />
-                        </TableHead>
+                        <TableCell className="py-2 text-sm text-muted-foreground">
+                          {formatDate(e.date)}
+                        </TableCell>
                         {!company && (
-                          <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Company</TableHead>
-                        )}
-                        <TableHead className="text-xs font-medium text-muted-foreground">Expense</TableHead>
-                        <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Category</TableHead>
-                        <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Vendor</TableHead>
-                        <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
-                        <TableHead className="text-right">
-                          <ExpenseSortHeader label="Amount" sortKey="amount" sort={expenseSort} onSort={toggleExpenseSort} align="right" />
-                        </TableHead>
-                        {canEdit && <TableHead />}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {visibleExpenses.map((e) => (
-                        <TableRow key={e.id} className="hover:bg-secondary/40">
-                          {canEdit && (
-                            <TableCell className="py-2">
-                              {e.status === "pending" && (
-                                <Checkbox
-                                  checked={selectedExpenseIds.has(e.id)}
-                                  onCheckedChange={() => toggleExpenseSelected(e.id)}
-                                  aria-label={`Select ${e.title || "expense"}`}
-                                />
-                              )}
-                            </TableCell>
-                          )}
-                          <TableCell className="py-2 text-sm text-muted-foreground">
-                            {formatDate(e.date)}
-                          </TableCell>
-                          {!company && (
-                            <TableCell className="hidden py-2 md:table-cell">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className="size-2 rounded-full"
-                                  style={{ backgroundColor: companyById.get(e.companyId)?.color ?? "#71717A" }}
-                                />
-                                <span className="text-sm">{companyById.get(e.companyId)?.name ?? "—"}</span>
-                              </div>
-                            </TableCell>
-                          )}
-                          <TableCell className="max-w-36 py-2 lg:max-w-56">
-                            <div className="flex items-center gap-1.5">
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium">
-                                  {e.title || e.description || "Untitled expense"}
-                                </p>
-                                {e.description && e.title && (
-                                  <p className="truncate text-xs text-muted-foreground">{e.description}</p>
-                                )}
-                                {/* Only shown for expenses someone else logged - in a
-                                    single-member workspace every row would say "Logged
-                                    by You", which is just noise. */}
-                                {e.createdBy !== user?.uid && memberById.get(e.createdBy) && (
-                                  <p className="hidden truncate text-xs text-muted-foreground-2 lg:block">
-                                    Logged by {memberById.get(e.createdBy)?.displayName}
-                                  </p>
-                                )}
-                              </div>
-                              {e.recurringInterval && (
-                                <span
-                                  title={`Repeats every ${e.recurringInterval}`}
-                                  className="shrink-0 text-muted-foreground-2"
-                                >
-                                  <Repeat className="size-3.5" />
-                                </span>
-                              )}
-                              <AttachmentPreview attachments={e.receipts} label="Receipts" />
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden py-2 text-sm capitalize text-muted-foreground lg:table-cell">
-                            {EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category}
-                          </TableCell>
-                          <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
-                            {e.vendor || "—"}
-                          </TableCell>
                           <TableCell className="py-2">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <ExpenseStatusBadge status={e.status} />
-                              <ExpenseStatusHint expense={e} memberById={memberById} />
-                              {canEdit && e.status !== "reimbursed" && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 gap-1 px-2 text-xs"
-                                  onClick={() => setReimburseTargetIds([e.id])}
-                                >
-                                  <CircleCheck className="size-3" />
-                                  Reimbursed
-                                </Button>
-                              )}
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="size-2 rounded-full"
+                                style={{ backgroundColor: companyById.get(e.companyId)?.color ?? "#71717A" }}
+                              />
+                              <span className="text-sm">{companyById.get(e.companyId)?.name ?? "—"}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="py-2 text-right text-sm font-medium tabular-nums">
-                            {formatCurrency(e.amount, e.currency)}
-                          </TableCell>
-                          {canEdit && (
-                            <TableCell className="py-2 text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger
-                                  render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
+                        )}
+                        <TableCell className="max-w-36 py-2 lg:max-w-56">
+                          <div className="flex items-center gap-1.5">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">
+                                {e.title || e.description || "Untitled expense"}
+                              </p>
+                              {e.description && e.title && (
+                                <p className="truncate text-xs text-muted-foreground">{e.description}</p>
+                              )}
+                              {/* Only shown for expenses someone else logged - in a
+                                  single-member workspace every row would say "Logged
+                                  by You", which is just noise. */}
+                              {e.createdBy !== user?.uid && memberById.get(e.createdBy) && (
+                                <p className="truncate text-xs text-muted-foreground-2">
+                                  Logged by {memberById.get(e.createdBy)?.displayName}
+                                </p>
+                              )}
+                            </div>
+                            {e.recurringInterval && (
+                              <span
+                                title={`Repeats every ${e.recurringInterval}`}
+                                className="shrink-0 text-muted-foreground-2"
+                              >
+                                <Repeat className="size-3.5" />
+                              </span>
+                            )}
+                            <AttachmentPreview attachments={e.receipts} label="Receipts" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 text-sm capitalize text-muted-foreground">
+                          {EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category}
+                        </TableCell>
+                        <TableCell className="py-2 text-sm text-muted-foreground">
+                          {e.vendor || "—"}
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <ExpenseStatusBadge status={e.status} />
+                            <ExpenseStatusHint expense={e} memberById={memberById} />
+                            {canEdit && e.status !== "reimbursed" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 gap-1 px-2 text-xs"
+                                onClick={() => setReimburseTargetIds([e.id])}
+                              >
+                                <CircleCheck className="size-3" />
+                                Reimbursed
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 text-right text-sm font-medium tabular-nums">
+                          {formatCurrency(e.amount, e.currency)}
+                        </TableCell>
+                        {canEdit && (
+                          <TableCell className="py-2 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setEditingExpense(e);
+                                    setExpenseDialogOpen(true);
+                                  }}
                                 >
-                                  <MoreHorizontal className="size-4" />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setEditingExpense(e);
-                                      setExpenseDialogOpen(true);
-                                    }}
-                                  >
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    variant="destructive"
-                                    onClick={() => handleDeleteExpense(e)}
-                                  >
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </>
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={() => handleDeleteExpense(e)}
+                                >
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </TabsContent>
 
@@ -1259,122 +985,102 @@ export function FinancePanel({ company }: { company?: Company }) {
                 description={company ? `Track capital you've put into ${company.name}.` : "Track capital put into companies and other assets."}
               />
             ) : (
-              <>
-                <div className="space-y-2 sm:hidden">
-                  {scopedInvestments.map((inv) => (
-                    <InvestmentMobileCard
-                      key={inv.id}
-                      investment={inv}
-                      company={company}
-                      companyById={companyById}
-                      canEdit={canEdit}
-                      onEdit={() => {
-                        setEditingInvestment(inv);
-                        setInvestmentDialogOpen(true);
-                      }}
-                      onMarkExited={() => handleMarkInvestmentStatus(inv.id, "exited")}
-                      onMarkWrittenOff={() => handleMarkInvestmentStatus(inv.id, "written_off")}
-                      onDelete={() => handleDeleteInvestment(inv)}
-                    />
-                  ))}
-                </div>
-                <div className="hidden overflow-hidden rounded-xl border border-border shadow-sm sm:block">
-                  <Table>
-                    <TableHeader className="bg-surface">
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="text-xs font-medium text-muted-foreground">Date</TableHead>
+              <div className="overflow-hidden rounded-xl border border-border shadow-sm">
+                <Table>
+                  <TableHeader className="bg-surface">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="text-xs font-medium text-muted-foreground">Date</TableHead>
+                      {!company && (
+                        <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
+                      )}
+                      <TableHead className="text-xs font-medium text-muted-foreground">Investment</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
+                      <TableHead className="text-right text-xs font-medium text-muted-foreground">
+                        Amount
+                      </TableHead>
+                      {canEdit && <TableHead />}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scopedInvestments.map((inv) => (
+                      <TableRow key={inv.id} className="hover:bg-secondary/40">
+                        <TableCell className="py-2 text-sm text-muted-foreground">
+                          {formatDate(inv.date)}
+                        </TableCell>
                         {!company && (
-                          <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Company</TableHead>
-                        )}
-                        <TableHead className="text-xs font-medium text-muted-foreground">Investment</TableHead>
-                        <TableHead className="text-xs font-medium text-muted-foreground">Status</TableHead>
-                        <TableHead className="text-right text-xs font-medium text-muted-foreground">
-                          Amount
-                        </TableHead>
-                        {canEdit && <TableHead />}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {scopedInvestments.map((inv) => (
-                        <TableRow key={inv.id} className="hover:bg-secondary/40">
-                          <TableCell className="py-2 text-sm text-muted-foreground">
-                            {formatDate(inv.date)}
-                          </TableCell>
-                          {!company && (
-                            <TableCell className="hidden py-2 md:table-cell">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className="size-2 rounded-full"
-                                  style={{
-                                    backgroundColor: companyById.get(inv.companyId)?.color ?? "#71717A",
-                                  }}
-                                />
-                                <span className="text-sm">
-                                  {companyById.get(inv.companyId)?.name ?? "—"}
-                                </span>
-                              </div>
-                            </TableCell>
-                          )}
-                          <TableCell className="max-w-36 py-2 lg:max-w-56">
-                            <div className="flex items-center gap-1.5">
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium">{inv.description || "Untitled investment"}</p>
-                                <p className="truncate text-xs text-muted-foreground">
-                                  {INVESTMENT_TYPES.find((t) => t.value === inv.type)?.label ?? inv.type}
-                                </p>
-                              </div>
-                              <AttachmentPreview attachments={inv.documents} label="Documents" />
+                          <TableCell className="py-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="size-2 rounded-full"
+                                style={{
+                                  backgroundColor: companyById.get(inv.companyId)?.color ?? "#71717A",
+                                }}
+                              />
+                              <span className="text-sm">
+                                {companyById.get(inv.companyId)?.name ?? "—"}
+                              </span>
                             </div>
                           </TableCell>
-                          <TableCell className="py-2">
-                            <InvestmentStatusBadge status={inv.status} />
-                          </TableCell>
-                          <TableCell className="py-2 text-right text-sm font-medium tabular-nums">
-                            {formatCurrency(inv.amount, inv.currency)}
-                          </TableCell>
-                          {canEdit && (
-                            <TableCell className="py-2 text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger
-                                  render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
+                        )}
+                        <TableCell className="max-w-36 py-2 lg:max-w-56">
+                          <div className="flex items-center gap-1.5">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">{inv.description || "Untitled investment"}</p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {INVESTMENT_TYPES.find((t) => t.value === inv.type)?.label ?? inv.type}
+                              </p>
+                            </div>
+                            <AttachmentPreview attachments={inv.documents} label="Documents" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <InvestmentStatusBadge status={inv.status} />
+                        </TableCell>
+                        <TableCell className="py-2 text-right text-sm font-medium tabular-nums">
+                          {formatCurrency(inv.amount, inv.currency)}
+                        </TableCell>
+                        {canEdit && (
+                          <TableCell className="py-2 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setEditingInvestment(inv);
+                                    setInvestmentDialogOpen(true);
+                                  }}
                                 >
-                                  <MoreHorizontal className="size-4" />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setEditingInvestment(inv);
-                                      setInvestmentDialogOpen(true);
-                                    }}
-                                  >
-                                    Edit
-                                  </DropdownMenuItem>
-                                  {inv.status === "active" && (
-                                    <>
-                                      <DropdownMenuItem onClick={() => handleMarkInvestmentStatus(inv.id, "exited")}>
-                                        Mark exited
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleMarkInvestmentStatus(inv.id, "written_off")}>
-                                        Mark written off
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  <DropdownMenuItem
-                                    variant="destructive"
-                                    onClick={() => handleDeleteInvestment(inv)}
-                                  >
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </>
+                                  Edit
+                                </DropdownMenuItem>
+                                {inv.status === "active" && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleMarkInvestmentStatus(inv.id, "exited")}>
+                                      Mark exited
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleMarkInvestmentStatus(inv.id, "written_off")}>
+                                      Mark written off
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={() => handleDeleteInvestment(inv)}
+                                >
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </TabsContent>
 
@@ -1408,100 +1114,82 @@ export function FinancePanel({ company }: { company?: Company }) {
                 description="Keep track of who you pay and how to reach them."
               />
             ) : (
-              <>
-                <div className="space-y-2 sm:hidden">
-                  {scopedVendors.map((v) => (
-                    <VendorMobileCard
-                      key={v.id}
-                      vendor={v}
-                      company={company}
-                      companyById={companyById}
-                      canEdit={canEdit}
-                      onEdit={() => {
-                        setEditingVendor(v);
-                        setVendorDialogOpen(true);
-                      }}
-                      onDelete={() => handleDeleteVendor(v.id)}
-                    />
-                  ))}
-                </div>
-                <div className="hidden overflow-hidden rounded-xl border border-border shadow-sm sm:block">
-                  <Table>
-                    <TableHeader className="bg-surface">
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="text-xs font-medium text-muted-foreground">Name</TableHead>
+              <div className="overflow-hidden rounded-xl border border-border shadow-sm">
+                <Table>
+                  <TableHeader className="bg-surface">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="text-xs font-medium text-muted-foreground">Name</TableHead>
+                      {!company && (
+                        <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
+                      )}
+                      <TableHead className="text-xs font-medium text-muted-foreground">Category</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Email</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Phone</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground">Website</TableHead>
+                      {canEdit && <TableHead />}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scopedVendors.map((v) => (
+                      <TableRow key={v.id} className="hover:bg-secondary/40">
+                        <TableCell className="max-w-36 py-2 text-sm font-medium lg:max-w-none">
+                          <span className="block truncate">{v.name}</span>
+                        </TableCell>
                         {!company && (
-                          <TableHead className="text-xs font-medium text-muted-foreground">Company</TableHead>
+                          <TableCell className="py-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="size-2 rounded-full"
+                                style={{ backgroundColor: companyById.get(v.companyId)?.color ?? "#71717A" }}
+                              />
+                              <span className="text-sm">{companyById.get(v.companyId)?.name ?? "—"}</span>
+                            </div>
+                          </TableCell>
                         )}
-                        <TableHead className="text-xs font-medium text-muted-foreground">Category</TableHead>
-                        <TableHead className="hidden text-xs font-medium text-muted-foreground md:table-cell">Email</TableHead>
-                        <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Phone</TableHead>
-                        <TableHead className="hidden text-xs font-medium text-muted-foreground lg:table-cell">Website</TableHead>
-                        {canEdit && <TableHead />}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {scopedVendors.map((v) => (
-                        <TableRow key={v.id} className="hover:bg-secondary/40">
-                          <TableCell className="max-w-36 py-2 text-sm font-medium lg:max-w-none">
-                            <span className="block truncate">{v.name}</span>
-                          </TableCell>
-                          {!company && (
-                            <TableCell className="py-2">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className="size-2 rounded-full"
-                                  style={{ backgroundColor: companyById.get(v.companyId)?.color ?? "#71717A" }}
-                                />
-                                <span className="text-sm">{companyById.get(v.companyId)?.name ?? "—"}</span>
-                              </div>
-                            </TableCell>
-                          )}
-                          <TableCell className="py-2 text-sm text-muted-foreground">
-                            {v.category ?? "—"}
-                          </TableCell>
-                          <TableCell className="hidden py-2 text-sm text-muted-foreground md:table-cell">
-                            {v.contactEmail ?? "—"}
-                          </TableCell>
-                          <TableCell className="hidden py-2 text-sm text-muted-foreground lg:table-cell">
-                            {v.contactPhone ?? "—"}
-                          </TableCell>
-                          <TableCell className="hidden max-w-40 truncate py-2 text-sm text-muted-foreground lg:table-cell">
-                            {v.website ?? "—"}
-                          </TableCell>
-                          {canEdit && (
-                            <TableCell className="py-2 text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger
-                                  render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
+                        <TableCell className="py-2 text-sm text-muted-foreground">
+                          {v.category ?? "—"}
+                        </TableCell>
+                        <TableCell className="py-2 text-sm text-muted-foreground">
+                          {v.contactEmail ?? "—"}
+                        </TableCell>
+                        <TableCell className="py-2 text-sm text-muted-foreground">
+                          {v.contactPhone ?? "—"}
+                        </TableCell>
+                        <TableCell className="max-w-40 truncate py-2 text-sm text-muted-foreground">
+                          {v.website ?? "—"}
+                        </TableCell>
+                        {canEdit && (
+                          <TableCell className="py-2 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={<Button variant="ghost" size="icon" className="size-7" aria-label="More actions" />}
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setEditingVendor(v);
+                                    setVendorDialogOpen(true);
+                                  }}
                                 >
-                                  <MoreHorizontal className="size-4" />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setEditingVendor(v);
-                                      setVendorDialogOpen(true);
-                                    }}
-                                  >
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    variant="destructive"
-                                    onClick={() => handleDeleteVendor(v.id)}
-                                  >
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </>
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={() => handleDeleteVendor(v.id)}
+                                >
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </TabsContent>
         </Tabs>
