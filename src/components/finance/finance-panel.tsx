@@ -747,9 +747,15 @@ export function FinancePanel({ company }: { company?: Company }) {
                               <p className="truncate text-sm font-medium">
                                 {e.title || e.description || "Untitled expense"}
                               </p>
-                              <p className="truncate text-xs text-muted-foreground sm:hidden">
-                                {formatDate(e.date)}
-                                {!company && ` · ${companyById.get(e.companyId)?.name ?? "—"}`}
+                              <p className="text-xs text-muted-foreground sm:hidden">
+                                {[
+                                  formatDate(e.date),
+                                  !company ? companyById.get(e.companyId)?.name ?? "—" : null,
+                                  EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? e.category,
+                                  e.vendor,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
                               </p>
                               {e.description && e.title && (
                                 <p className="hidden truncate text-xs text-muted-foreground sm:block">{e.description}</p>
@@ -783,14 +789,14 @@ export function FinancePanel({ company }: { company?: Company }) {
                         <TableCell className="py-2">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <ExpenseStatusBadge status={e.status} />
-                            <span className={cn(company && "hidden sm:inline")}>
+                            <span className="hidden sm:inline">
                               <ExpenseStatusHint expense={e} memberById={memberById} />
                             </span>
                             {canEdit && e.status !== "reimbursed" && (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className={cn("h-6 gap-1 px-2 text-xs", company && "hidden sm:inline-flex")}
+                                className="hidden h-6 gap-1 px-2 text-xs sm:inline-flex"
                                 onClick={() => setReimburseTargetIds([e.id])}
                               >
                                 <CircleCheck className="size-3" />
@@ -811,7 +817,7 @@ export function FinancePanel({ company }: { company?: Company }) {
                                 <MoreHorizontal className="size-4" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                {company && e.status !== "reimbursed" && (
+                                {e.status !== "reimbursed" && (
                                   <DropdownMenuItem className="sm:hidden" onClick={() => setReimburseTargetIds([e.id])}>
                                     Mark reimbursed
                                   </DropdownMenuItem>
