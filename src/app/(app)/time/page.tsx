@@ -33,7 +33,7 @@ import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { deleteTimeEntry, findRunningEntry, useTimeEntries } from "@/lib/data/time-entries";
 import { downloadCsv } from "@/lib/csv";
-import { formatDateTime, formatHours, sumHours } from "@/lib/format";
+import { formatDateTime, formatHours, sumHours, toDateInputValue } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const ALL_MEMBERS = "all";
@@ -133,10 +133,10 @@ export default function TimeTrackingPage() {
 
   function handleExportCsv() {
     downloadCsv(
-      `time-entries-${new Date().toISOString().slice(0, 10)}.csv`,
+      `time-entries-${toDateInputValue()}.csv`,
       ["Date", "Company", "Project", "Task", "Logged for", "Duration (hours)", "Billable", "Member", "Note"],
       visibleEntries.map((e) => [
-        new Date(e.startedAt).toISOString().slice(0, 10),
+        toDateInputValue(e.startedAt),
         companyById.get(e.companyId)?.name ?? "",
         e.projectId ? (projectById.get(e.projectId)?.name ?? "") : "",
         e.taskId ? (taskById.get(e.taskId)?.title ?? "") : "",

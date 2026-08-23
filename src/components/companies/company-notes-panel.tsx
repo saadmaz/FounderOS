@@ -9,13 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { addCompanyNote, deleteCompanyNote, useCompanyNotes } from "@/lib/data/company-notes";
-import { formatDate } from "@/lib/format";
+import { formatDate, toDateInputValue } from "@/lib/format";
 import type { Company } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
-
-function toDateInputValue(ms: number) {
-  return new Date(ms).toISOString().slice(0, 10);
-}
 
 /**
  * Notes tab for a single company's detail page - a dated journal, newest

@@ -28,6 +28,7 @@ import { useCompanies } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { useMembers } from "@/lib/data/members";
 import { createProject, updateProject } from "@/lib/data/projects";
+import { toDateInputValue } from "@/lib/format";
 import { priorityLabel } from "@/lib/labels";
 import { PRIORITIES, type Project } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -55,8 +56,8 @@ function defaultsFor(project?: Project | null, defaultCompanyId?: string): FormV
       priority: project.priority,
       estimatedHours: project.estimatedHours !== undefined ? String(project.estimatedHours) : "",
       description: project.description ?? "",
-      startDate: project.startDate ? new Date(project.startDate).toISOString().slice(0, 10) : "",
-      endDate: project.endDate ? new Date(project.endDate).toISOString().slice(0, 10) : "",
+      startDate: project.startDate ? toDateInputValue(project.startDate) : "",
+      endDate: project.endDate ? toDateInputValue(project.endDate) : "",
       ownerId: project.ownerId ?? NO_OWNER,
     };
   }
@@ -116,8 +117,8 @@ export function ProjectFormDialog({
         description: values.description || undefined,
         priority: values.priority,
         estimatedHours: values.estimatedHours ? Number(values.estimatedHours) : undefined,
-        startDate: values.startDate ? new Date(values.startDate).getTime() : null,
-        endDate: values.endDate ? new Date(values.endDate).getTime() : null,
+        startDate: values.startDate ? new Date(`${values.startDate}T00:00:00`).getTime() : null,
+        endDate: values.endDate ? new Date(`${values.endDate}T00:00:00`).getTime() : null,
         ownerId: values.ownerId && values.ownerId !== NO_OWNER ? values.ownerId : undefined,
       });
       if (isEditing && project) {

@@ -31,6 +31,7 @@ import { recordProgressSnapshot } from "@/lib/data/goal-progress";
 import { createGoal, deriveGoalStatus, updateGoal } from "@/lib/data/goals";
 import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
+import { toDateInputValue } from "@/lib/format";
 import { GOAL_CATEGORIES, GOAL_STATUSES, type Goal } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
@@ -63,7 +64,7 @@ function defaultsFor(goal?: Goal | null, defaultCompanyId?: string): FormValues 
       targetValue: goal.targetValue !== undefined ? String(goal.targetValue) : "",
       currentValue: goal.currentValue !== undefined ? String(goal.currentValue) : "",
       unit: goal.unit ?? "",
-      targetDate: goal.targetDate ? new Date(goal.targetDate).toISOString().slice(0, 10) : "",
+      targetDate: goal.targetDate ? toDateInputValue(goal.targetDate) : "",
       linkedTaskIds: goal.linkedTaskIds ?? [],
       linkedProjectIds: goal.linkedProjectIds ?? [],
     };

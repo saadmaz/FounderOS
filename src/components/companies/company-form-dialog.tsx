@@ -38,6 +38,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { createCompany, updateCompany } from "@/lib/data/companies";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
+import { toDateInputValue } from "@/lib/format";
 import { COMPANY_TYPE_ICONS } from "@/lib/company-type-icons";
 import { COMPANY_TYPES, type Company, type CompanyType } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -144,7 +145,7 @@ function defaultsFor(company?: Company | null, defaultType?: CompanyType): FormV
     youtube: company?.links?.youtube ?? "",
     other: company?.links?.other ?? "",
     founder: company?.founder ?? "",
-    startedAt: company?.startedAt ? new Date(company.startedAt).toISOString().slice(0, 10) : "",
+    startedAt: company?.startedAt ? toDateInputValue(company.startedAt) : "",
     notes: company?.notes ?? "",
   };
 }

@@ -31,6 +31,7 @@ import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { useMembers } from "@/lib/data/members";
 import { useProjects } from "@/lib/data/projects";
 import { createRecurringTasks, createTask, updateTask } from "@/lib/data/tasks";
+import { toDateInputValue } from "@/lib/format";
 import { priorityLabel, taskStatusLabel } from "@/lib/labels";
 import { expandRecurrence, MAX_RECURRENCE_INSTANCES } from "@/lib/recurrence";
 import { PRIORITIES, RECURRENCE_FREQUENCIES, TASK_STATUSES, type Subtask, type Task } from "@/lib/types";
@@ -81,7 +82,7 @@ function defaultsFor(task?: Task | null, defaultCompanyId?: string, defaultDescr
       projectId: task.projectId ?? "",
       priority: task.priority,
       status: task.status,
-      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : "",
+      dueDate: task.dueDate ? toDateInputValue(task.dueDate) : "",
       description: task.description ?? "",
       ownerId: task.ownerId ?? NO_OWNER,
       estimatedHours: task.estimatedHours !== undefined ? String(task.estimatedHours) : "",
@@ -205,17 +206,17 @@ export function TaskFormDialog({
       if (isEditing && task) {
         await updateTask(workspace.id, task.id, {
           ...base,
-          dueDate: values.dueDate ? new Date(values.dueDate).getTime() : null,
+          dueDate: values.dueDate ? new Date(`${values.dueDate}T00:00:00`).getTime() : null,
         });
         toast.success("Task updated");
       } else if (values.recurrenceFreq === "none") {
         await createTask(workspace.id, {
           ...base,
-          dueDate: values.dueDate ? new Date(values.dueDate).getTime() : null,
+          dueDate: values.dueDate ? new Date(`${values.dueDate}T00:00:00`).getTime() : null,
         });
         toast.success("Task created");
       } else {
-        const baseDate = values.dueDate ? new Date(values.dueDate).getTime() : Date.now();
+        const baseDate = values.dueDate ? new Date(`${values.dueDate}T00:00:00`).getTime() : Date.now();
         const dates = expandRecurrence(baseDate, {
           frequency: values.recurrenceFreq,
           interval: Number(values.recurrenceInterval) || 1,

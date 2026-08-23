@@ -149,13 +149,13 @@ export function DealFormDialog({
         stage: "prospecting" as const,
         probability: values.probability ? Number(values.probability) : undefined,
         expectedCloseDate: values.expectedCloseDate
-          ? new Date(values.expectedCloseDate).getTime()
+          ? new Date(`${values.expectedCloseDate}T00:00:00`).getTime()
           : null,
         ownerId: values.ownerId || undefined,
         source: values.source || undefined,
         exitCriteria: values.exitCriteria || undefined,
         nextStep: values.nextStep || undefined,
-        nextStepDate: values.nextStepDate ? new Date(values.nextStepDate).getTime() : null,
+        nextStepDate: values.nextStepDate ? new Date(`${values.nextStepDate}T00:00:00`).getTime() : null,
       });
       const ref = await createDeal(workspace.id, payload, user.uid);
       if (values.notes?.trim()) {

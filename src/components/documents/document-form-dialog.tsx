@@ -24,12 +24,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { updateDocument, uploadDocument } from "@/lib/data/documents";
-import { formatFileSize } from "@/lib/format";
+import { formatFileSize, toDateInputValue } from "@/lib/format";
 import type { Company, DocumentFile } from "@/lib/types";
-
-function toDateInputValue(ms: number) {
-  return new Date(ms).toISOString().slice(0, 10);
-}
 
 /**
  * Create/edit dialog for a document. Uploading and editing share the same

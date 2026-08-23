@@ -43,7 +43,7 @@ import {
   useDealActivity,
 } from "@/lib/data/deals";
 import { deleteDocument, useDocumentsByDeal } from "@/lib/data/documents";
-import { formatCurrency, formatDate, formatDateTime, formatFileSize, initials } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime, formatFileSize, initials, toDateInputValue } from "@/lib/format";
 import {
   DEAL_SOURCES,
   DEAL_STAGES,
@@ -57,11 +57,11 @@ import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 function toDateInput(ms: number | null | undefined) {
   if (!ms) return "";
-  return new Date(ms).toISOString().slice(0, 10);
+  return toDateInputValue(ms);
 }
 
 function fromDateInput(v: string): number | null {
-  return v ? new Date(v).getTime() : null;
+  return v ? new Date(`${v}T00:00:00`).getTime() : null;
 }
 
 type Draft = {

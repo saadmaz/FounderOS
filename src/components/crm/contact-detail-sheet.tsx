@@ -48,7 +48,7 @@ import { setTaskStatus, useTasksByContact, createTask, deleteTask } from "@/lib/
 import { DocumentFormDialog } from "@/components/documents/document-form-dialog";
 import { DealFormDialog } from "@/components/crm/deal-form-dialog";
 import { SectionLabel } from "@/components/crm/section-label";
-import { formatCurrency, formatDate, formatDateTime, formatFileSize, initials } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime, formatFileSize, initials, toDateInputValue } from "@/lib/format";
 import {
   CONTACT_SOURCES,
   DEAL_STAGES,
@@ -62,11 +62,11 @@ import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 function toDateInput(ms: number | null | undefined) {
   if (!ms) return "";
-  return new Date(ms).toISOString().slice(0, 10);
+  return toDateInputValue(ms);
 }
 
 function fromDateInput(v: string): number | null {
-  return v ? new Date(v).getTime() : null;
+  return v ? new Date(`${v}T00:00:00`).getTime() : null;
 }
 
 type Draft = {

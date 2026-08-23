@@ -29,6 +29,7 @@ import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { logManualEntry } from "@/lib/data/time-entries";
+import { toDateInputValue } from "@/lib/format";
 import { timeEntrySubjectLabel } from "@/lib/labels";
 import type { Company } from "@/lib/types";
 
@@ -77,7 +78,7 @@ export function ManualEntryDialog({
       companyId: companies[0]?.id ?? "",
       projectId: "",
       taskId: "",
-      date: new Date().toISOString().slice(0, 10),
+      date: toDateInputValue(),
       startTime: "09:00",
       endTime: "10:00",
       billable: true,
