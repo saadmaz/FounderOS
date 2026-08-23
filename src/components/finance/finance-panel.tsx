@@ -76,7 +76,7 @@ import {
 import { deleteInvestment, setInvestmentStatus, useInvestments } from "@/lib/data/investments";
 import { useMembers } from "@/lib/data/members";
 import { deleteVendor, useVendors } from "@/lib/data/vendors";
-import { formatCurrency, formatDate, formatMixedCurrencyTotal } from "@/lib/format";
+import { formatCurrency, formatDate, formatMixedCurrencyTotal, toDateInputValue } from "@/lib/format";
 import { scrollMainToTop } from "@/lib/scroll";
 import { DATE_RANGE_PRESETS, dateRangePresetBounds, type DateRangePreset } from "@/lib/date-range";
 import type {
@@ -433,11 +433,11 @@ export function FinancePanel({ company }: { company?: Company }) {
       : ["Date", "Company", "Title", "Category", "Vendor", "Status", "Currency", "Amount", "Logged by", "Description"];
     downloadCsv(
       company
-        ? `${company.name}-expenses-${new Date().toISOString().slice(0, 10)}.csv`
-        : `expenses-${new Date().toISOString().slice(0, 10)}.csv`,
+        ? `${company.name}-expenses-${toDateInputValue()}.csv`
+        : `expenses-${toDateInputValue()}.csv`,
       header,
       visibleExpenses.map((e) => {
-        const row: (string | number)[] = [new Date(e.date).toISOString().slice(0, 10)];
+        const row: (string | number)[] = [toDateInputValue(e.date)];
         if (!company) row.push(companyById.get(e.companyId)?.name ?? "");
         row.push(
           e.title,

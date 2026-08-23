@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createBudget, updateBudget } from "@/lib/data/budgets";
+import { toDateInputValue } from "@/lib/format";
 import { BUDGET_PERIODS, EXPENSE_CATEGORIES, type Budget, type Company } from "@/lib/types";
 
 const schema = z.object({
@@ -72,7 +73,7 @@ export function BudgetFormDialog({
       companyId: companies[0]?.id ?? "",
       category: "software",
       period: "monthly",
-      periodStart: new Date().toISOString().slice(0, 10),
+      periodStart: toDateInputValue(),
       allocatedAmount: "",
       currency: companies[0]?.currency ?? "LKR",
       recurring: false,
@@ -87,7 +88,7 @@ export function BudgetFormDialog({
         companyId: budget.companyId,
         category: budget.category,
         period: budget.period,
-        periodStart: new Date(budget.periodStart).toISOString().slice(0, 10),
+        periodStart: toDateInputValue(budget.periodStart),
         allocatedAmount: String(budget.allocatedAmount),
         currency: budget.currency,
         recurring: budget.recurring ?? false,
@@ -98,7 +99,7 @@ export function BudgetFormDialog({
         companyId: companies[0]?.id ?? "",
         category: "software",
         period: "monthly",
-        periodStart: new Date().toISOString().slice(0, 10),
+        periodStart: toDateInputValue(),
         allocatedAmount: "",
         currency: companies[0]?.currency ?? "LKR",
         recurring: false,

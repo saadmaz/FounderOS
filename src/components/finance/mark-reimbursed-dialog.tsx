@@ -13,8 +13,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { toDateInputValue } from "@/lib/format";
 
-const todayValue = () => new Date().toISOString().slice(0, 10);
+const todayValue = () => toDateInputValue();
 
 /**
  * Confirms marking one or more expenses reimbursed and lets the date be

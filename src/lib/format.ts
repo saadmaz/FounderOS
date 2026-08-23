@@ -85,6 +85,26 @@ export function formatHours(hours: number) {
   return `${hours.toFixed(1)}h`;
 }
 
+/**
+ * Local-calendar-date "YYYY-MM-DD" for a `<input type="date">` value -
+ * pairs with the `new Date(\`${value}T00:00:00\`).getTime()` every
+ * date-picker form uses to turn that string back into a timestamp (that
+ * constructor reads a timezone-less string as local time). Reading a stored
+ * timestamp back with `.toISOString()` instead reads it as UTC, which
+ * silently shifts the date by a day in any timezone with a non-zero
+ * offset - e.g. a date saved as local midnight in UTC+5:30 becomes 18:30 the
+ * *previous* day in UTC, so re-opening the edit form would show, and then
+ * resave, the wrong date. Always use this (not `.toISOString().slice(0,10)`)
+ * to turn a stored timestamp into a date-input value.
+ */
+export function toDateInputValue(ms: number = Date.now()): string {
+  const d = new Date(ms);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function formatDate(ms: number | null | undefined) {
   if (!ms) return "—";
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(ms);

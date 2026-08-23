@@ -29,6 +29,7 @@ import { AttachmentField } from "@/components/finance/attachment-field";
 import { deleteCloudinaryAsset, uploadDocumentToCloudinary } from "@/lib/cloudinary";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createExpense, setExpenseRecurring, setExpenseStatus, updateExpense } from "@/lib/data/expenses";
+import { toDateInputValue } from "@/lib/format";
 import {
   BUDGET_PERIODS,
   EXPENSE_CATEGORIES,
@@ -67,9 +68,9 @@ const emptyDefaults = (companies: Company[]): FormValues => ({
   vendor: "",
   amount: "",
   currency: companies[0]?.currency ?? "LKR",
-  date: new Date().toISOString().slice(0, 10),
+  date: toDateInputValue(),
   status: "pending",
-  reimbursedAt: new Date().toISOString().slice(0, 10),
+  reimbursedAt: toDateInputValue(),
   recurring: false,
   recurringInterval: "monthly",
   description: "",
@@ -126,9 +127,9 @@ export function ExpenseFormDialog({
         vendor: expense.vendor ?? "",
         amount: String(expense.amount),
         currency: expense.currency,
-        date: new Date(expense.date).toISOString().slice(0, 10),
+        date: toDateInputValue(expense.date),
         status: expense.status,
-        reimbursedAt: new Date(expense.reimbursedAt ?? Date.now()).toISOString().slice(0, 10),
+        reimbursedAt: toDateInputValue(expense.reimbursedAt ?? Date.now()),
         recurring: Boolean(expense.recurringInterval),
         recurringInterval: expense.recurringInterval ?? "monthly",
         description: expense.description ?? "",

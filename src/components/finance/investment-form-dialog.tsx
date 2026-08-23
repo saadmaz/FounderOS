@@ -30,6 +30,7 @@ import { CurrencySelect } from "@/components/finance/currency-select";
 import { deleteCloudinaryAsset, uploadDocumentToCloudinary } from "@/lib/cloudinary";
 import { omitUndefined } from "@/lib/data/firestore-helpers";
 import { createInvestment, updateInvestment } from "@/lib/data/investments";
+import { toDateInputValue } from "@/lib/format";
 import {
   INVESTMENT_STATUSES,
   INVESTMENT_TYPES,
@@ -71,7 +72,7 @@ const emptyDefaults = (companies: Company[]): FormValues => ({
   description: "",
   amount: "",
   currency: companies[0]?.currency ?? "LKR",
-  date: new Date().toISOString().slice(0, 10),
+  date: toDateInputValue(),
   note: "",
 });
 
@@ -124,7 +125,7 @@ export function InvestmentFormDialog({
         description: investment.description,
         amount: String(investment.amount),
         currency: investment.currency,
-        date: new Date(investment.date).toISOString().slice(0, 10),
+        date: toDateInputValue(investment.date),
         note: investment.note ?? "",
       });
     } else {
