@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Paperclip } from "lucide-react";
+import { Download, FileText, Paperclip } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -57,19 +57,33 @@ export function AttachmentPreview({
         </PopoverHeader>
         <div className="space-y-1">
           {attachments.map((att) => (
-            <a
+            <div
               key={att.publicId}
-              href={att.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-secondary"
+              className="flex items-center gap-1 rounded-md pl-1.5 pr-1 py-1 hover:bg-secondary"
             >
-              <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate text-xs">{att.name}</span>
-              <span className="shrink-0 text-[11px] text-muted-foreground-2">
-                {formatFileSize(att.size)}
-              </span>
-            </a>
+              <a
+                href={att.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-w-0 flex-1 items-center gap-2"
+              >
+                <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate text-xs">{att.name}</span>
+                <span className="shrink-0 text-[11px] text-muted-foreground-2">
+                  {formatFileSize(att.size)}
+                </span>
+              </a>
+              <a
+                href={att.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Download ${att.name}`}
+                aria-label={`Download ${att.name}`}
+                className="shrink-0 rounded p-1 text-muted-foreground-2 hover:text-foreground"
+              >
+                <Download className="size-3.5" />
+              </a>
+            </div>
           ))}
         </div>
       </PopoverContent>
