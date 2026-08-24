@@ -4,7 +4,8 @@ import { Calendar, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { MeetingCard, isUpcoming } from "@/components/meetings/meeting-card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MeetingCard, meetingDateBucket, type MeetingDateFilter } from "@/components/meetings/meeting-card";
 import { MeetingFormDialog } from "@/components/meetings/meeting-form-dialog";
 import { MeetingNotesDialog } from "@/components/meetings/meeting-notes-dialog";
 import { MeetingNotesViewDialog } from "@/components/meetings/meeting-notes-view-dialog";
@@ -18,8 +19,15 @@ import { deleteMeeting, deleteMeetingSeries, setMeetingStatus, useMeetings } fro
 import { useMembers } from "@/lib/data/members";
 import { formatDate } from "@/lib/format";
 import { buildIcsEvent, downloadIcs } from "@/lib/ics";
+import { scrollMainToTop } from "@/lib/scroll";
 import type { Meeting, MeetingStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
+
+const EMPTY_MESSAGES: Record<MeetingDateFilter, string> = {
+  today: "No meetings today.",
+  upcoming: "No upcoming meetings scheduled.",
+  past: "No past meetings yet.",
+};
 
 export default function MeetingsPage() {
   const { workspace } = useWorkspace();
@@ -32,6 +40,10 @@ export default function MeetingsPage() {
   const [notesFor, setNotesFor] = useState<Meeting | null>(null);
   const [viewingNotesFor, setViewingNotesFor] = useState<Meeting | null>(null);
   const [convertingMeeting, setConvertingMeeting] = useState<Meeting | null>(null);
+  // Defaults to "today" - same reasoning as the per-company Meetings tab
+  // (see CompanyMeetingsPanel): landing on "what's happening today" beats
+  // scrolling past every future recurring instance to find it.
+  const [dateFilter, setDateFilter] = useState<MeetingDateFilter>("today");
 
   // Archiving a company tucks its meetings out of this shared list - still
   // visible on the company's own page, just not cluttering everyone else's.
@@ -42,14 +54,16 @@ export default function MeetingsPage() {
     return meetings.filter((m) => !archivedCompanyIds.has(m.companyId));
   }, [meetings, companies]);
 
-  const upcoming = useMemo(
-    () => visibleMeetings.filter(isUpcoming).sort((a, b) => a.scheduledAt - b.scheduledAt),
-    [visibleMeetings]
-  );
-  const past = useMemo(
-    () => visibleMeetings.filter((m) => !isUpcoming(m)).sort((a, b) => b.scheduledAt - a.scheduledAt),
-    [visibleMeetings]
-  );
+  const buckets = useMemo(() => {
+    const grouped: Record<MeetingDateFilter, Meeting[]> = { today: [], upcoming: [], past: [] };
+    for (const m of visibleMeetings) grouped[meetingDateBucket(m)].push(m);
+    grouped.today.sort((a, b) => a.scheduledAt - b.scheduledAt);
+    grouped.upcoming.sort((a, b) => a.scheduledAt - b.scheduledAt);
+    grouped.past.sort((a, b) => b.scheduledAt - a.scheduledAt);
+    return grouped;
+  }, [visibleMeetings]);
+
+  const activeMeetings = buckets[dateFilter];
 
   async function handleStatus(meeting: Meeting, status: MeetingStatus) {
     if (!workspace) return;
@@ -89,7 +103,7 @@ export default function MeetingsPage() {
     <>
       <PageHeader
         title="Meetings"
-        description={`${upcoming.length} upcoming meeting${upcoming.length === 1 ? "" : "s"}`}
+        description={`${buckets.upcoming.length} upcoming meeting${buckets.upcoming.length === 1 ? "" : "s"}`}
         actions={
           <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
             <Plus className="size-4" />
@@ -97,6 +111,30 @@ export default function MeetingsPage() {
           </Button>
         }
       />
+
+      {visibleMeetings.length > 0 && (
+        <div className="border-b border-border px-4 pt-4 lg:px-6">
+          <Tabs
+            value={dateFilter}
+            onValueChange={(v) => {
+              setDateFilter((v as MeetingDateFilter) ?? "today");
+              scrollMainToTop();
+            }}
+          >
+            <TabsList>
+              <TabsTrigger value="today">
+                Today{buckets.today.length > 0 ? ` (${buckets.today.length})` : ""}
+              </TabsTrigger>
+              <TabsTrigger value="upcoming">
+                Upcoming{buckets.upcoming.length > 0 ? ` (${buckets.upcoming.length})` : ""}
+              </TabsTrigger>
+              <TabsTrigger value="past">
+                Past{buckets.past.length > 0 ? ` (${buckets.past.length})` : ""}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
 
       <div className="flex-1 p-4 lg:p-6">
         {loading ? (
@@ -113,64 +151,28 @@ export default function MeetingsPage() {
               </Button>
             }
           />
+        ) : activeMeetings.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{EMPTY_MESSAGES[dateFilter]}</p>
         ) : (
-          <>
-            <div>
-              <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground-2">
-                Upcoming
-              </h2>
-              {upcoming.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No upcoming meetings scheduled.</p>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {upcoming.map((m, i) => (
-                    <MeetingCard
-                      key={m.id}
-                      meeting={m}
-                      index={i}
-                      company={companies.find((c) => c.id === m.companyId)}
-                      members={members}
-                      onEdit={setEditing}
-                      onStatusChange={handleStatus}
-                      onDelete={handleDelete}
-                      onDeleteSeries={handleDeleteSeries}
-                      onOpenNotes={setNotesFor}
-                      onViewNotes={setViewingNotesFor}
-                      onConvertToTask={setConvertingMeeting}
-                      onExportIcs={handleExportIcs}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {past.length > 0 && (
-              <div className="mt-8">
-                <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground-2">
-                  Past
-                </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {past.map((m, i) => (
-                    <MeetingCard
-                      key={m.id}
-                      meeting={m}
-                      index={i}
-                      company={companies.find((c) => c.id === m.companyId)}
-                      members={members}
-                      onEdit={setEditing}
-                      onStatusChange={handleStatus}
-                      onDelete={handleDelete}
-                      onDeleteSeries={handleDeleteSeries}
-                      onOpenNotes={setNotesFor}
-                      onViewNotes={setViewingNotesFor}
-                      onConvertToTask={setConvertingMeeting}
-                      onExportIcs={handleExportIcs}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {activeMeetings.map((m, i) => (
+              <MeetingCard
+                key={m.id}
+                meeting={m}
+                index={i}
+                company={companies.find((c) => c.id === m.companyId)}
+                members={members}
+                onEdit={setEditing}
+                onStatusChange={handleStatus}
+                onDelete={handleDelete}
+                onDeleteSeries={handleDeleteSeries}
+                onOpenNotes={setNotesFor}
+                onViewNotes={setViewingNotesFor}
+                onConvertToTask={setConvertingMeeting}
+                onExportIcs={handleExportIcs}
+              />
+            ))}
+          </div>
         )}
       </div>
 
