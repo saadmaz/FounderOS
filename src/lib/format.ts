@@ -1,4 +1,4 @@
-import type { Meeting, TimeEntry } from "./types";
+import type { Meeting, Task, TimeEntry } from "./types";
 
 /**
  * Sums time entries to hours. A still-running entry (endedAt: null) counts
@@ -23,6 +23,16 @@ export function sumMeetingHours(meetings: Meeting[]): number {
       .filter((m) => m.status === "completed")
       .reduce((sum, m) => sum + m.durationMinutes, 0) / 60
   );
+}
+
+/**
+ * Sums tasks' `estimatedHours` - a task has no start/end timestamp the way a
+ * TimeEntry or Meeting does, so this has no date dimension to bucket by day
+ * or week. Only add it into a total that isn't scoped to a date range (e.g.
+ * a company's all-time "Hours Logged"), not the weekly/daily trend figures.
+ */
+export function sumTaskEstimatedHours(tasks: Task[]): number {
+  return tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
 }
 
 // This workspace tracks finances in Sri Lankan Rupees by default - every
