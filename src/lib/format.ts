@@ -44,6 +44,22 @@ export function taskMinutesSpent(task: Task, entries: TimeEntry[]): number {
 }
 
 /**
+ * Sums each task's actual time spent (see taskMinutesSpent) to hours -
+ * real logged time where it exists, self-reported minutes otherwise.
+ * Unlike sumTaskEstimatedHours, this isn't gated by isOffHours: it's asking
+ * "how much time actually went into these tasks", not "how much of that is
+ * billable".
+ *
+ * Callers folding this into a company/workspace "Hours Logged" total must
+ * exclude task-tagged entries from their own sumHours() pass first (e.g.
+ * `entries.filter(e => !e.taskId)`) - a task's real logged time is already
+ * counted here, so including it again would double-count that time.
+ */
+export function sumTaskActualHours(tasks: Task[], entries: TimeEntry[]): number {
+  return tasks.reduce((sum, t) => sum + taskMinutesSpent(t, entries), 0) / 60;
+}
+
+/**
  * Sums tasks' `estimatedMinutes` (as hours) - a task has no start/end
  * timestamp the way a TimeEntry or Meeting does, so this has no date
  * dimension to bucket by day or week. Only add it into a total that isn't

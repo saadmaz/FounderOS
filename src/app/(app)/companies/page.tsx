@@ -20,7 +20,7 @@ import { archiveCompany, restoreCompany, useCompanies } from "@/lib/data/compani
 import { useMeetings } from "@/lib/data/meetings";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatHours, sumHours, sumMeetingHours } from "@/lib/format";
+import { formatHours, sumHours, sumMeetingHours, sumTaskActualHours } from "@/lib/format";
 import { companyTypeLabel } from "@/lib/labels";
 import type { Company } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -39,12 +39,14 @@ export default function CompaniesPage() {
   const archived = useMemo(() => companies.filter((c) => c.status === "archived"), [companies]);
 
   function statsFor(companyId: string) {
-    const open = tasks.filter(
-      (t) => t.companyId === companyId && t.status !== "completed" && t.status !== "cancelled"
+    const companyTasks = tasks.filter((t) => t.companyId === companyId);
+    const open = companyTasks.filter(
+      (t) => t.status !== "completed" && t.status !== "cancelled"
     ).length;
     const hours =
-      sumHours(timeEntries.filter((e) => e.companyId === companyId)) +
-      sumMeetingHours(meetings.filter((m) => m.companyId === companyId));
+      sumHours(timeEntries.filter((e) => e.companyId === companyId && !e.taskId)) +
+      sumMeetingHours(meetings.filter((m) => m.companyId === companyId)) +
+      sumTaskActualHours(companyTasks, timeEntries);
     return { open, hours };
   }
 

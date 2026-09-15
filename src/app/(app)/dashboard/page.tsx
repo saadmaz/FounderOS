@@ -35,7 +35,7 @@ import { useMeetings } from "@/lib/data/meetings";
 import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatDate, formatHours, sumHours, sumMeetingHours, sumTaskEstimatedHours } from "@/lib/format";
+import { formatDate, formatHours, sumHours, sumMeetingHours, sumTaskActualHours } from "@/lib/format";
 import type { CompanyType } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { cn } from "@/lib/utils";
@@ -159,10 +159,11 @@ export default function DashboardPage() {
     return companies
       .filter((c) => c.status === "active")
       .map((c) => {
+        const companyTasks = tasks.filter((t) => t.companyId === c.id);
         const hours =
-          sumHours(timeEntries.filter((e) => e.companyId === c.id)) +
+          sumHours(timeEntries.filter((e) => e.companyId === c.id && !e.taskId)) +
           sumMeetingHours(meetings.filter((m) => m.companyId === c.id)) +
-          sumTaskEstimatedHours(tasks.filter((t) => t.companyId === c.id));
+          sumTaskActualHours(companyTasks, timeEntries);
         const open = tasks.filter(
           (t) => t.companyId === c.id && t.status !== "completed" && t.status !== "cancelled"
         ).length;

@@ -36,7 +36,7 @@ import { useMeetings } from "@/lib/data/meetings";
 import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatHours, sumHours, sumMeetingHours, sumTaskEstimatedHours } from "@/lib/format";
+import { formatHours, sumHours, sumMeetingHours, sumTaskActualHours } from "@/lib/format";
 import { companyTypeLabel } from "@/lib/labels";
 import { scrollMainToTop } from "@/lib/scroll";
 import type { Task } from "@/lib/types";
@@ -109,15 +109,16 @@ export default function CompanyDetailPage() {
   const company = companies.find((c) => c.id === companyId);
   const viewingTask = tasks.find((t) => t.id === viewingTaskId) ?? null;
 
-  // Hours logged = timer/manual entries + completed meetings + tasks'
-  // estimated hours - a meeting is time spent same as any other session, and
-  // a task's estimate is planned time toward the company, so both count
-  // toward the total.
+  // Hours logged = timer/manual entries logged directly (not against a
+  // task) + completed meetings + each task's actual time spent (real
+  // logged time, or its self-reported minutes when nothing's been logged) -
+  // a meeting is time spent same as any other session, and every task's
+  // time counts toward the company regardless of billable status.
   const hours = useMemo(
     () =>
-      sumHours(timeEntries.filter((e) => e.companyId === companyId)) +
+      sumHours(timeEntries.filter((e) => e.companyId === companyId && !e.taskId)) +
       sumMeetingHours(meetings) +
-      sumTaskEstimatedHours(tasks),
+      sumTaskActualHours(tasks, timeEntries),
     [timeEntries, meetings, tasks, companyId]
   );
   const openTasks = tasks.filter((t) => t.status !== "completed" && t.status !== "cancelled").length;

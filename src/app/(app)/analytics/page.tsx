@@ -28,7 +28,7 @@ import {
   formatMixedCurrencyTotal,
   sumHours,
   sumMeetingHours,
-  sumTaskEstimatedHours,
+  sumTaskActualHours,
 } from "@/lib/format";
 import type { TaskStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -127,7 +127,10 @@ export default function AnalyticsPage() {
   );
   const totalInvested = useMemo(() => formatMixedCurrencyTotal(investments), [investments]);
   const totalHours = useMemo(
-    () => sumHours(timeEntries) + sumMeetingHours(meetings) + sumTaskEstimatedHours(tasks),
+    () =>
+      sumHours(timeEntries.filter((e) => !e.taskId)) +
+      sumMeetingHours(meetings) +
+      sumTaskActualHours(tasks, timeEntries),
     [timeEntries, meetings, tasks]
   );
 
@@ -158,9 +161,12 @@ export default function AnalyticsPage() {
         name: c.name,
         hours:
           Math.round(
-            (sumHours(timeEntries.filter((e) => e.companyId === c.id)) +
+            (sumHours(timeEntries.filter((e) => e.companyId === c.id && !e.taskId)) +
               sumMeetingHours(meetings.filter((m) => m.companyId === c.id)) +
-              sumTaskEstimatedHours(tasks.filter((t) => t.companyId === c.id))) *
+              sumTaskActualHours(
+                tasks.filter((t) => t.companyId === c.id),
+                timeEntries
+              )) *
               10
           ) / 10,
       }))
