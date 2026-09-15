@@ -151,6 +151,12 @@ export function TaskDetailSheet({
               <p className="text-xs text-muted-foreground-2">Due date</p>
               <p className={cn(overdue && "font-medium text-danger")}>{formatDate(task.dueDate)}</p>
             </div>
+            {task.workDate && (
+              <div>
+                <p className="text-xs text-muted-foreground-2">Work date</p>
+                <p>{formatDate(task.workDate)}</p>
+              </div>
+            )}
             <div>
               <p className="text-xs text-muted-foreground-2">Assignee</p>
               {owner ? (

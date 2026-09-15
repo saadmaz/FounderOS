@@ -52,6 +52,7 @@ const schema = z.object({
   priority: z.enum(["critical", "high", "medium", "low"]),
   status: z.enum(["not_started", "in_progress", "blocked", "in_review", "completed", "cancelled"]),
   dueDate: z.string().optional(),
+  workDate: z.string().optional(),
   description: z.string().optional(),
   ownerId: z.string().optional(),
   estimatedMinutes: z.string().optional(),
@@ -84,6 +85,7 @@ function defaultsFor(task?: Task | null, defaultCompanyId?: string, defaultDescr
       priority: task.priority,
       status: task.status,
       dueDate: task.dueDate ? toDateInputValue(task.dueDate) : "",
+      workDate: task.workDate ? toDateInputValue(task.workDate) : "",
       description: task.description ?? "",
       ownerId: task.ownerId ?? NO_OWNER,
       estimatedMinutes: task.estimatedMinutes !== undefined ? String(task.estimatedMinutes) : "",
@@ -103,6 +105,7 @@ function defaultsFor(task?: Task | null, defaultCompanyId?: string, defaultDescr
     priority: "medium",
     status: "not_started",
     dueDate: "",
+    workDate: "",
     description: defaultDescription ?? "",
     ownerId: NO_OWNER,
     estimatedMinutes: "",
@@ -201,6 +204,7 @@ export function TaskFormDialog({
         status: values.status,
         priority: values.priority,
         ownerId: values.ownerId && values.ownerId !== NO_OWNER ? values.ownerId : undefined,
+        workDate: values.workDate ? new Date(`${values.workDate}T00:00:00`).getTime() : null,
         estimatedMinutes: values.estimatedMinutes ? Number(values.estimatedMinutes) : undefined,
         isOffHours: values.isOffHours === "off",
         tags: tags && tags.length > 0 ? tags : undefined,
@@ -339,25 +343,31 @@ export function TaskFormDialog({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Assignee (optional)</Label>
-            <Select value={watch("ownerId") ?? NO_OWNER} onValueChange={(v) => setValue("ownerId", v ?? NO_OWNER)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Unassigned">
-                  {(v: string) =>
-                    v === NO_OWNER ? "Unassigned" : (members.find((m) => m.id === v)?.displayName ?? "Unassigned")
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_OWNER}>Unassigned</SelectItem>
-                {members.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.displayName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Assignee (optional)</Label>
+              <Select value={watch("ownerId") ?? NO_OWNER} onValueChange={(v) => setValue("ownerId", v ?? NO_OWNER)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Unassigned">
+                    {(v: string) =>
+                      v === NO_OWNER ? "Unassigned" : (members.find((m) => m.id === v)?.displayName ?? "Unassigned")
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_OWNER}>Unassigned</SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Work date (optional)</Label>
+              <DatePicker value={watch("workDate")} onChange={(v) => setValue("workDate", v)} />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

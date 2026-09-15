@@ -202,6 +202,10 @@ export interface Task {
   // totals (see sumTaskEstimatedHours).
   isOffHours?: boolean;
   dueDate?: number | null;
+  // The date the work is/was actually done - distinct from dueDate (a
+  // deadline) and completedAt (set automatically off the status field).
+  // Lets billable time be attributed to the right calendar day.
+  workDate?: number | null;
   completedAt?: number | null;
   order: number; // for kanban column ordering
   tags?: string[];
