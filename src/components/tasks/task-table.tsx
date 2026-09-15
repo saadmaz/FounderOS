@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PriorityBadge, STATUS_DOT_COLOR, STATUS_STYLES } from "@/components/shared/status-badge";
+import { formatDuration } from "@/components/meetings/meeting-card";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
 import {
   bulkDeleteTasks,
@@ -45,6 +46,7 @@ import {
   setTaskStatus,
 } from "@/lib/data/tasks";
 import { useMembers } from "@/lib/data/members";
+import { useTimeEntries } from "@/lib/data/time-entries";
 import { formatDate, initials } from "@/lib/format";
 import { taskStatusLabel } from "@/lib/labels";
 import { recurrenceSummary } from "@/lib/recurrence";
@@ -73,9 +75,21 @@ export function TaskTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const confirm = useConfirm();
   const { data: members } = useMembers(workspaceId);
+  const { data: timeEntries } = useTimeEntries(workspaceId);
   const companyById = new Map(companies.map((c) => [c.id, c]));
   const memberById = new Map(members.map((m) => [m.id, m]));
   const today = new Date().setHours(0, 0, 0, 0);
+
+  // Real time logged against each task (timer/manual entries), not the
+  // estimate - grouped up front so the Time column is a cheap lookup per
+  // row instead of re-filtering all entries for every task.
+  const now = Date.now();
+  const minutesSpentByTask = new Map<string, number>();
+  for (const e of timeEntries) {
+    if (!e.taskId) continue;
+    const minutes = ((e.endedAt ?? now) - e.startedAt) / 60_000;
+    minutesSpentByTask.set(e.taskId, (minutesSpentByTask.get(e.taskId) ?? 0) + minutes);
+  }
 
   function toggleSelected(id: string) {
     setSelectedIds((prev) => {
@@ -139,6 +153,18 @@ export function TaskTable({
           />
         </div>
       ),
+    },
+    {
+      id: "time",
+      header: "Time",
+      cell: ({ row }) => {
+        const minutes = minutesSpentByTask.get(row.original.id);
+        return (
+          <span className="text-sm text-muted-foreground">
+            {minutes ? formatDuration(Math.round(minutes)) : "—"}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "title",
@@ -363,6 +389,7 @@ export function TaskTable({
   // scrollbar cue that they're there.
   const RESPONSIVE_COLUMN_CLASS: Record<string, string> = {
     select: "w-8",
+    time: "hidden sm:table-cell w-20",
     title: "max-w-32 sm:max-w-40 lg:max-w-56",
     companyId: "hidden sm:table-cell",
     priority: "hidden sm:table-cell",
