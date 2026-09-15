@@ -57,12 +57,17 @@ export function TaskTable({
   workspaceId,
   showCompany = true,
   onEdit,
+  onView,
 }: {
   tasks: Task[];
   companies: Company[];
   workspaceId: string;
   showCompany?: boolean;
   onEdit?: (task: Task) => void;
+  /** Opens a read-only detail view - the row click target. Editing is a
+   * deliberate second step from there (or via the row's "..." menu), not
+   * the click itself. */
+  onView?: (task: Task) => void;
 }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "dueDate", desc: false }]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -412,8 +417,8 @@ export function TaskTable({
               {table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={cn("hover:bg-secondary/40", onEdit && "cursor-pointer")}
-                  onClick={() => onEdit?.(row.original)}
+                  className={cn("hover:bg-secondary/40", onView && "cursor-pointer")}
+                  onClick={() => onView?.(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell

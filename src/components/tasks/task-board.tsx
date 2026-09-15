@@ -34,10 +34,12 @@ function TaskCard({
   task,
   company,
   onEdit,
+  onView,
 }: {
   task: Task;
   company?: Company;
   onEdit?: (task: Task) => void;
+  onView?: (task: Task) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
@@ -51,6 +53,7 @@ function TaskCard({
       {...listeners}
       {...attributes}
       style={{ transform: CSS.Translate.toString(transform) }}
+      onClick={() => onView?.(task)}
       className={cn(
         "group relative cursor-grab space-y-2 rounded-lg border border-border bg-card p-3 active:cursor-grabbing",
         isDragging && "opacity-40"
@@ -123,6 +126,7 @@ function Column({
   tasks,
   companyById,
   onEditTask,
+  onViewTask,
 }: {
   status: TaskStatus;
   label: string;
@@ -130,6 +134,7 @@ function Column({
   tasks: Task[];
   companyById: Map<string, Company>;
   onEditTask?: (task: Task) => void;
+  onViewTask?: (task: Task) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
@@ -148,7 +153,13 @@ function Column({
       </div>
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2 scrollbar-thin">
         {tasks.map((t) => (
-          <TaskCard key={t.id} task={t} company={companyById.get(t.companyId)} onEdit={onEditTask} />
+          <TaskCard
+            key={t.id}
+            task={t}
+            company={companyById.get(t.companyId)}
+            onEdit={onEditTask}
+            onView={onViewTask}
+          />
         ))}
       </div>
     </div>
@@ -160,11 +171,13 @@ export function TaskBoard({
   companies,
   workspaceId,
   onEditTask,
+  onViewTask,
 }: {
   tasks: Task[];
   companies: Company[];
   workspaceId: string;
   onEditTask?: (task: Task) => void;
+  onViewTask?: (task: Task) => void;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
@@ -197,6 +210,7 @@ export function TaskBoard({
             tasks={tasks.filter((t) => t.status === col.status)}
             companyById={companyById}
             onEditTask={onEditTask}
+            onViewTask={onViewTask}
           />
         ))}
       </div>

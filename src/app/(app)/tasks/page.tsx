@@ -13,6 +13,7 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { TaskBoard } from "@/components/tasks/task-board";
+import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { TaskTable } from "@/components/tasks/task-table";
 import { useCompanies } from "@/lib/data/companies";
@@ -35,9 +36,18 @@ export default function TasksPage() {
   const [view, setView] = useState<"table" | "board">("table");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  // Tracked by id, not the Task object itself, so the sheet re-renders with
+  // live data (status/subtask changes) instead of the snapshot taken at
+  // the moment it was opened - it has its own interactive controls.
+  const [viewingTaskId, setViewingTaskId] = useState<string | null>(null);
+  const viewingTask = tasks.find((t) => t.id === viewingTaskId) ?? null;
 
   useEffect(() => {
     const stored = localStorage.getItem(TASKS_VIEW_STORAGE_KEY);
+    // Deliberately mount-only: reads the persisted view preference once on
+    // the client (localStorage isn't available during SSR), not
+    // synchronizing with an external system that changes over time.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored === "table" || stored === "board") setView(stored);
   }, []);
 
@@ -130,6 +140,7 @@ export default function TasksPage() {
           companies={companies}
           workspaceId={workspace!.id}
           onEditTask={setEditingTask}
+          onViewTask={(t) => setViewingTaskId(t.id)}
         />
       ) : (
         <div className="flex-1 p-4 lg:p-6">
@@ -138,6 +149,7 @@ export default function TasksPage() {
             companies={companies}
             workspaceId={workspace!.id}
             onEdit={setEditingTask}
+            onView={(t) => setViewingTaskId(t.id)}
           />
         </div>
       )}
@@ -151,6 +163,17 @@ export default function TasksPage() {
         open={Boolean(editingTask)}
         onOpenChange={(v) => !v && setEditingTask(null)}
         task={editingTask}
+      />
+      <TaskDetailSheet
+        open={Boolean(viewingTaskId)}
+        onOpenChange={(v) => !v && setViewingTaskId(null)}
+        task={viewingTask}
+        companies={companies}
+        workspaceId={workspace?.id ?? ""}
+        onEdit={(task) => {
+          setViewingTaskId(null);
+          setEditingTask(task);
+        }}
       />
     </>
   );
