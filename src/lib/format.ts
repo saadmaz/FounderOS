@@ -26,13 +26,22 @@ export function sumMeetingHours(meetings: Meeting[]): number {
 }
 
 /**
- * Sums tasks' `estimatedHours` - a task has no start/end timestamp the way a
- * TimeEntry or Meeting does, so this has no date dimension to bucket by day
- * or week. Only add it into a total that isn't scoped to a date range (e.g.
- * a company's all-time "Hours Logged"), not the weekly/daily trend figures.
+ * Sums tasks' `estimatedMinutes` (as hours) - a task has no start/end
+ * timestamp the way a TimeEntry or Meeting does, so this has no date
+ * dimension to bucket by day or week. Only add it into a total that isn't
+ * scoped to a date range (e.g. a company's all-time "Hours Logged"), not
+ * the weekly/daily trend figures.
+ *
+ * Only off-hours time is billable - a task worked during office hours is
+ * already covered elsewhere, so it's excluded from this total to avoid
+ * double-counting.
  */
 export function sumTaskEstimatedHours(tasks: Task[]): number {
-  return tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
+  return (
+    tasks
+      .filter((t) => t.isOffHours)
+      .reduce((sum, t) => sum + (t.estimatedMinutes ?? 0), 0) / 60
+  );
 }
 
 // This workspace tracks finances in Sri Lankan Rupees by default - every

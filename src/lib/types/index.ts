@@ -193,7 +193,11 @@ export interface Task {
   status: TaskStatus;
   priority: Priority;
   ownerId?: string;
-  estimatedHours?: number;
+  estimatedMinutes?: number;
+  // Whether the estimated time falls outside office hours - only off-hours
+  // time is billable, so this gates estimatedMinutes out of billable-hours
+  // totals (see sumTaskEstimatedHours).
+  isOffHours?: boolean;
   dueDate?: number | null;
   completedAt?: number | null;
   order: number; // for kanban column ordering

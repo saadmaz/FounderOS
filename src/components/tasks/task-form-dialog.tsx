@@ -54,7 +54,8 @@ const schema = z.object({
   dueDate: z.string().optional(),
   description: z.string().optional(),
   ownerId: z.string().optional(),
-  estimatedHours: z.string().optional(),
+  estimatedMinutes: z.string().optional(),
+  isOffHours: z.enum(["office", "off"]),
   tags: z.string().optional(),
   subtasks: z.array(z.object({ id: z.string(), title: z.string(), done: z.boolean() })),
   recurrenceFreq: z.enum(["none", "daily", "weekly", "monthly"]),
@@ -85,7 +86,8 @@ function defaultsFor(task?: Task | null, defaultCompanyId?: string, defaultDescr
       dueDate: task.dueDate ? toDateInputValue(task.dueDate) : "",
       description: task.description ?? "",
       ownerId: task.ownerId ?? NO_OWNER,
-      estimatedHours: task.estimatedHours !== undefined ? String(task.estimatedHours) : "",
+      estimatedMinutes: task.estimatedMinutes !== undefined ? String(task.estimatedMinutes) : "",
+      isOffHours: task.isOffHours === false ? "office" : "off",
       tags: task.tags && task.tags.length > 0 ? task.tags.join(", ") : "",
       subtasks: task.subtasks ?? [],
       // Recurrence is a create-time-only decision (see the Repeat field
@@ -103,7 +105,8 @@ function defaultsFor(task?: Task | null, defaultCompanyId?: string, defaultDescr
     dueDate: "",
     description: defaultDescription ?? "",
     ownerId: NO_OWNER,
-    estimatedHours: "",
+    estimatedMinutes: "",
+    isOffHours: "off",
     tags: "",
     subtasks: [],
     ...RECURRENCE_DEFAULTS,
@@ -198,7 +201,8 @@ export function TaskFormDialog({
         status: values.status,
         priority: values.priority,
         ownerId: values.ownerId && values.ownerId !== NO_OWNER ? values.ownerId : undefined,
-        estimatedHours: values.estimatedHours ? Number(values.estimatedHours) : undefined,
+        estimatedMinutes: values.estimatedMinutes ? Number(values.estimatedMinutes) : undefined,
+        isOffHours: values.isOffHours === "off",
         tags: tags && tags.length > 0 ? tags : undefined,
         subtasks: values.subtasks.length > 0 ? values.subtasks : undefined,
       });
@@ -335,30 +339,52 @@ export function TaskFormDialog({
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <Label>Assignee (optional)</Label>
+            <Select value={watch("ownerId") ?? NO_OWNER} onValueChange={(v) => setValue("ownerId", v ?? NO_OWNER)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Unassigned">
+                  {(v: string) =>
+                    v === NO_OWNER ? "Unassigned" : (members.find((m) => m.id === v)?.displayName ?? "Unassigned")
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_OWNER}>Unassigned</SelectItem>
+                {members.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.displayName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Assignee (optional)</Label>
-              <Select value={watch("ownerId") ?? NO_OWNER} onValueChange={(v) => setValue("ownerId", v ?? NO_OWNER)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Unassigned">
-                    {(v: string) =>
-                      v === NO_OWNER ? "Unassigned" : (members.find((m) => m.id === v)?.displayName ?? "Unassigned")
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_OWNER}>Unassigned</SelectItem>
-                  {members.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.displayName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="estimatedMinutes">Estimated time, minutes (optional)</Label>
+              <Input
+                id="estimatedMinutes"
+                type="number"
+                min={0}
+                placeholder="45"
+                {...register("estimatedMinutes")}
+              />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="estimatedHours">Estimated hours (optional)</Label>
-              <Input id="estimatedHours" type="number" min={0} placeholder="4" {...register("estimatedHours")} />
+              <Label>When</Label>
+              <Select
+                value={watch("isOffHours")}
+                onValueChange={(v) => setValue("isOffHours", (v as FormValues["isOffHours"]) ?? "off")}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>{(v: FormValues["isOffHours"]) => (v === "office" ? "Office hours" : "Off hours (billable)")}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="off">Off hours (billable)</SelectItem>
+                  <SelectItem value="office">Office hours (not billable)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
