@@ -68,6 +68,7 @@ export function TaskDetailSheet({
   // back to its self-reported estimatedMinutes when nothing's been logged -
   // many tasks here are recorded after the fact directly on the task
   // rather than through a separate timer entry.
+  const hasLoggedTime = timeEntries.some((e) => e.taskId === task.id);
   const actualHours = taskMinutesSpent(task, timeEntries) / 60;
 
   async function toggleSubtask(subtaskId: string) {
@@ -155,24 +156,36 @@ export function TaskDetailSheet({
         {/* Body */}
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 lg:p-5">
           <div className="grid grid-cols-2 gap-3">
-            <StatCard
-              label="Actual hours"
-              value={formatHours(actualHours)}
-              icon={Clock}
-              accent="text-analytics-pink"
-              accentBg="bg-analytics-pink/10"
-            />
-            <StatCard
-              label="Estimated"
-              value={
-                task.isOffHours && task.estimatedMinutes !== undefined
-                  ? formatHours(task.estimatedMinutes / 60)
-                  : "—"
-              }
-              icon={Target}
-              accent="text-analytics-cyan"
-              accentBg="bg-analytics-cyan/10"
-            />
+            <div>
+              <StatCard
+                label="Actual hours"
+                value={formatHours(actualHours)}
+                icon={Clock}
+                accent="text-analytics-pink"
+                accentBg="bg-analytics-pink/10"
+              />
+              {actualHours > 0 && !hasLoggedTime && (
+                <p className="mt-1.5 px-0.5 text-[11px] text-muted-foreground-2">Self-reported - no timer logged</p>
+              )}
+            </div>
+            <div>
+              <StatCard
+                label="Estimated"
+                value={
+                  task.isOffHours && task.estimatedMinutes !== undefined
+                    ? formatHours(task.estimatedMinutes / 60)
+                    : "—"
+                }
+                icon={Target}
+                accent="text-analytics-cyan"
+                accentBg="bg-analytics-cyan/10"
+              />
+              {task.estimatedMinutes !== undefined && (
+                <p className="mt-1.5 px-0.5 text-[11px] text-muted-foreground-2">
+                  {task.estimatedMinutes} min · {task.isOffHours ? "Off hours (billable)" : "Office hours (not billable)"}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
@@ -180,12 +193,6 @@ export function TaskDetailSheet({
               <p className="text-xs text-muted-foreground-2">Due date</p>
               <p className={cn(overdue && "font-medium text-danger")}>{formatDate(task.dueDate)}</p>
             </div>
-            {task.workDate && (
-              <div>
-                <p className="text-xs text-muted-foreground-2">Work date</p>
-                <p>{formatDate(task.workDate)}</p>
-              </div>
-            )}
             <div>
               <p className="text-xs text-muted-foreground-2">Assignee</p>
               {owner ? (
@@ -200,13 +207,10 @@ export function TaskDetailSheet({
                 <p>Unassigned</p>
               )}
             </div>
-            {task.estimatedMinutes !== undefined && (
+            {task.workDate && (
               <div>
-                <p className="text-xs text-muted-foreground-2">Time estimate</p>
-                <p>
-                  {task.estimatedMinutes} min
-                  <span className="text-muted-foreground-2"> · {task.isOffHours ? "Off hours (billable)" : "Office hours"}</span>
-                </p>
+                <p className="text-xs text-muted-foreground-2">Work date</p>
+                <p>{formatDate(task.workDate)}</p>
               </div>
             )}
             {task.recurrence && (
