@@ -362,7 +362,7 @@ export function TaskFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="estimatedMinutes">Estimated time, minutes (optional)</Label>
+              <Label htmlFor="estimatedMinutes">Minutes (optional)</Label>
               <Input
                 id="estimatedMinutes"
                 type="number"
