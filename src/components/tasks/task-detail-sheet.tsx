@@ -20,7 +20,7 @@ import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useMembers } from "@/lib/data/members";
 import { deleteTask, deleteTaskSeries, setTaskStatus, updateTask } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatDate, formatHours, initials, sumHours } from "@/lib/format";
+import { formatDate, formatHours, initials, taskMinutesSpent } from "@/lib/format";
 import { taskStatusLabel } from "@/lib/labels";
 import { recurrenceSummary } from "@/lib/recurrence";
 import { TASK_STATUSES, type Company, type Task, type TaskStatus } from "@/lib/types";
@@ -64,10 +64,11 @@ export function TaskDetailSheet({
   const owner = task.ownerId ? members.find((m) => m.id === task.ownerId) : undefined;
   const today = new Date().setHours(0, 0, 0, 0);
   const overdue = task.dueDate && task.dueDate < today && task.status !== "completed";
-  // Real time actually logged against this task (timer/manual entries with
-  // this taskId) - distinct from estimatedMinutes, which is a plan, not a
-  // record of what happened.
-  const actualHours = sumHours(timeEntries.filter((e) => e.taskId === task.id));
+  // Real time logged against this task (timer/manual entries), falling
+  // back to its self-reported estimatedMinutes when nothing's been logged -
+  // many tasks here are recorded after the fact directly on the task
+  // rather than through a separate timer entry.
+  const actualHours = taskMinutesSpent(task, timeEntries) / 60;
 
   async function toggleSubtask(subtaskId: string) {
     if (!task?.subtasks) return;

@@ -26,6 +26,24 @@ export function sumMeetingHours(meetings: Meeting[]): number {
 }
 
 /**
+ * Real time spent on a task, in minutes - prefers actual logged time
+ * entries (a timer or manual entry tagged with this task's id) when any
+ * exist, falling back to the task's own `estimatedMinutes` otherwise.
+ * Many tasks are logged after the fact directly on the task (title +
+ * minutes) rather than through a separate timer/manual entry, so that
+ * self-reported figure is the only record of time spent for them - without
+ * this fallback, "time spent" would silently show blank for every one of
+ * those tasks even though the user filled it in.
+ */
+export function taskMinutesSpent(task: Task, entries: TimeEntry[]): number {
+  const now = Date.now();
+  const logged = entries
+    .filter((e) => e.taskId === task.id)
+    .reduce((sum, e) => sum + ((e.endedAt ?? now) - e.startedAt), 0) / 60_000;
+  return logged > 0 ? logged : (task.estimatedMinutes ?? 0);
+}
+
+/**
  * Sums tasks' `estimatedMinutes` (as hours) - a task has no start/end
  * timestamp the way a TimeEntry or Meeting does, so this has no date
  * dimension to bucket by day or week. Only add it into a total that isn't

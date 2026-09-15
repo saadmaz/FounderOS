@@ -27,7 +27,7 @@ import { useMembers } from "@/lib/data/members";
 import { deleteProject, updateProject, useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatDate, formatHours, sumHours, sumTaskEstimatedHours } from "@/lib/format";
+import { formatDate, formatHours, sumHours, sumTaskEstimatedHours, taskMinutesSpent } from "@/lib/format";
 import { projectStatusLabel } from "@/lib/labels";
 import { PROJECT_STATUSES, type ProjectStatus, type Task } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -53,15 +53,14 @@ export default function ProjectDetailPage() {
   const tasks = useMemo(() => allTasks.filter((t) => t.projectId === projectId), [allTasks, projectId]);
 
   const actualHours = useMemo(() => {
-    const taskIds = new Set(tasks.map((t) => t.id));
-    // Time can be logged against this project two ways: against one of its
-    // tasks (taskId), or directly against the project with no task picked
-    // (projectId, timer/manual entry) - both count toward "Actual Hours".
-    return sumHours(
-      timeEntries.filter(
-        (e) => e.projectId === projectId || (e.taskId && taskIds.has(e.taskId))
-      )
-    );
+    // Time can be logged against this project two ways: directly, with no
+    // task picked (projectId, timer/manual entry), or against one of its
+    // tasks - and a task's own time falls back to its self-reported
+    // estimatedMinutes when nothing's actually been logged against it (see
+    // taskMinutesSpent), so tasks logged after the fact still count.
+    const directEntries = timeEntries.filter((e) => e.projectId === projectId && !e.taskId);
+    const perTaskMinutes = tasks.reduce((sum, t) => sum + taskMinutesSpent(t, timeEntries), 0);
+    return sumHours(directEntries) + perTaskMinutes / 60;
   }, [timeEntries, tasks, projectId]);
 
   // The project's own estimatedMinutes (its up-front scope guess) plus each

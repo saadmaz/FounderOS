@@ -47,7 +47,7 @@ import {
 } from "@/lib/data/tasks";
 import { useMembers } from "@/lib/data/members";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatDate, initials } from "@/lib/format";
+import { formatDate, initials, taskMinutesSpent } from "@/lib/format";
 import { taskStatusLabel } from "@/lib/labels";
 import { recurrenceSummary } from "@/lib/recurrence";
 import { TASK_STATUSES, type Company, type Task, type TaskStatus } from "@/lib/types";
@@ -79,17 +79,6 @@ export function TaskTable({
   const companyById = new Map(companies.map((c) => [c.id, c]));
   const memberById = new Map(members.map((m) => [m.id, m]));
   const today = new Date().setHours(0, 0, 0, 0);
-
-  // Real time logged against each task (timer/manual entries), not the
-  // estimate - grouped up front so the Time column is a cheap lookup per
-  // row instead of re-filtering all entries for every task.
-  const now = Date.now();
-  const minutesSpentByTask = new Map<string, number>();
-  for (const e of timeEntries) {
-    if (!e.taskId) continue;
-    const minutes = ((e.endedAt ?? now) - e.startedAt) / 60_000;
-    minutesSpentByTask.set(e.taskId, (minutesSpentByTask.get(e.taskId) ?? 0) + minutes);
-  }
 
   function toggleSelected(id: string) {
     setSelectedIds((prev) => {
@@ -158,10 +147,10 @@ export function TaskTable({
       id: "time",
       header: "Time",
       cell: ({ row }) => {
-        const minutes = minutesSpentByTask.get(row.original.id);
+        const minutes = taskMinutesSpent(row.original, timeEntries);
         return (
           <span className="text-sm text-muted-foreground">
-            {minutes ? formatDuration(Math.round(minutes)) : "—"}
+            {minutes > 0 ? formatDuration(Math.round(minutes)) : "—"}
           </span>
         );
       },
