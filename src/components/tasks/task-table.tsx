@@ -34,7 +34,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PriorityBadge } from "@/components/shared/status-badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PriorityBadge, STATUS_DOT_COLOR, STATUS_STYLES } from "@/components/shared/status-badge";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
 import {
   bulkDeleteTasks,
@@ -43,7 +44,8 @@ import {
   deleteTaskSeries,
   setTaskStatus,
 } from "@/lib/data/tasks";
-import { formatDate } from "@/lib/format";
+import { useMembers } from "@/lib/data/members";
+import { formatDate, initials } from "@/lib/format";
 import { taskStatusLabel } from "@/lib/labels";
 import { recurrenceSummary } from "@/lib/recurrence";
 import { TASK_STATUSES, type Company, type Task, type TaskStatus } from "@/lib/types";
@@ -65,7 +67,9 @@ export function TaskTable({
   const [sorting, setSorting] = useState<SortingState>([{ id: "dueDate", desc: false }]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const confirm = useConfirm();
+  const { data: members } = useMembers(workspaceId);
   const companyById = new Map(companies.map((c) => [c.id, c]));
+  const memberById = new Map(members.map((m) => [m.id, m]));
   const today = new Date().setHours(0, 0, 0, 0);
 
   function toggleSelected(id: string) {
@@ -122,11 +126,13 @@ export function TaskTable({
         />
       ),
       cell: ({ row }) => (
-        <Checkbox
-          checked={selectedIds.has(row.original.id)}
-          onCheckedChange={() => toggleSelected(row.original.id)}
-          aria-label={`Select ${row.original.title}`}
-        />
+        <div onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={selectedIds.has(row.original.id)}
+            onCheckedChange={() => toggleSelected(row.original.id)}
+            aria-label={`Select ${row.original.title}`}
+          />
+        </div>
       ),
     },
     {
@@ -184,6 +190,14 @@ export function TaskTable({
                   )}
                 </div>
               )}
+              {t.description && (
+                <p
+                  className="mt-0.5 truncate text-xs text-muted-foreground-2"
+                  title={t.description}
+                >
+                  {t.description}
+                </p>
+              )}
               {/* Priority/due date get their own columns from sm/md up - this
                * mirrors them compactly so nothing's lost on a phone. */}
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground sm:hidden">
@@ -219,21 +233,48 @@ export function TaskTable({
       cell: ({ row }) => {
         const t = row.original;
         return (
-          <Select
-            value={t.status}
-            onValueChange={(v) => v && setTaskStatus(workspaceId, t.id, v as TaskStatus)}
-          >
-            <SelectTrigger size="sm" className="h-7 w-35 border-none bg-transparent shadow-none">
-              <SelectValue>{(v: TaskStatus) => taskStatusLabel(v)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {TASK_STATUSES.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div onClick={(e) => e.stopPropagation()}>
+            <Select
+              value={t.status}
+              onValueChange={(v) => v && setTaskStatus(workspaceId, t.id, v as TaskStatus)}
+            >
+              <SelectTrigger
+                size="sm"
+                className={cn("h-7 w-fit gap-1.5 rounded-full border-none px-2.5 shadow-none", STATUS_STYLES[t.status])}
+              >
+                <SelectValue>
+                  {() => (
+                    <>
+                      <span className="size-1.5 shrink-0 rounded-full bg-current" />
+                      {taskStatusLabel(t.status)}
+                    </>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {TASK_STATUSES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    <span className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT_COLOR[s.value])} />
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "ownerId",
+      header: "Owner",
+      cell: ({ row }) => {
+        const owner = row.original.ownerId ? memberById.get(row.original.ownerId) : undefined;
+        if (!owner) return <span className="text-sm text-muted-foreground-2">—</span>;
+        return (
+          <Avatar size="sm" className="size-6" title={owner.displayName}>
+            <AvatarImage src={owner.photoURL} />
+            <AvatarFallback className="text-[10px]">{initials(owner.displayName)}</AvatarFallback>
+          </Avatar>
         );
       },
     },
@@ -263,7 +304,7 @@ export function TaskTable({
       cell: ({ row }) => {
         const t = row.original;
         return (
-          <div className="flex justify-end">
+          <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" aria-label="Task actions" />}>
                 <MoreHorizontal className="size-4" />
@@ -320,6 +361,7 @@ export function TaskTable({
     title: "max-w-32 sm:max-w-40 lg:max-w-56",
     companyId: "hidden sm:table-cell",
     priority: "hidden sm:table-cell",
+    ownerId: "hidden lg:table-cell",
     dueDate: "hidden md:table-cell",
   };
 
@@ -368,7 +410,11 @@ export function TaskTable({
             </TableHeader>
             <TableBody>
               {table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="hover:bg-secondary/40">
+                <TableRow
+                  key={row.id}
+                  className={cn("hover:bg-secondary/40", onEdit && "cursor-pointer")}
+                  onClick={() => onEdit?.(row.original)}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}

@@ -1,7 +1,7 @@
 import type { CompanyStatus, Priority, ProjectStatus, TaskStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const STATUS_STYLES: Record<string, string> = {
+export const STATUS_STYLES: Record<string, string> = {
   not_started: "bg-muted text-muted-foreground",
   in_progress: "bg-primary/10 text-primary",
   blocked: "bg-danger/10 text-danger",
@@ -13,6 +13,22 @@ const STATUS_STYLES: Record<string, string> = {
   paused: "bg-warning/10 text-warning",
   archived: "bg-muted text-muted-foreground-2",
   exploring: "bg-primary/10 text-primary",
+};
+
+// Solid dot colors mirroring STATUS_STYLES' text color, for places (like a
+// dropdown item list) that need just the dot without tinting the whole row.
+export const STATUS_DOT_COLOR: Record<string, string> = {
+  not_started: "bg-muted-foreground",
+  in_progress: "bg-primary",
+  blocked: "bg-danger",
+  in_review: "bg-analytics-purple",
+  completed: "bg-success",
+  cancelled: "bg-muted-foreground-2",
+  on_hold: "bg-warning",
+  active: "bg-success",
+  paused: "bg-warning",
+  archived: "bg-muted-foreground-2",
+  exploring: "bg-primary",
 };
 
 const STATUS_LABELS: Record<string, string> = {

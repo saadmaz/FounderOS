@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckSquare, LayoutGrid, Plus, Table2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -22,6 +22,8 @@ import type { Task } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { cn } from "@/lib/utils";
 
+const TASKS_VIEW_STORAGE_KEY = "founderos:tasks-view";
+
 export default function TasksPage() {
   const { workspace } = useWorkspace();
   const { data: companies } = useCompanies(workspace?.id ?? null);
@@ -30,9 +32,20 @@ export default function TasksPage() {
     workspace?.id ?? null,
     companyFilter === "all" ? undefined : companyFilter
   );
-  const [view, setView] = useState<"table" | "board">("board");
+  const [view, setView] = useState<"table" | "board">("table");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(TASKS_VIEW_STORAGE_KEY);
+    if (stored === "table" || stored === "board") setView(stored);
+  }, []);
+
+  function updateView(next: "table" | "board") {
+    setView(next);
+    localStorage.setItem(TASKS_VIEW_STORAGE_KEY, next);
+    scrollMainToTop();
+  }
 
   const openCount = useMemo(
     () => tasks.filter((t) => t.status !== "completed" && t.status !== "cancelled").length,
@@ -71,10 +84,7 @@ export default function TasksPage() {
 
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-surface p-0.5">
           <button
-            onClick={() => {
-              setView("board");
-              scrollMainToTop();
-            }}
+            onClick={() => updateView("board")}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
               view === "board" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
@@ -84,10 +94,7 @@ export default function TasksPage() {
             Board
           </button>
           <button
-            onClick={() => {
-              setView("table");
-              scrollMainToTop();
-            }}
+            onClick={() => updateView("table")}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
               view === "table" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
