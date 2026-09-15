@@ -27,7 +27,7 @@ import { useMembers } from "@/lib/data/members";
 import { deleteProject, updateProject, useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatDate, formatHours, sumHours } from "@/lib/format";
+import { formatDate, formatHours, sumHours, sumTaskEstimatedHours } from "@/lib/format";
 import { projectStatusLabel } from "@/lib/labels";
 import { PROJECT_STATUSES, type ProjectStatus, type Task } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
@@ -63,6 +63,16 @@ export default function ProjectDetailPage() {
       )
     );
   }, [timeEntries, tasks, projectId]);
+
+  // The project's own estimatedMinutes (its up-front scope guess) plus each
+  // task's individual billable estimate - a project usually only has one or
+  // the other filled in, but adding both means neither workflow is silently
+  // ignored, and it's why this needs to be its own memo instead of reading
+  // project.estimatedMinutes directly like the stat card used to.
+  const estimatedHours = useMemo(() => {
+    const projectOwn = project?.isOffHours && project.estimatedMinutes ? project.estimatedMinutes / 60 : 0;
+    return projectOwn + sumTaskEstimatedHours(tasks);
+  }, [project, tasks]);
 
   const completed = tasks.filter((t) => t.status === "completed").length;
   const viewingTask = tasks.find((t) => t.id === viewingTaskId) ?? null;
@@ -174,9 +184,7 @@ export default function ProjectDetailPage() {
           <StatCard label="Actual Hours" value={formatHours(actualHours)} icon={Clock} accent="text-analytics-pink" accentBg="bg-analytics-pink/10" />
           <StatCard
             label="Estimated"
-            value={
-              project.isOffHours && project.estimatedMinutes ? formatHours(project.estimatedMinutes / 60) : "—"
-            }
+            value={estimatedHours > 0 ? formatHours(estimatedHours) : "—"}
             icon={Target}
             accent="text-analytics-cyan"
             accentBg="bg-analytics-cyan/10"
