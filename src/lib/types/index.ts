@@ -158,7 +158,10 @@ export interface Project {
   priority: Priority;
   status: ProjectStatus;
   ownerId?: string; // WorkspaceMember id
-  estimatedHours?: number;
+  estimatedMinutes?: number;
+  // Whether the estimate falls outside office hours - only off-hours time
+  // is billable, so the "Estimated" stat only counts it when this is true.
+  isOffHours?: boolean;
   startDate?: number | null;
   endDate?: number | null;
   createdAt: number;

@@ -39,7 +39,8 @@ const schema = z.object({
   name: z.string().min(1, "Name is required").max(150),
   companyId: z.string().min(1, "Pick a company"),
   priority: z.enum(["critical", "high", "medium", "low"]),
-  estimatedHours: z.string().optional(),
+  estimatedMinutes: z.string().optional(),
+  isOffHours: z.enum(["office", "off"]),
   description: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
@@ -54,7 +55,8 @@ function defaultsFor(project?: Project | null, defaultCompanyId?: string): FormV
       name: project.name,
       companyId: project.companyId,
       priority: project.priority,
-      estimatedHours: project.estimatedHours !== undefined ? String(project.estimatedHours) : "",
+      estimatedMinutes: project.estimatedMinutes !== undefined ? String(project.estimatedMinutes) : "",
+      isOffHours: project.isOffHours === false ? "office" : "off",
       description: project.description ?? "",
       startDate: project.startDate ? toDateInputValue(project.startDate) : "",
       endDate: project.endDate ? toDateInputValue(project.endDate) : "",
@@ -65,7 +67,8 @@ function defaultsFor(project?: Project | null, defaultCompanyId?: string): FormV
     name: "",
     companyId: defaultCompanyId ?? "",
     priority: "medium",
-    estimatedHours: "",
+    estimatedMinutes: "",
+    isOffHours: "off",
     description: "",
     startDate: "",
     endDate: "",
@@ -116,7 +119,8 @@ export function ProjectFormDialog({
         name: values.name,
         description: values.description || undefined,
         priority: values.priority,
-        estimatedHours: values.estimatedHours ? Number(values.estimatedHours) : undefined,
+        estimatedMinutes: values.estimatedMinutes ? Number(values.estimatedMinutes) : undefined,
+        isOffHours: values.isOffHours === "off",
         startDate: values.startDate ? new Date(`${values.startDate}T00:00:00`).getTime() : null,
         endDate: values.endDate ? new Date(`${values.endDate}T00:00:00`).getTime() : null,
         ownerId: values.ownerId && values.ownerId !== NO_OWNER ? values.ownerId : undefined,
@@ -219,9 +223,31 @@ export function ProjectFormDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="estimatedHours">Estimated hours (optional)</Label>
-              <Input id="estimatedHours" type="number" min={0} placeholder="80" {...register("estimatedHours")} />
+              <Label htmlFor="estimatedMinutes">Estimated time, minutes (optional)</Label>
+              <Input
+                id="estimatedMinutes"
+                type="number"
+                min={0}
+                placeholder="4800"
+                {...register("estimatedMinutes")}
+              />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>When</Label>
+            <Select
+              value={watch("isOffHours")}
+              onValueChange={(v) => setValue("isOffHours", (v as FormValues["isOffHours"]) ?? "off")}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue>{(v: FormValues["isOffHours"]) => (v === "office" ? "Office hours" : "Off hours (billable)")}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="off">Off hours (billable)</SelectItem>
+                <SelectItem value="office">Office hours (not billable)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">

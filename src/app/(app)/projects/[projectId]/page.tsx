@@ -171,7 +171,9 @@ export default function ProjectDetailPage() {
           <StatCard label="Actual Hours" value={formatHours(actualHours)} icon={Clock} accent="text-analytics-pink" accentBg="bg-analytics-pink/10" />
           <StatCard
             label="Estimated"
-            value={project.estimatedHours ? formatHours(project.estimatedHours) : "—"}
+            value={
+              project.isOffHours && project.estimatedMinutes ? formatHours(project.estimatedMinutes / 60) : "—"
+            }
             icon={Target}
             accent="text-analytics-cyan"
             accentBg="bg-analytics-cyan/10"

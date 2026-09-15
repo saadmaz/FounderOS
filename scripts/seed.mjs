@@ -161,7 +161,8 @@ async function main() {
       name: p.name,
       priority: p.priority,
       status: p.status,
-      estimatedHours: p.estimatedHours,
+      estimatedMinutes: p.estimatedHours * 60,
+      isOffHours: true,
       createdAt: ts,
       updatedAt: ts,
     });
