@@ -1,6 +1,6 @@
 "use client";
 
-import { ListChecks, Pencil, Repeat, Trash2 } from "lucide-react";
+import { Clock, ListChecks, Pencil, Repeat, Target, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,11 +14,13 @@ import {
 } from "@/components/ui/select";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { PriorityBadge, STATUS_DOT_COLOR, STATUS_STYLES } from "@/components/shared/status-badge";
+import { StatCard } from "@/components/shared/stat-card";
 import { SectionLabel } from "@/components/crm/section-label";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useMembers } from "@/lib/data/members";
 import { deleteTask, deleteTaskSeries, setTaskStatus, updateTask } from "@/lib/data/tasks";
-import { formatDate, initials } from "@/lib/format";
+import { useTimeEntries } from "@/lib/data/time-entries";
+import { formatDate, formatHours, initials, sumHours } from "@/lib/format";
 import { taskStatusLabel } from "@/lib/labels";
 import { recurrenceSummary } from "@/lib/recurrence";
 import { TASK_STATUSES, type Company, type Task, type TaskStatus } from "@/lib/types";
@@ -48,6 +50,7 @@ export function TaskDetailSheet({
 }) {
   const confirm = useConfirm();
   const { data: members } = useMembers(workspaceId);
+  const { data: timeEntries } = useTimeEntries(workspaceId);
 
   if (!task) {
     return (
@@ -61,6 +64,10 @@ export function TaskDetailSheet({
   const owner = task.ownerId ? members.find((m) => m.id === task.ownerId) : undefined;
   const today = new Date().setHours(0, 0, 0, 0);
   const overdue = task.dueDate && task.dueDate < today && task.status !== "completed";
+  // Real time actually logged against this task (timer/manual entries with
+  // this taskId) - distinct from estimatedMinutes, which is a plan, not a
+  // record of what happened.
+  const actualHours = sumHours(timeEntries.filter((e) => e.taskId === task.id));
 
   async function toggleSubtask(subtaskId: string) {
     if (!task?.subtasks) return;
@@ -146,6 +153,27 @@ export function TaskDetailSheet({
 
         {/* Body */}
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 lg:p-5">
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard
+              label="Actual hours"
+              value={formatHours(actualHours)}
+              icon={Clock}
+              accent="text-analytics-pink"
+              accentBg="bg-analytics-pink/10"
+            />
+            <StatCard
+              label="Estimated"
+              value={
+                task.isOffHours && task.estimatedMinutes !== undefined
+                  ? formatHours(task.estimatedMinutes / 60)
+                  : "—"
+              }
+              icon={Target}
+              accent="text-analytics-cyan"
+              accentBg="bg-analytics-cyan/10"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
             <div>
               <p className="text-xs text-muted-foreground-2">Due date</p>
@@ -173,7 +201,7 @@ export function TaskDetailSheet({
             </div>
             {task.estimatedMinutes !== undefined && (
               <div>
-                <p className="text-xs text-muted-foreground-2">Estimated</p>
+                <p className="text-xs text-muted-foreground-2">Time estimate</p>
                 <p>
                   {task.estimatedMinutes} min
                   <span className="text-muted-foreground-2"> · {task.isOffHours ? "Off hours (billable)" : "Office hours"}</span>

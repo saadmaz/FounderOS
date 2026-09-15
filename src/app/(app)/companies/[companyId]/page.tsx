@@ -28,6 +28,7 @@ import { CompanyMeetingsPanel } from "@/components/companies/company-meetings-pa
 import { CompanyNotesPanel } from "@/components/companies/company-notes-panel";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { ProjectList } from "@/components/projects/project-list";
+import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { TaskTable } from "@/components/tasks/task-table";
 import { useCompanies } from "@/lib/data/companies";
@@ -38,6 +39,7 @@ import { useTimeEntries } from "@/lib/data/time-entries";
 import { formatHours, sumHours, sumMeetingHours, sumTaskEstimatedHours } from "@/lib/format";
 import { companyTypeLabel } from "@/lib/labels";
 import { scrollMainToTop } from "@/lib/scroll";
+import type { Task } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 
 const LINK_ICONS = {
@@ -100,9 +102,12 @@ export default function CompanyDetailPage() {
   const { data: meetings } = useMeetings(workspace?.id ?? null, companyId);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [viewingTaskId, setViewingTaskId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const company = companies.find((c) => c.id === companyId);
+  const viewingTask = tasks.find((t) => t.id === viewingTaskId) ?? null;
 
   // Hours logged = timer/manual entries + completed meetings + tasks'
   // estimated hours - a meeting is time spent same as any other session, and
@@ -243,6 +248,8 @@ export default function CompanyDetailPage() {
                 companies={companies}
                 workspaceId={workspace!.id}
                 showCompany={false}
+                onEdit={setEditingTask}
+                onView={(t) => setViewingTaskId(t.id)}
               />
             </section>
           </div>
@@ -263,7 +270,14 @@ export default function CompanyDetailPage() {
               <Plus className="size-3.5" /> New task
             </Button>
           </div>
-          <TaskTable tasks={tasks} companies={companies} workspaceId={workspace!.id} showCompany={false} />
+          <TaskTable
+            tasks={tasks}
+            companies={companies}
+            workspaceId={workspace!.id}
+            showCompany={false}
+            onEdit={setEditingTask}
+            onView={(t) => setViewingTaskId(t.id)}
+          />
         </TabsContent>
 
         <TabsContent value="meetings" className="flex min-w-0 flex-1">
@@ -285,6 +299,22 @@ export default function CompanyDetailPage() {
 
       <ProjectFormDialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen} defaultCompanyId={companyId} />
       <TaskFormDialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen} defaultCompanyId={companyId} />
+      <TaskFormDialog
+        open={Boolean(editingTask)}
+        onOpenChange={(v) => !v && setEditingTask(null)}
+        task={editingTask}
+      />
+      <TaskDetailSheet
+        open={Boolean(viewingTaskId)}
+        onOpenChange={(v) => !v && setViewingTaskId(null)}
+        task={viewingTask}
+        companies={companies}
+        workspaceId={workspace?.id ?? ""}
+        onEdit={(t) => {
+          setViewingTaskId(null);
+          setEditingTask(t);
+        }}
+      />
       <CompanyFormDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} company={company} />
     </>
   );

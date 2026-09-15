@@ -18,6 +18,7 @@ import { DetailPageSkeleton } from "@/components/shared/detail-page-skeleton";
 import { StatCard } from "@/components/shared/stat-card";
 import { PriorityBadge } from "@/components/shared/status-badge";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
+import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { TaskTable } from "@/components/tasks/task-table";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
@@ -43,6 +44,7 @@ export default function ProjectDetailPage() {
   const { data: timeEntries } = useTimeEntries(workspace?.id ?? null);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [viewingTaskId, setViewingTaskId] = useState<string | null>(null);
   const [editProjectOpen, setEditProjectOpen] = useState(false);
 
   const project = projects.find((p) => p.id === projectId);
@@ -63,6 +65,7 @@ export default function ProjectDetailPage() {
   }, [timeEntries, tasks, projectId]);
 
   const completed = tasks.filter((t) => t.status === "completed").length;
+  const viewingTask = tasks.find((t) => t.id === viewingTaskId) ?? null;
 
   if (companiesLoading || projectsLoading) {
     return <DetailPageSkeleton />;
@@ -193,6 +196,7 @@ export default function ProjectDetailPage() {
           workspaceId={workspace!.id}
           showCompany={false}
           onEdit={setEditingTask}
+          onView={(t) => setViewingTaskId(t.id)}
         />
       </div>
 
@@ -201,6 +205,17 @@ export default function ProjectDetailPage() {
         open={Boolean(editingTask)}
         onOpenChange={(v) => !v && setEditingTask(null)}
         task={editingTask}
+      />
+      <TaskDetailSheet
+        open={Boolean(viewingTaskId)}
+        onOpenChange={(v) => !v && setViewingTaskId(null)}
+        task={viewingTask}
+        companies={companies}
+        workspaceId={workspace?.id ?? ""}
+        onEdit={(t) => {
+          setViewingTaskId(null);
+          setEditingTask(t);
+        }}
       />
       <ProjectFormDialog open={editProjectOpen} onOpenChange={setEditProjectOpen} project={project} />
     </>
