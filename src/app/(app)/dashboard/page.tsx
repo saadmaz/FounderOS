@@ -107,19 +107,34 @@ export default function DashboardPage() {
     () => projects.filter((p) => p.status !== "completed" && p.status !== "cancelled"),
     [projects]
   );
+  // Self-reported time logged directly on a task (no timer/manual entry,
+  // just estimatedMinutes + workDate - see taskMinutesSpent) for tasks whose
+  // workDate falls in [from, to). Real timer/manual entries are already
+  // covered by sumHours over timeEntries below, so this only adds tasks that
+  // have zero entries of their own, to avoid double-counting.
+  const selfReportedTaskHours = (from: number, to: number) =>
+    sumTaskActualHours(
+      tasks.filter(
+        (t) => t.workDate && t.workDate >= from && t.workDate < to && !timeEntries.some((e) => e.taskId === t.id)
+      ),
+      timeEntries
+    );
+
   const hoursThisWeek = useMemo(
     () =>
       sumHours(timeEntries.filter((e) => e.startedAt >= weekStart)) +
-      sumMeetingHours(meetings.filter((m) => m.scheduledAt >= weekStart)),
-    [timeEntries, meetings, weekStart]
+      sumMeetingHours(meetings.filter((m) => m.scheduledAt >= weekStart)) +
+      selfReportedTaskHours(weekStart, today + 86400000),
+    [timeEntries, meetings, tasks, weekStart, today]
   );
   const hoursLastWeek = useMemo(() => {
     const lastWeekStart = weekStart - 7 * 86400000;
     return (
       sumHours(timeEntries.filter((e) => e.startedAt >= lastWeekStart && e.startedAt < weekStart)) +
-      sumMeetingHours(meetings.filter((m) => m.scheduledAt >= lastWeekStart && m.scheduledAt < weekStart))
+      sumMeetingHours(meetings.filter((m) => m.scheduledAt >= lastWeekStart && m.scheduledAt < weekStart)) +
+      selfReportedTaskHours(lastWeekStart, weekStart)
     );
-  }, [timeEntries, meetings, weekStart]);
+  }, [timeEntries, meetings, tasks, weekStart]);
   // Only shown when there's a real prior week to compare against - a
   // fabricated "+100%" off a zero baseline would be exactly the kind of
   // misleading stat this is meant to replace (see: the old notification bell).
@@ -130,8 +145,8 @@ export default function DashboardPage() {
     return { value: `${Math.abs(pct)}%`, positive: pct > 0 };
   }, [hoursThisWeek, hoursLastWeek]);
 
-  // Daily hours (time entries + meetings) for the last 14 days, for the
-  // trend chart below the stat row.
+  // Daily hours (time entries + meetings + self-reported task time) for the
+  // last 14 days, for the trend chart below the stat row.
   const dailyHours = useMemo(() => {
     const days = 14;
     const points: { date: string; hours: number }[] = [];
@@ -140,14 +155,15 @@ export default function DashboardPage() {
       const dayEnd = dayStart + 86400000;
       const hours =
         sumHours(timeEntries.filter((e) => e.startedAt >= dayStart && e.startedAt < dayEnd)) +
-        sumMeetingHours(meetings.filter((m) => m.scheduledAt >= dayStart && m.scheduledAt < dayEnd));
+        sumMeetingHours(meetings.filter((m) => m.scheduledAt >= dayStart && m.scheduledAt < dayEnd)) +
+        selfReportedTaskHours(dayStart, dayEnd);
       points.push({
         date: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(dayStart)),
         hours: Math.round(hours * 10) / 10,
       });
     }
     return points;
-  }, [timeEntries, meetings, today]);
+  }, [timeEntries, meetings, tasks, today]);
   const hasHoursHistory = dailyHours.some((d) => d.hours > 0);
 
   const recentActivity = useMemo(
