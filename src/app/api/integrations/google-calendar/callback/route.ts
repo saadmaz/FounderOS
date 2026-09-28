@@ -3,11 +3,17 @@ import { getAppUrl } from "@/lib/email/app-url";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { calendarClientFor } from "@/lib/google-calendar/client";
 import { exchangeCodeForTokens } from "@/lib/google-calendar/oauth";
-import { ensureFounderosCalendar } from "@/lib/google-calendar/sync";
+import { ensureFounderosCalendar, pushAllExistingItems } from "@/lib/google-calendar/sync";
 import { startWatch } from "@/lib/google-calendar/watch";
 import type { GoogleCalendarConnection } from "@/lib/types";
 
 export const runtime = "nodejs";
+// Generous but still Hobby-plan-safe - see the reconcile cron route for why
+// this ceiling matters (an out-of-range maxDuration blocks the whole
+// deploy, the same way an out-of-range cron schedule does). The initial
+// backfill below (pushAllExistingItems) is the slow part on a workspace
+// with a lot of history.
+export const maxDuration = 60;
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
@@ -64,6 +70,7 @@ export async function GET(request: Request) {
     const calendar = calendarClientFor(saved);
     const calendarId = await ensureFounderosCalendar(calendar, saved);
     await startWatch({ ...saved, calendarId }); // best-effort, never blocks connecting
+    await pushAllExistingItems(state.uid, state.workspaceId); // backfill - see its docstring
 
     return redirectToProfile("connected");
   } catch (err) {

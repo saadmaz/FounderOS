@@ -335,6 +335,33 @@ export async function pushToRelevantUsers(
   }
 }
 
+/**
+ * One-time backfill of everything already on the FounderOS calendar into a
+ * newly (or freshly re-)connected user's Google calendar - without this,
+ * connecting only starts syncing *future* changes, so the Google calendar
+ * looks empty even though the FounderOS one isn't. Called right after
+ * connecting (src/app/api/integrations/google-calendar/callback) and from
+ * the manual "Sync now" action, so an already-connected user can trigger it
+ * too. Safe to call repeatedly - pushItemToGoogle no-ops on items whose
+ * content hash hasn't changed since the last push.
+ */
+export async function pushAllExistingItems(uid: string, workspaceId: string): Promise<void> {
+  const db = getAdminFirestore();
+
+  const eventsSnap = await db.collection(`workspaces/${workspaceId}/calendarEvents`).get();
+  for (const doc of eventsSnap.docs) {
+    await pushItemToGoogle(uid, workspaceId, "event", doc.id);
+  }
+
+  const meetingsSnap = await db
+    .collection(`workspaces/${workspaceId}/meetings`)
+    .where("attendeeIds", "array-contains", uid)
+    .get();
+  for (const doc of meetingsSnap.docs) {
+    await pushItemToGoogle(uid, workspaceId, "meeting", doc.id);
+  }
+}
+
 function isGoogleNotFound(err: unknown): boolean {
   const code = (err as { code?: number })?.code;
   return code === 404 || code === 410;
