@@ -708,7 +708,7 @@ export interface GoogleCalendarConnection {
   uid: string;
   workspaceId: string;
   googleEmail: string;
-  calendarId: string; // the dedicated "FounderOS" calendar in the user's Google account
+  calendarId: string; // "primary" - the account's main Google Calendar
   accessToken: string;
   refreshToken: string;
   expiryDate: number;

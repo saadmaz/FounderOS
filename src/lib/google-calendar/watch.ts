@@ -7,7 +7,7 @@ import { calendarClientFor } from "./client";
 
 /**
  * Registers (or renews) a push-notification channel for a connection's
- * dedicated calendar. Best-effort and silent on failure: Google requires
+ * calendar. Best-effort and silent on failure: Google requires
  * the receiving domain to be verified in Google Cloud Console before
  * `watch()` succeeds, so until the user does that one-time step this is
  * expected to fail - real-time delivery just doesn't kick in yet. Sync

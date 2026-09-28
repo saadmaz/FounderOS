@@ -95,7 +95,8 @@ export function GoogleCalendarCard() {
         <div className="min-w-0">
           <h2 className="text-sm font-semibold">Google Calendar</h2>
           <p className="text-xs text-muted-foreground">
-            Two-way sync with a dedicated &quot;FounderOS&quot; calendar in your Google account.
+            Two-way sync with your primary Google Calendar. Every event on it - including
+            existing history - becomes visible to everyone in this workspace.
           </p>
         </div>
       </div>

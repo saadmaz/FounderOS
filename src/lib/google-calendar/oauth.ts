@@ -2,17 +2,19 @@ import "server-only";
 import { createOAuthClient } from "./client";
 
 /**
- * `calendar.app.created` is a narrow, granular Calendar API scope: it only
- * grants access to calendars/events this app itself creates, not the user's
- * whole Google Calendar account. That's exactly right for how this
- * integration works - see src/lib/google-calendar/sync.ts's
- * ensureFounderosCalendar - and it makes for a much less scary OAuth
- * consent screen than the blanket `calendar` or `calendar.events` scopes.
+ * `calendar.events` grants read/write on events across the connected
+ * account's calendars (needed for "primary" - see src/lib/google-calendar/
+ * sync.ts), not just calendars/events this app itself created. That's a
+ * deliberate, explicit choice: every event on the connected primary
+ * calendar becomes visible to the whole FounderOS workspace, not just
+ * FounderOS-originated ones. A user who already connected under the old,
+ * narrower `calendar.app.created` scope needs to disconnect and reconnect
+ * to grant this - Google won't silently upgrade an existing grant.
  */
 export const GOOGLE_CALENDAR_SCOPES = [
   "openid",
   "https://www.googleapis.com/auth/userinfo.email",
-  "https://www.googleapis.com/auth/calendar.app.created",
+  "https://www.googleapis.com/auth/calendar.events",
 ];
 
 export function buildConsentUrl(state: string): string {

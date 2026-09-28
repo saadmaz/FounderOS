@@ -1,6 +1,13 @@
 /**
- * The actual bidirectional sync engine: FounderOS <-> a dedicated "FounderOS"
- * calendar in each connected member's Google account.
+ * The actual bidirectional sync engine: FounderOS <-> each connected
+ * member's actual primary Google Calendar (by explicit choice - see the
+ * connect flow's consent copy - meaning every event on that calendar
+ * becomes visible to the whole workspace, not just events created through
+ * FounderOS or a dedicated calendar. This app used to sync a separate
+ * dedicated "FounderOS" calendar instead, specifically to avoid that; that
+ * changed on request, so the OAuth scope is now the broader
+ * `calendar.events` (see ./oauth.ts) rather than the narrower
+ * `calendar.app.created`.
  *
  * Push (FounderOS -> Google) is called right after a client-side Firestore
  * write, from POST /api/integrations/google-calendar/push - see
@@ -30,7 +37,6 @@ import type {
 } from "@/lib/types";
 import { calendarClientFor, getConnection, markConnectionError, markConnectionHealthy } from "./client";
 
-const FOUNDEROS_CALENDAR_SUMMARY = "FounderOS";
 type ItemKind = "event" | "meeting";
 
 // ---------------------------------------------------------------- helpers --
@@ -105,38 +111,6 @@ async function mapWithConcurrency<T>(items: T[], limit: number, fn: (item: T) =>
 async function getMembers(workspaceId: string): Promise<WorkspaceMember[]> {
   const snap = await getAdminFirestore().collection(`workspaces/${workspaceId}/members`).get();
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<WorkspaceMember, "id">) }));
-}
-
-// ------------------------------------------------------- calendar bootstrap --
-
-/** Finds (or creates) the dedicated "FounderOS" calendar in this connected
- * account - see the module docstring for why sync targets a dedicated
- * calendar instead of the user's primary one. */
-export async function ensureFounderosCalendar(
-  calendar: calendar_v3.Calendar,
-  connection: GoogleCalendarConnection
-): Promise<string> {
-  if (connection.calendarId) {
-    try {
-      await calendar.calendars.get({ calendarId: connection.calendarId });
-      return connection.calendarId;
-    } catch {
-      // Deleted on the Google side (or never existed) - fall through and
-      // create a fresh one below.
-    }
-  }
-  const created = await calendar.calendars.insert({
-    requestBody: {
-      summary: FOUNDEROS_CALENDAR_SUMMARY,
-      description: "Synced from your FounderOS workspace calendar. Don't rename this calendar.",
-    },
-  });
-  const calendarId = created.data.id;
-  if (!calendarId) throw new Error("Google didn't return a calendar id after creating it.");
-  await getAdminFirestore()
-    .doc(`googleCalendarConnections/${connection.uid}`)
-    .update({ calendarId });
-  return calendarId;
 }
 
 // ------------------------------------------------------------- field maps --
@@ -221,7 +195,7 @@ export async function pushItemToGoogle(
     }
 
     const calendar = calendarClientFor(connection);
-    const calendarId = await ensureFounderosCalendar(calendar, connection);
+    const calendarId = connection.calendarId;
 
     let fields: calendar_v3.Schema$Event;
     if (kind === "event") {
@@ -398,7 +372,7 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
 
   try {
     const calendar = calendarClientFor(connection);
-    const calendarId = await ensureFounderosCalendar(calendar, connection);
+    const calendarId = connection.calendarId;
 
     let pageToken: string | undefined;
     let syncToken = connection.syncToken;
@@ -435,9 +409,10 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
       if (!pageToken) break;
     }
 
-    for (const event of events) {
-      await applyGoogleEvent(uid, connection.workspaceId, event);
-    }
+    // Concurrency-limited for the same reason as pushAllExistingItems - a
+    // primary calendar with years of history can easily be hundreds of
+    // events, and this runs inside the same maxDuration-capped function.
+    await mapWithConcurrency(events, 6, (event) => applyGoogleEvent(uid, connection.workspaceId, event));
 
     const patch: Record<string, unknown> = { lastSyncedAt: Date.now(), status: "connected", lastError: null };
     if (nextSyncToken) patch.syncToken = nextSyncToken;
@@ -482,10 +457,10 @@ async function applyGoogleEvent(uid: string, workspaceId: string, event: calenda
     return;
   }
 
-  // A brand-new event created directly in the user's "FounderOS" Google
-  // calendar (not through us) - mirror it in as a new CalendarEvent. Google
-  // has no "meeting" concept, so anything pulled in fresh always lands as a
-  // plain event.
+  // An event that didn't come from us - either pre-existing history on the
+  // connected calendar or something created there directly. Mirror it in
+  // as a new CalendarEvent. Google has no "meeting" concept, so anything
+  // pulled in fresh always lands as a plain event.
   const patch = calendarEventPatchFromGoogle(event);
   const newDoc = await getAdminFirestore().collection(`workspaces/${workspaceId}/calendarEvents`).add({
     ...patch,

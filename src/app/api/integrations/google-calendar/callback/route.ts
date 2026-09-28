@@ -1,9 +1,8 @@
 import { after, NextResponse } from "next/server";
 import { getAppUrl } from "@/lib/email/app-url";
 import { getAdminFirestore } from "@/lib/firebase/admin";
-import { calendarClientFor } from "@/lib/google-calendar/client";
 import { exchangeCodeForTokens } from "@/lib/google-calendar/oauth";
-import { ensureFounderosCalendar, pushAllExistingItems } from "@/lib/google-calendar/sync";
+import { pullChangesForConnection, pushAllExistingItems } from "@/lib/google-calendar/sync";
 import { startWatch } from "@/lib/google-calendar/watch";
 import type { GoogleCalendarConnection } from "@/lib/types";
 
@@ -48,30 +47,32 @@ export async function GET(request: Request) {
 
   try {
     const tokens = await exchangeCodeForTokens(code);
-    const connectionRef = db.doc(`googleCalendarConnections/${state.uid}`);
-    await connectionRef.set(
-      {
-        uid: state.uid,
-        workspaceId: state.workspaceId,
-        googleEmail: tokens.email,
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-        expiryDate: tokens.expiryDate,
-        scope: tokens.scope,
-        status: "connected",
-        lastError: null,
-        connectedAt: Date.now(),
-      },
-      { merge: true }
-    );
+    const connection: GoogleCalendarConnection = {
+      uid: state.uid,
+      workspaceId: state.workspaceId,
+      googleEmail: tokens.email,
+      // The literal "primary" is Google's own alias for "this account's
+      // main calendar" - no lookup/creation needed, unlike the old
+      // dedicated-calendar design (see sync.ts's module docstring).
+      calendarId: "primary",
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiryDate: tokens.expiryDate,
+      scope: tokens.scope,
+      status: "connected",
+      connectedAt: Date.now(),
+    };
+    await db
+      .doc(`googleCalendarConnections/${state.uid}`)
+      .set({ ...connection, lastError: null }, { merge: true });
 
-    const saved = (await connectionRef.get()).data() as GoogleCalendarConnection;
-    const calendar = calendarClientFor(saved);
-    const calendarId = await ensureFounderosCalendar(calendar, saved);
-    await startWatch({ ...saved, calendarId }); // best-effort, never blocks connecting
-    // Backfill in the background (see pushAllExistingItems's docstring) -
-    // not awaited, so the redirect below fires immediately instead of
-    // making the browser wait on a potentially-slow full sync.
+    await startWatch(connection); // best-effort, never blocks connecting
+    // Both directions run in the background (not awaited) so the redirect
+    // below fires immediately instead of making the browser wait on a
+    // potentially large initial two-way sync: pull imports the account's
+    // existing calendar history into FounderOS, push backfills existing
+    // FounderOS items out to Google (see pushAllExistingItems's docstring).
+    after(() => pullChangesForConnection(state.uid));
     after(() => pushAllExistingItems(state.uid, state.workspaceId));
 
     return redirectToProfile("connected");
