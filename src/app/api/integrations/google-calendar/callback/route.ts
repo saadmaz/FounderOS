@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getAppUrl } from "@/lib/email/app-url";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { calendarClientFor } from "@/lib/google-calendar/client";
@@ -8,11 +8,10 @@ import { startWatch } from "@/lib/google-calendar/watch";
 import type { GoogleCalendarConnection } from "@/lib/types";
 
 export const runtime = "nodejs";
-// Generous but still Hobby-plan-safe - see the reconcile cron route for why
-// this ceiling matters (an out-of-range maxDuration blocks the whole
-// deploy, the same way an out-of-range cron schedule does). The initial
-// backfill below (pushAllExistingItems) is the slow part on a workspace
-// with a lot of history.
+// See the reconcile cron route for why this stays within the Hobby plan's
+// ceiling - matters less here since the backfill runs via after() below
+// (the redirect isn't blocked on it), but the function invocation is still
+// subject to this cap while that background work finishes.
 export const maxDuration = 60;
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
@@ -70,7 +69,10 @@ export async function GET(request: Request) {
     const calendar = calendarClientFor(saved);
     const calendarId = await ensureFounderosCalendar(calendar, saved);
     await startWatch({ ...saved, calendarId }); // best-effort, never blocks connecting
-    await pushAllExistingItems(state.uid, state.workspaceId); // backfill - see its docstring
+    // Backfill in the background (see pushAllExistingItems's docstring) -
+    // not awaited, so the redirect below fires immediately instead of
+    // making the browser wait on a potentially-slow full sync.
+    after(() => pushAllExistingItems(state.uid, state.workspaceId));
 
     return redirectToProfile("connected");
   } catch (err) {

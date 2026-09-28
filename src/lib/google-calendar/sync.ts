@@ -85,6 +85,23 @@ function linkDocId(uid: string, kind: ItemKind, itemId: string): string {
   return `${uid}_${kind}_${itemId}`;
 }
 
+/** Runs `fn` over `items` with at most `limit` in flight at once - plain
+ * `for...of await` here would serialize dozens of Google API round-trips
+ * (a workspace with any real history easily has 50+ events once recurring
+ * series are counted), which is what blew past the backfill route's
+ * maxDuration and surfaced as a 504 to the browser. No new dependency for
+ * something this small. */
+async function mapWithConcurrency<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let index = 0;
+  async function worker() {
+    while (index < items.length) {
+      const item = items[index++];
+      await fn(item);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+}
+
 async function getMembers(workspaceId: string): Promise<WorkspaceMember[]> {
   const snap = await getAdminFirestore().collection(`workspaces/${workspaceId}/members`).get();
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<WorkspaceMember, "id">) }));
@@ -347,19 +364,20 @@ export async function pushToRelevantUsers(
  */
 export async function pushAllExistingItems(uid: string, workspaceId: string): Promise<void> {
   const db = getAdminFirestore();
+  const CONCURRENCY = 6;
 
   const eventsSnap = await db.collection(`workspaces/${workspaceId}/calendarEvents`).get();
-  for (const doc of eventsSnap.docs) {
-    await pushItemToGoogle(uid, workspaceId, "event", doc.id);
-  }
+  await mapWithConcurrency(eventsSnap.docs, CONCURRENCY, (doc) =>
+    pushItemToGoogle(uid, workspaceId, "event", doc.id)
+  );
 
   const meetingsSnap = await db
     .collection(`workspaces/${workspaceId}/meetings`)
     .where("attendeeIds", "array-contains", uid)
     .get();
-  for (const doc of meetingsSnap.docs) {
-    await pushItemToGoogle(uid, workspaceId, "meeting", doc.id);
-  }
+  await mapWithConcurrency(meetingsSnap.docs, CONCURRENCY, (doc) =>
+    pushItemToGoogle(uid, workspaceId, "meeting", doc.id)
+  );
 }
 
 function isGoogleNotFound(err: unknown): boolean {
