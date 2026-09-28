@@ -694,6 +694,53 @@ export interface Meeting {
   updatedAt: number;
 }
 
+// ===================== Google Calendar sync =====================
+// Admin-SDK-only data - never readable from the client Firestore SDK (no
+// firestore.rules block exists for either collection, and unmatched paths
+// default-deny). See src/lib/google-calendar/ and src/app/api/integrations/
+// google-calendar/**.
+
+export type GoogleCalendarConnectionStatus = "connected" | "error";
+
+/** One doc per connected FounderOS user, at googleCalendarConnections/{uid} -
+ * each workspace member connects their own Google account. */
+export interface GoogleCalendarConnection {
+  uid: string;
+  workspaceId: string;
+  googleEmail: string;
+  calendarId: string; // the dedicated "FounderOS" calendar in the user's Google account
+  accessToken: string;
+  refreshToken: string;
+  expiryDate: number;
+  scope: string;
+  syncToken?: string; // incremental-sync cursor for calendar.events.list
+  channelId?: string; // active watch() channel, if domain verification allows one
+  resourceId?: string;
+  channelExpiration?: number;
+  status: GoogleCalendarConnectionStatus;
+  lastError?: string;
+  lastSyncedAt?: number;
+  connectedAt: number;
+}
+
+/** Links one FounderOS item to the Google event it produced in one
+ * connected user's calendar - at
+ * workspaces/{workspaceId}/googleEventLinks/{uid}_{kind}_{itemId}. A single
+ * CalendarEvent/Meeting can fan out to multiple Google events (one per
+ * connected member who can see it), so this can't live as a single field on
+ * the item itself. */
+export interface GoogleCalendarLink {
+  id: string;
+  uid: string;
+  workspaceId: string;
+  kind: "event" | "meeting";
+  itemId: string;
+  googleEventId: string;
+  lastPushedGoogleUpdated?: string; // echo-detection: Google's `updated` right after our own push
+  contentHash: string;
+  updatedAt: number;
+}
+
 // ===================== Goals =====================
 
 export type GoalStatus = "not_started" | "in_progress" | "completed" | "missed";

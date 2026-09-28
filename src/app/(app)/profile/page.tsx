@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { GoogleCalendarCard } from "@/components/integrations/google-calendar-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { changeUserPassword, signOut, updateUserProfile } from "@/lib/auth/actions";
 import { authErrorMessage } from "@/lib/auth/error-messages";
@@ -130,6 +131,8 @@ export default function ProfilePage() {
             </p>
           )}
         </section>
+
+        <GoogleCalendarCard />
 
         {hasPasswordProvider && (
           <section className="rounded-xl border border-border bg-card p-5">

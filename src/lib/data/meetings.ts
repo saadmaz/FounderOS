@@ -15,6 +15,7 @@ import {
 import { db } from "@/lib/firebase/client";
 import type { Meeting, MeetingStatus, RecurrenceFrequency } from "@/lib/types";
 import { now, omitUndefined } from "./firestore-helpers";
+import { notifyGoogleSync } from "./google-calendar-notify";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/meetings`;
@@ -38,12 +39,14 @@ export async function createMeeting(
     Partial<Meeting>
 ) {
   const ts = now();
-  return addDoc(collection(db, path(workspaceId)), {
+  const ref = await addDoc(collection(db, path(workspaceId)), {
     ...input,
     workspaceId,
     createdAt: ts,
     updatedAt: ts,
   });
+  notifyGoogleSync(workspaceId, "meeting", ref.id);
+  return ref;
 }
 
 /**
@@ -63,8 +66,10 @@ export async function createRecurringMeetings(
   const ts = now();
   const groupId = doc(collection(db, path(workspaceId))).id;
   const batch = writeBatch(db);
+  const ids: string[] = [];
   dates.forEach((scheduledAt, index) => {
     const ref = doc(collection(db, path(workspaceId)));
+    ids.push(ref.id);
     batch.set(ref, {
       ...base,
       workspaceId,
@@ -81,6 +86,7 @@ export async function createRecurringMeetings(
     });
   });
   await batch.commit();
+  notifyGoogleSync(workspaceId, "meeting", ids);
 }
 
 export async function updateMeeting(
@@ -91,13 +97,15 @@ export async function updateMeeting(
   // Optional fields are cleared with `field: undefined` (e.g. notes/agenda/
   // location), but Firestore's updateDoc throws on any `undefined` value -
   // omitUndefined strips those before the write instead of dropping the field.
-  return updateDoc(
+  const result = await updateDoc(
     doc(db, path(workspaceId), meetingId),
     omitUndefined({
       ...patch,
       updatedAt: now(),
     })
   );
+  notifyGoogleSync(workspaceId, "meeting", meetingId);
+  return result;
 }
 
 export async function setMeetingStatus(
@@ -109,7 +117,9 @@ export async function setMeetingStatus(
 }
 
 export async function deleteMeeting(workspaceId: string, meetingId: string) {
-  return deleteDoc(doc(db, path(workspaceId), meetingId));
+  const result = await deleteDoc(doc(db, path(workspaceId), meetingId));
+  notifyGoogleSync(workspaceId, "meeting", meetingId, true);
+  return result;
 }
 
 /** Deletes every meeting in a recurring series (all instances sharing
@@ -118,7 +128,9 @@ export async function deleteMeetingSeries(workspaceId: string, groupId: string) 
   const snap = await getDocs(
     query(collection(db, path(workspaceId)), where("recurrence.groupId", "==", groupId))
   );
+  const ids = snap.docs.map((d) => d.id);
   const batch = writeBatch(db);
   snap.forEach((d) => batch.delete(d.ref));
   await batch.commit();
+  notifyGoogleSync(workspaceId, "meeting", ids, true);
 }

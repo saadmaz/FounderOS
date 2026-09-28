@@ -15,6 +15,7 @@ import {
 import { db } from "@/lib/firebase/client";
 import type { CalendarEvent, RecurrenceFrequency } from "@/lib/types";
 import { now } from "./firestore-helpers";
+import { notifyGoogleSync } from "./google-calendar-notify";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/calendarEvents`;
@@ -33,11 +34,13 @@ export async function createCalendarEvent(
     Partial<CalendarEvent>
 ) {
   const ts = now();
-  return addDoc(collection(db, path(workspaceId)), {
+  const ref = await addDoc(collection(db, path(workspaceId)), {
     ...input,
     workspaceId,
     createdAt: ts,
   });
+  notifyGoogleSync(workspaceId, "event", ref.id);
+  return ref;
 }
 
 /**
@@ -56,8 +59,10 @@ export async function createRecurringCalendarEvents(
   const ts = now();
   const groupId = doc(collection(db, path(workspaceId))).id;
   const batch = writeBatch(db);
+  const ids: string[] = [];
   dates.forEach((startsAt, index) => {
     const ref = doc(collection(db, path(workspaceId)));
+    ids.push(ref.id);
     batch.set(ref, {
       ...base,
       workspaceId,
@@ -74,6 +79,7 @@ export async function createRecurringCalendarEvents(
     });
   });
   await batch.commit();
+  notifyGoogleSync(workspaceId, "event", ids);
 }
 
 export async function updateCalendarEvent(
@@ -81,13 +87,17 @@ export async function updateCalendarEvent(
   eventId: string,
   patch: Partial<CalendarEvent>
 ) {
-  return updateDoc(doc(db, path(workspaceId), eventId), {
+  const result = await updateDoc(doc(db, path(workspaceId), eventId), {
     ...patch,
   });
+  notifyGoogleSync(workspaceId, "event", eventId);
+  return result;
 }
 
 export async function deleteCalendarEvent(workspaceId: string, eventId: string) {
-  return deleteDoc(doc(db, path(workspaceId), eventId));
+  const result = await deleteDoc(doc(db, path(workspaceId), eventId));
+  notifyGoogleSync(workspaceId, "event", eventId, true);
+  return result;
 }
 
 /** Deletes every event in a recurring series (all instances sharing
@@ -96,7 +106,9 @@ export async function deleteCalendarEventSeries(workspaceId: string, groupId: st
   const snap = await getDocs(
     query(collection(db, path(workspaceId)), where("recurrence.groupId", "==", groupId))
   );
+  const ids = snap.docs.map((d) => d.id);
   const batch = writeBatch(db);
   snap.forEach((d) => batch.delete(d.ref));
   await batch.commit();
+  notifyGoogleSync(workspaceId, "event", ids, true);
 }

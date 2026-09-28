@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import {
   Calendar as CalendarIcon,
   CalendarClock,
@@ -51,6 +52,7 @@ import {
 } from "@/lib/data/calendar-events";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
 import { useCompanies } from "@/lib/data/companies";
+import { useGoogleCalendarStatus } from "@/lib/data/google-calendar-status";
 import { useMeetings } from "@/lib/data/meetings";
 import { useTasks } from "@/lib/data/tasks";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -81,6 +83,7 @@ export default function CalendarPage() {
   const { data: meetings, loading: meetingsLoading } = useMeetings(workspace?.id ?? null);
   const { data: tasks, loading: tasksLoading } = useTasks(workspace?.id ?? null);
   const { data: companies } = useCompanies(workspace?.id ?? null);
+  const { status: googleStatus } = useGoogleCalendarStatus();
 
   const [view, setView] = useState<ViewMode>("month");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -202,6 +205,23 @@ export default function CalendarPage() {
         description="Events, meetings, and task due dates across every company."
         actions={
           <div className="flex items-center gap-2">
+            {googleStatus && !googleStatus.connected && (
+              <Link href="/profile">
+                <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+                  <CalendarSync className="size-3.5" />
+                  Connect Google Calendar
+                </Button>
+              </Link>
+            )}
+            {googleStatus?.connected && googleStatus.status !== "error" && (
+              <Link
+                href="/profile"
+                className="hidden items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success sm:flex"
+              >
+                <CalendarSync className="size-3" />
+                Synced
+              </Link>
+            )}
             <Button variant="outline" onClick={() => setCreateMeetingOpen(true)} className="gap-1.5">
               <Plus className="size-4" />
               New meeting
@@ -216,27 +236,48 @@ export default function CalendarPage() {
 
       <div className="flex-1 space-y-4 p-4 lg:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="size-8" onClick={goPrev} aria-label="Previous">
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={goToday}>
-              Today
-            </Button>
-            <Button variant="outline" size="icon" className="size-8" onClick={goNext} aria-label="Next">
-              <ChevronRight className="size-4" />
-            </Button>
-            <h2 className="ml-1 text-sm font-semibold">{headerLabel}</h2>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface p-0.5 shadow-sm">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 rounded-md hover:bg-card hover:shadow-sm"
+                onClick={goPrev}
+                aria-label="Previous"
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 rounded-md px-2.5 text-xs hover:bg-card hover:shadow-sm"
+                onClick={goToday}
+              >
+                Today
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 rounded-md hover:bg-card hover:shadow-sm"
+                onClick={goNext}
+                aria-label="Next"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+            <h2 className="text-sm font-semibold tracking-tight">{headerLabel}</h2>
           </div>
 
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-0.5">
+          <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface p-0.5 shadow-sm">
             {VIEW_MODES.map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
                 className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors",
-                  view === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                  "rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-all",
+                  view === v
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {v}
@@ -263,19 +304,25 @@ export default function CalendarPage() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <motion.div
+            key={view}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="grid grid-cols-1 gap-6 xl:grid-cols-3"
+          >
             <div className="space-y-6 xl:col-span-2">
               {view === "month" && (
                 <>
-                  <section className="rounded-xl border border-border bg-card p-4">
+                  <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
                       <h2 className="text-sm font-semibold">Month view</h2>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1.5">
-                          <span className="size-2 rounded-full bg-primary" /> Scheduled
+                          <span className="size-2 rounded-full bg-primary ring-2 ring-primary/15" /> Scheduled
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className="size-2 rounded-full bg-warning" /> Task due
+                          <span className="size-2 rounded-full bg-warning ring-2 ring-warning/15" /> Task due
                         </span>
                       </div>
                     </div>
@@ -317,7 +364,7 @@ export default function CalendarPage() {
                     />
                   </section>
 
-                  <section className="rounded-xl border border-border bg-card">
+                  <section className="rounded-xl border border-border bg-card shadow-sm">
                     <div className="flex items-center justify-between border-b border-border px-4 py-3">
                       <h2 className="text-sm font-semibold">
                         {new Intl.DateTimeFormat("en-US", {
@@ -328,7 +375,7 @@ export default function CalendarPage() {
                         }).format(selectedDate)}
                       </h2>
                       {selectedDayStart === today && (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20">
                           Today
                         </span>
                       )}
@@ -345,10 +392,16 @@ export default function CalendarPage() {
                             const e = item.raw as CalendarEvent;
                             const canEdit = e.createdBy === user?.uid;
                             return (
-                              <li key={item.id} className="flex items-center gap-3 px-4 py-2.5">
+                              <li
+                                key={item.id}
+                                className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-secondary/50"
+                              >
                                 <span
                                   className="size-2 shrink-0 rounded-full"
-                                  style={{ backgroundColor: company?.color ?? "#71717A" }}
+                                  style={{
+                                    backgroundColor: company?.color ?? "#71717A",
+                                    boxShadow: `0 0 0 3px color-mix(in srgb, ${company?.color ?? "#71717A"} 18%, transparent)`,
+                                  }}
                                 />
                                 <div className="min-w-0 flex-1">
                                   <p className="flex items-center gap-1.5 truncate text-sm">
@@ -369,7 +422,7 @@ export default function CalendarPage() {
                                 </div>
                                 <span
                                   className={cn(
-                                    "inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
+                                    "inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-current/15",
                                     CALENDAR_EVENT_TYPE_STYLES[e.type]
                                   )}
                                 >
@@ -423,11 +476,14 @@ export default function CalendarPage() {
                                 <button
                                   type="button"
                                   onClick={() => setEditingMeeting(m)}
-                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-secondary/50"
+                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-secondary/50"
                                 >
                                   <span
                                     className="size-2 shrink-0 rounded-full"
-                                    style={{ backgroundColor: company?.color ?? "#71717A" }}
+                                    style={{
+                                      backgroundColor: company?.color ?? "#71717A",
+                                      boxShadow: `0 0 0 3px color-mix(in srgb, ${company?.color ?? "#71717A"} 18%, transparent)`,
+                                    }}
                                   />
                                   <Users className="size-3.5 shrink-0 text-muted-foreground" />
                                   <div className="min-w-0 flex-1">
@@ -438,7 +494,7 @@ export default function CalendarPage() {
                                       <span className="truncate">{m.title}</span>
                                     </p>
                                   </div>
-                                  <span className="shrink-0 rounded-full bg-analytics-purple/10 px-2 py-0.5 text-xs font-medium text-analytics-purple">
+                                  <span className="shrink-0 rounded-full bg-analytics-purple/10 px-2 py-0.5 text-xs font-medium text-analytics-purple ring-1 ring-inset ring-current/15">
                                     Meeting
                                   </span>
                                   <span className="w-16 shrink-0 text-right text-xs text-muted-foreground">
@@ -453,15 +509,18 @@ export default function CalendarPage() {
                             <li key={item.id}>
                               <Link
                                 href="/tasks"
-                                className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/50"
+                                className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-secondary/50"
                               >
                                 <span
                                   className="size-2 shrink-0 rounded-full"
-                                  style={{ backgroundColor: company?.color ?? "#71717A" }}
+                                  style={{
+                                    backgroundColor: company?.color ?? "#71717A",
+                                    boxShadow: `0 0 0 3px color-mix(in srgb, ${company?.color ?? "#71717A"} 18%, transparent)`,
+                                  }}
                                 />
                                 <CheckSquare className="size-3.5 shrink-0 text-muted-foreground" />
                                 <span className="min-w-0 flex-1 truncate text-sm">{t.title}</span>
-                                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground ring-1 ring-inset ring-ring-subtle">
                                   Task due
                                 </span>
                               </Link>
@@ -484,7 +543,7 @@ export default function CalendarPage() {
             </div>
 
             <div className="space-y-6">
-              <section className="rounded-xl border border-border bg-card">
+              <section className="rounded-xl border border-border bg-card shadow-sm">
                 <div className="border-b border-border px-4 py-3">
                   <h2 className="text-sm font-semibold">Upcoming (7 days)</h2>
                 </div>
@@ -496,16 +555,19 @@ export default function CalendarPage() {
                   <ul className="divide-y divide-border">
                     {upcomingItems.map((item) => {
                       const Icon = item.kind === "meeting" ? CalendarClock : item.kind === "task" ? CheckSquare : Clock;
+                      const tint = item.kind === "task" ? "warning" : "primary";
                       const content = (
                         <>
-                          <Icon
+                          <span
                             className={cn(
-                              "size-3.5 shrink-0",
-                              item.kind === "task" ? "text-warning" : "text-primary"
+                              "flex size-7 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ring-current/15",
+                              tint === "warning" ? "bg-warning/10 text-warning" : "bg-primary/10 text-primary"
                             )}
-                          />
+                          >
+                            <Icon className="size-3.5" />
+                          </span>
                           <span className="min-w-0 flex-1 truncate text-sm">{item.title}</span>
-                          <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
+                          <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
                             {formatDate(item.at)}
                           </span>
                         </>
@@ -513,14 +575,17 @@ export default function CalendarPage() {
                       return (
                         <li key={item.id}>
                           {item.kind === "task" ? (
-                            <Link href="/tasks" className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/50">
+                            <Link
+                              href="/tasks"
+                              className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-secondary/50"
+                            >
                               {content}
                             </Link>
                           ) : (
                             <button
                               type="button"
                               onClick={() => handleItemClick(item)}
-                              className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-secondary/50"
+                              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-secondary/50"
                             >
                               {content}
                             </button>
@@ -532,7 +597,7 @@ export default function CalendarPage() {
                 )}
               </section>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 

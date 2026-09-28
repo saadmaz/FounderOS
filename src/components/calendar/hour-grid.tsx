@@ -60,7 +60,7 @@ export function HourGrid({
   const dayColClass = days.length > 1 ? "min-w-[110px] flex-1" : "flex-1";
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className="overflow-x-auto scrollbar-thin">
         {/* day headers - horizontally scrolls with the grid, vertically fixed */}
         <div className="flex border-b border-border">
@@ -68,12 +68,19 @@ export function HourGrid({
           {columns.map(({ day, isToday }) => (
             <div
               key={day.toISOString()}
-              className={cn(dayColClass, "border-l border-border px-2 py-2 text-center", isToday && "bg-primary/5")}
+              className={cn(dayColClass, "border-l border-border px-2 py-2.5 text-center", isToday && "bg-primary/5")}
             >
               <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground-2">
                 {new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(day)}
               </p>
-              <p className={cn("text-sm font-semibold", isToday && "text-primary")}>{day.getDate()}</p>
+              <p
+                className={cn(
+                  "mx-auto mt-1 flex size-6 items-center justify-center rounded-full text-sm font-semibold transition-colors",
+                  isToday ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground"
+                )}
+              >
+                {day.getDate()}
+              </p>
             </div>
           ))}
         </div>
@@ -94,7 +101,7 @@ export function HourGrid({
                     key={item.id}
                     type="button"
                     onClick={() => onItemClick(item)}
-                    className="block w-full truncate rounded px-1.5 py-0.5 text-left text-[10px] font-medium text-white"
+                    className="block w-full truncate rounded-md px-1.5 py-0.5 text-left text-[10px] font-medium text-white shadow-sm ring-1 ring-inset ring-white/15 transition-transform hover:-translate-y-px hover:shadow"
                     style={{ backgroundColor: item.color }}
                     title={item.title}
                   >
@@ -135,8 +142,8 @@ export function HourGrid({
                   className="absolute inset-x-0 z-10 flex items-center"
                   style={{ top: (minutesSinceMidnight(now, dayStart) / 1440) * TOTAL_HEIGHT }}
                 >
-                  <span className="-ml-0.5 size-1.5 shrink-0 rounded-full bg-danger" />
-                  <span className="h-px flex-1 bg-danger" />
+                  <span className="-ml-1 size-2 shrink-0 rounded-full bg-danger ring-4 ring-danger/15" />
+                  <span className="h-px flex-1 bg-danger/70" />
                 </div>
               )}
 
@@ -154,7 +161,7 @@ export function HourGrid({
                     key={item.id}
                     type="button"
                     onClick={() => onItemClick(item)}
-                    className="absolute overflow-hidden rounded-md px-1.5 py-0.5 text-left text-white shadow-sm ring-1 ring-black/10 transition-opacity hover:opacity-90"
+                    className="absolute overflow-hidden rounded-lg px-1.5 py-0.5 text-left text-white shadow-sm ring-1 ring-inset ring-white/15 transition-all hover:z-20 hover:shadow-md hover:brightness-110"
                     style={{
                       top,
                       height,
