@@ -3,12 +3,15 @@ import { getAdminFirestore } from "@/lib/firebase/admin";
 import { pullChangesForConnection } from "@/lib/google-calendar/sync";
 
 export const runtime = "nodejs";
-// Sequential per connection, and no fixed cap on the run - fine at this
-// app's scale (a handful of connected members), and simpler than juggling
-// concurrency limits against Google's per-user rate limits. If this ever
-// needs to scale up, batch connections and run them with limited
-// concurrency instead of all at once.
-export const maxDuration = 300;
+// Sequential per connection - fine at this app's scale (a handful of
+// connected members), and simpler than juggling concurrency limits against
+// Google's per-user rate limits. If this ever needs to scale up, batch
+// connections and run them with limited concurrency instead of all at once.
+// 60s (not higher) deliberately - Vercel rejects a deploy outright if
+// maxDuration exceeds what the account's plan allows, the same way it just
+// did for an out-of-range cron schedule (see vercel.json) - Hobby's ceiling
+// is the one all plans can build under.
+export const maxDuration = 60;
 
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;

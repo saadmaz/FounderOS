@@ -17,7 +17,7 @@ function envOrThrow(name: string): string {
   if (!value) {
     throw new Error(
       `${name} isn't configured - Google Calendar sync needs GOOGLE_OAUTH_CLIENT_ID, ` +
-        "GOOGLE_OAUTH_CLIENT_SECRET, and GOOGLE_OAUTH_REDIRECT_URI (see .env.local.example)."
+        "GOOGLE_OAUTH_CLIENT_SECRET, and GOOGLE_OAUTH_REDIRECT_URI (see .env)."
     );
   }
   return value;
