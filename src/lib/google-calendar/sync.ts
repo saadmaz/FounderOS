@@ -74,8 +74,9 @@ function fromGoogleDate(dt: calendar_v3.Schema$EventDateTime | undefined): {
 /** Local copy of src/lib/data/firestore-helpers.ts's omitUndefined - that
  * file pulls in the client "firebase" package, which server-only Admin-SDK
  * code (this module) deliberately never imports, so this stays duplicated
- * rather than crossing that boundary for one 5-line helper. */
-function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
+ * rather than crossing that boundary for one 5-line helper. Exported for
+ * reuse by ./task-sync.ts. */
+export function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
   const result = {} as T;
   for (const [key, value] of Object.entries(obj)) {
     if (value !== undefined) (result as Record<string, unknown>)[key] = value;
@@ -83,7 +84,8 @@ function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
   return result;
 }
 
-function hashOf(value: unknown): string {
+/** Exported for reuse by ./task-sync.ts. */
+export function hashOf(value: unknown): string {
   return crypto.createHash("sha1").update(JSON.stringify(value)).digest("hex");
 }
 
@@ -96,8 +98,8 @@ function linkDocId(uid: string, kind: ItemKind, itemId: string): string {
  * (a workspace with any real history easily has 50+ events once recurring
  * series are counted), which is what blew past the backfill route's
  * maxDuration and surfaced as a 504 to the browser. No new dependency for
- * something this small. */
-async function mapWithConcurrency<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+ * something this small. Exported for reuse by ./task-sync.ts. */
+export async function mapWithConcurrency<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
   let index = 0;
   async function worker() {
     while (index < items.length) {

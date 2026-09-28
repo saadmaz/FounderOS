@@ -2,15 +2,17 @@ import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminFirestore } from "@/lib/firebase/admin";
 import { isGoogleCalendarConfigured } from "@/lib/google-calendar/client";
 import { pushToRelevantUsers } from "@/lib/google-calendar/sync";
+import { pushTasksToOwner } from "@/lib/google-calendar/task-sync";
 
 export const runtime = "nodejs";
 
 /**
  * Called (fire-and-forget) right after a client-side Firestore write to a
- * CalendarEvent or Meeting - see notifyGoogleSync() in
- * src/lib/data/calendar-events.ts and meetings.ts. Fans the change out
- * server-side to every connected user it's relevant to; the caller doesn't
- * need to know who else has Google Calendar connected.
+ * CalendarEvent, Meeting, or Task - see notifyGoogleSync() in
+ * src/lib/data/calendar-events.ts, meetings.ts, and tasks.ts. Fans the
+ * change out server-side to every connected user it's relevant to (or, for
+ * a task, just its owner - see pushTasksToOwner); the caller doesn't need
+ * to know who else has Google Calendar connected.
  */
 export async function POST(request: Request) {
   if (!isGoogleCalendarConfigured()) {
@@ -25,7 +27,8 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const workspaceId = typeof body?.workspaceId === "string" ? body.workspaceId : null;
-  const kind = body?.kind === "event" || body?.kind === "meeting" ? body.kind : null;
+  const kind =
+    body?.kind === "event" || body?.kind === "meeting" || body?.kind === "task" ? body.kind : null;
   const itemIds = Array.isArray(body?.itemIds)
     ? body.itemIds.filter((id: unknown): id is string => typeof id === "string")
     : null;
@@ -43,7 +46,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Not a member of this workspace" }, { status: 403 });
     }
 
-    await pushToRelevantUsers(workspaceId, kind, itemIds, deleted);
+    if (kind === "task") {
+      await pushTasksToOwner(workspaceId, itemIds, deleted);
+    } else {
+      await pushToRelevantUsers(workspaceId, kind, itemIds, deleted);
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Google Calendar push failed:", err);

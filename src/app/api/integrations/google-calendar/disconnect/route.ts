@@ -22,12 +22,13 @@ export async function POST(request: Request) {
     await revokeConnectionTokens(connection.refreshToken);
 
     const db = getAdminFirestore();
-    const linksSnap = await db
-      .collection(`workspaces/${connection.workspaceId}/googleEventLinks`)
-      .where("uid", "==", decoded.uid)
-      .get();
+    const [eventLinksSnap, taskLinksSnap] = await Promise.all([
+      db.collection(`workspaces/${connection.workspaceId}/googleEventLinks`).where("uid", "==", decoded.uid).get(),
+      db.collection(`workspaces/${connection.workspaceId}/googleTaskLinks`).where("uid", "==", decoded.uid).get(),
+    ]);
     const batch = db.batch();
-    linksSnap.docs.forEach((d) => batch.delete(d.ref));
+    eventLinksSnap.docs.forEach((d) => batch.delete(d.ref));
+    taskLinksSnap.docs.forEach((d) => batch.delete(d.ref));
     batch.delete(db.doc(`googleCalendarConnections/${decoded.uid}`));
     await batch.commit();
 

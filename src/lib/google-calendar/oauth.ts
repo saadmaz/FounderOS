@@ -7,14 +7,22 @@ import { createOAuthClient } from "./client";
  * sync.ts), not just calendars/events this app itself created. That's a
  * deliberate, explicit choice: every event on the connected primary
  * calendar becomes visible to the whole FounderOS workspace, not just
- * FounderOS-originated ones. A user who already connected under the old,
- * narrower `calendar.app.created` scope needs to disconnect and reconnect
- * to grant this - Google won't silently upgrade an existing grant.
+ * FounderOS-originated ones.
+ *
+ * `tasks` grants read/write on Google Tasks (see ./task-sync.ts) - the
+ * "Tasks" panel inside Google Calendar, a separate API from Calendar
+ * events. This is push-only (FounderOS -> Google), so read access isn't
+ * strictly needed, but Google doesn't offer a write-only Tasks scope.
+ *
+ * Anyone who connected before either of these scopes was added needs to
+ * disconnect and reconnect to grant them - Google won't silently upgrade
+ * an existing grant.
  */
 export const GOOGLE_CALENDAR_SCOPES = [
   "openid",
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/tasks",
 ];
 
 export function buildConsentUrl(state: string): string {

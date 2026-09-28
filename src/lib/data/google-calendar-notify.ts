@@ -2,16 +2,16 @@
 
 import { auth } from "@/lib/firebase/client";
 
-type SyncKind = "event" | "meeting";
+type SyncKind = "event" | "meeting" | "task";
 
 /**
  * Fire-and-forget notification to the Google Calendar push endpoint (see
  * src/app/api/integrations/google-calendar/push) right after a Firestore
- * write to a CalendarEvent or Meeting - see createCalendarEvent etc. in
- * ./calendar-events.ts and ./meetings.ts. Never throws and never awaited by
- * its callers: Google being unreachable, or the integration simply not
- * being connected, must never affect a core create/update/delete in the
- * app itself.
+ * write to a CalendarEvent, Meeting, or Task - see createCalendarEvent etc.
+ * in ./calendar-events.ts, ./meetings.ts, and ./tasks.ts. Never throws and
+ * never awaited by its callers: Google being unreachable, or the
+ * integration simply not being connected, must never affect a core
+ * create/update/delete in the app itself.
  */
 export function notifyGoogleSync(
   workspaceId: string,

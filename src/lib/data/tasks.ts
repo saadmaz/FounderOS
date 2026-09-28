@@ -15,6 +15,7 @@ import {
 import { db } from "@/lib/firebase/client";
 import type { RecurrenceFrequency, Task, TaskStatus } from "@/lib/types";
 import { now } from "./firestore-helpers";
+import { notifyGoogleSync } from "./google-calendar-notify";
 import { useCollection } from "./use-collection";
 
 const path = (workspaceId: string) => `workspaces/${workspaceId}/tasks`;
@@ -45,20 +46,24 @@ export async function createTask(
   input: Pick<Task, "companyId" | "title" | "status" | "priority"> & Partial<Task>
 ) {
   const ts = now();
-  return addDoc(collection(db, path(workspaceId)), {
+  const ref = await addDoc(collection(db, path(workspaceId)), {
     order: ts,
     ...input,
     workspaceId,
     createdAt: ts,
     updatedAt: ts,
   });
+  notifyGoogleSync(workspaceId, "task", ref.id);
+  return ref;
 }
 
 export async function updateTask(workspaceId: string, taskId: string, patch: Partial<Task>) {
-  return updateDoc(doc(db, path(workspaceId), taskId), {
+  const result = await updateDoc(doc(db, path(workspaceId), taskId), {
     ...patch,
     updatedAt: now(),
   });
+  notifyGoogleSync(workspaceId, "task", taskId);
+  return result;
 }
 
 export async function setTaskStatus(workspaceId: string, taskId: string, status: TaskStatus) {
@@ -69,7 +74,9 @@ export async function setTaskStatus(workspaceId: string, taskId: string, status:
 }
 
 export async function deleteTask(workspaceId: string, taskId: string) {
-  return deleteDoc(doc(db, path(workspaceId), taskId));
+  const result = await deleteDoc(doc(db, path(workspaceId), taskId));
+  notifyGoogleSync(workspaceId, "task", taskId, true);
+  return result;
 }
 
 /**
@@ -87,8 +94,10 @@ export async function createRecurringTasks(
   const ts = now();
   const groupId = doc(collection(db, path(workspaceId))).id;
   const batch = writeBatch(db);
+  const ids: string[] = [];
   dates.forEach((dueDate, index) => {
     const ref = doc(collection(db, path(workspaceId)));
+    ids.push(ref.id);
     batch.set(ref, {
       ...base,
       order: ts,
@@ -106,6 +115,7 @@ export async function createRecurringTasks(
     });
   });
   await batch.commit();
+  notifyGoogleSync(workspaceId, "task", ids);
 }
 
 /** Deletes every task in a recurring series (all instances sharing
@@ -114,9 +124,11 @@ export async function deleteTaskSeries(workspaceId: string, groupId: string) {
   const snap = await getDocs(
     query(collection(db, path(workspaceId)), where("recurrence.groupId", "==", groupId))
   );
+  const ids = snap.docs.map((d) => d.id);
   const batch = writeBatch(db);
   snap.forEach((d) => batch.delete(d.ref));
   await batch.commit();
+  notifyGoogleSync(workspaceId, "task", ids, true);
 }
 
 /** Same as setTaskStatus but for many tasks in one Firestore batch,
@@ -135,6 +147,7 @@ export async function bulkSetTaskStatus(workspaceId: string, taskIds: string[], 
     }
     await batch.commit();
   }
+  notifyGoogleSync(workspaceId, "task", taskIds);
 }
 
 export async function bulkDeleteTasks(workspaceId: string, taskIds: string[]) {
@@ -145,4 +158,5 @@ export async function bulkDeleteTasks(workspaceId: string, taskIds: string[]) {
     }
     await batch.commit();
   }
+  notifyGoogleSync(workspaceId, "task", taskIds, true);
 }

@@ -709,6 +709,7 @@ export interface GoogleCalendarConnection {
   workspaceId: string;
   googleEmail: string;
   calendarId: string; // "primary" - the account's main Google Calendar
+  taskListId?: string; // the dedicated "FounderOS" Google Tasks list - see src/lib/google-calendar/task-sync.ts
   accessToken: string;
   refreshToken: string;
   expiryDate: number;
@@ -737,6 +738,24 @@ export interface GoogleCalendarLink {
   itemId: string;
   googleEventId: string;
   lastPushedGoogleUpdated?: string; // echo-detection: Google's `updated` right after our own push
+  contentHash: string;
+  updatedAt: number;
+}
+
+/** Links one FounderOS Task to the Google Task it produced, at
+ * workspaces/{workspaceId}/googleTaskLinks/{uid}_{taskId}. Push-only
+ * (FounderOS -> Google), one link per task's owner - unlike
+ * GoogleCalendarLink, there's no fan-out to multiple connected users, since
+ * a task has a single owner, and no echo-detection field, since there's no
+ * pull direction to echo from (Google Tasks doesn't support push
+ * notifications the way Calendar does, and this was never asked to be
+ * two-way). */
+export interface GoogleTaskLink {
+  id: string;
+  uid: string;
+  workspaceId: string;
+  taskId: string;
+  googleTaskId: string;
   contentHash: string;
   updatedAt: number;
 }

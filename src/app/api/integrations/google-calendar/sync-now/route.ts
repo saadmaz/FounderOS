@@ -2,6 +2,7 @@ import { after, NextResponse } from "next/server";
 import { getAdminAuth } from "@/lib/firebase/admin";
 import { getConnection } from "@/lib/google-calendar/client";
 import { pullChangesForConnection, pushAllExistingItems } from "@/lib/google-calendar/sync";
+import { pushAllExistingTasks } from "@/lib/google-calendar/task-sync";
 
 export const runtime = "nodejs";
 // See the reconcile cron route for why this stays within the Hobby plan's
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
 
     await pullChangesForConnection(decoded.uid);
     after(() => pushAllExistingItems(decoded.uid, connection.workspaceId));
+    after(() => pushAllExistingTasks(decoded.uid, connection.workspaceId));
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Manual Google Calendar sync failed:", err);

@@ -3,6 +3,7 @@ import { getAppUrl } from "@/lib/email/app-url";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { exchangeCodeForTokens } from "@/lib/google-calendar/oauth";
 import { pullChangesForConnection, pushAllExistingItems } from "@/lib/google-calendar/sync";
+import { pushAllExistingTasks } from "@/lib/google-calendar/task-sync";
 import { startWatch } from "@/lib/google-calendar/watch";
 import type { GoogleCalendarConnection } from "@/lib/types";
 
@@ -74,6 +75,7 @@ export async function GET(request: Request) {
     // FounderOS items out to Google (see pushAllExistingItems's docstring).
     after(() => pullChangesForConnection(state.uid));
     after(() => pushAllExistingItems(state.uid, state.workspaceId));
+    after(() => pushAllExistingTasks(state.uid, state.workspaceId));
 
     return redirectToProfile("connected");
   } catch (err) {

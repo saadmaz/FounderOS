@@ -4,11 +4,13 @@
  * src/lib/firebase/admin.ts for why (same reasoning, same rule).
  */
 import "server-only";
-// The scoped @googleapis/calendar package (Calendar API only) instead of the
-// full `googleapis` monorepo package - the latter ships generated types for
-// ~200 unrelated Google APIs, which is heavy enough to OOM a TypeScript
-// build over a single Calendar integration.
+// The scoped @googleapis/calendar and @googleapis/tasks packages (one API
+// each) instead of the full `googleapis` monorepo package - the latter
+// ships generated types for ~200 unrelated Google APIs, which is heavy
+// enough to OOM a TypeScript build over what's really two small
+// integrations (Calendar events, Google Tasks).
 import { auth, calendar, type calendar_v3 } from "@googleapis/calendar";
+import { tasks, type tasks_v1 } from "@googleapis/tasks";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import type { GoogleCalendarConnection } from "@/lib/types";
 
@@ -42,12 +44,14 @@ export function createOAuthClient() {
 }
 
 /**
- * Builds an authenticated Calendar client for a connection. googleapis
+ * Builds an authenticated OAuth2 client for a connection. googleapis
  * refreshes the access token automatically ~5 minutes before it expires;
  * the `tokens` listener persists whatever it refreshes back to Firestore so
- * the next call doesn't have to refresh again.
+ * the next call doesn't have to refresh again. Shared by calendarClientFor
+ * and tasksClientFor below so a refresh from either API's calls only
+ * registers (and persists through) one listener, not two.
  */
-export function calendarClientFor(connection: GoogleCalendarConnection): calendar_v3.Calendar {
+function authorizedClientFor(connection: GoogleCalendarConnection) {
   const oauth2 = createOAuthClient();
   oauth2.setCredentials({
     access_token: connection.accessToken,
@@ -66,7 +70,15 @@ export function calendarClientFor(connection: GoogleCalendarConnection): calenda
       .update(patch)
       .catch((err) => console.error("Failed to persist refreshed Google tokens:", err));
   });
-  return calendar({ version: "v3", auth: oauth2 });
+  return oauth2;
+}
+
+export function calendarClientFor(connection: GoogleCalendarConnection): calendar_v3.Calendar {
+  return calendar({ version: "v3", auth: authorizedClientFor(connection) });
+}
+
+export function tasksClientFor(connection: GoogleCalendarConnection): tasks_v1.Tasks {
+  return tasks({ version: "v1", auth: authorizedClientFor(connection) });
 }
 
 export async function getConnection(uid: string): Promise<GoogleCalendarConnection | null> {
