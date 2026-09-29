@@ -81,6 +81,45 @@ export function tasksClientFor(connection: GoogleCalendarConnection): tasks_v1.T
   return tasks({ version: "v1", auth: authorizedClientFor(connection) });
 }
 
+/** True for Google API responses that mean "you're going too fast," not
+ * "this request is wrong" - `code` is a plain HTTP 429, or a 403 whose
+ * body's `errors[].reason` names a rate/quota limit specifically (Calendar
+ * and Tasks both use 403 for this, confusingly the same code used for a
+ * real permission denial - the reason field is what actually distinguishes
+ * them). See withGoogleRetry below for why this matters. */
+function isRateLimited(err: unknown): boolean {
+  const e = err as { code?: number; message?: string; errors?: Array<{ reason?: string }> };
+  if (e?.code === 429) return true;
+  const reason = e?.errors?.[0]?.reason;
+  if (reason === "rateLimitExceeded" || reason === "userRateLimitExceeded" || reason === "quotaExceeded") {
+    return true;
+  }
+  return e?.code === 403 && /quota|rate limit/i.test(e.message ?? "");
+}
+
+/**
+ * Retries a single Google API call with exponential backoff (+ jitter) on a
+ * rate-limit response, up to `attempts` times - anything else (a real
+ * permission error, a 404, a network failure) rethrows immediately on the
+ * first try. Every write in sync.ts and task-sync.ts goes through this:
+ * without it, a workspace with enough calendar/task history to push in one
+ * burst reliably hits Calendar's "queries per minute per user" quota, and
+ * that one transient error was marking the *whole* connection as broken
+ * (see markConnectionError) even though most items had already synced fine
+ * and would keep succeeding on the very next request.
+ */
+export async function withGoogleRetry<T>(fn: () => Promise<T>, attempts = 5): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt >= attempts - 1 || !isRateLimited(err)) throw err;
+      const delayMs = 500 * 2 ** attempt + Math.random() * 300;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 export async function getConnection(uid: string): Promise<GoogleCalendarConnection | null> {
   const snap = await getAdminFirestore().doc(`googleCalendarConnections/${uid}`).get();
   if (!snap.exists) return null;

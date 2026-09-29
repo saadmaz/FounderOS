@@ -25,7 +25,7 @@ import "server-only";
 import type { tasks_v1 } from "@googleapis/tasks";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import type { GoogleCalendarConnection, GoogleTaskLink, Task } from "@/lib/types";
-import { getConnection, markConnectionError, markConnectionHealthy, tasksClientFor } from "./client";
+import { getConnection, markConnectionError, markConnectionHealthy, tasksClientFor, withGoogleRetry } from "./client";
 import { hashOf, mapWithConcurrency, omitUndefined } from "./sync";
 
 const FOUNDEROS_TASKLIST_TITLE = "FounderOS";
@@ -46,14 +46,16 @@ async function ensureFounderosTaskList(
 ): Promise<string> {
   if (connection.taskListId) {
     try {
-      await tasksApi.tasklists.get({ tasklist: connection.taskListId });
+      await withGoogleRetry(() => tasksApi.tasklists.get({ tasklist: connection.taskListId }));
       return connection.taskListId;
     } catch {
       // Deleted on the Google side (or never existed) - fall through and
       // create a fresh one below.
     }
   }
-  const created = await tasksApi.tasklists.insert({ requestBody: { title: FOUNDEROS_TASKLIST_TITLE } });
+  const created = await withGoogleRetry(() =>
+    tasksApi.tasklists.insert({ requestBody: { title: FOUNDEROS_TASKLIST_TITLE } })
+  );
   const taskListId = created.data.id;
   if (!taskListId) throw new Error("Google didn't return a task list id after creating it.");
   await getAdminFirestore().doc(`googleCalendarConnections/${connection.uid}`).update({ taskListId });
@@ -105,14 +107,18 @@ export async function pushTaskToGoogle(uid: string, workspaceId: string, taskId:
     let result: tasks_v1.Schema$Task | null | undefined;
     if (link?.googleTaskId) {
       try {
-        result = (await tasksApi.tasks.patch({ tasklist, task: link.googleTaskId, requestBody: fields })).data;
+        result = (
+          await withGoogleRetry(() =>
+            tasksApi.tasks.patch({ tasklist, task: link.googleTaskId, requestBody: fields })
+          )
+        ).data;
       } catch (err) {
         if (!isGoogleNotFound(err)) throw err;
         result = null; // deleted on the Google side - fall through and re-insert
       }
     }
     if (!result) {
-      result = (await tasksApi.tasks.insert({ tasklist, requestBody: fields })).data;
+      result = (await withGoogleRetry(() => tasksApi.tasks.insert({ tasklist, requestBody: fields }))).data;
     }
     if (!result.id) throw new Error("Google didn't return a task id.");
 
@@ -143,7 +149,9 @@ export async function deleteTaskFromGoogle(uid: string, workspaceId: string, tas
   if (connection?.taskListId) {
     try {
       const tasksApi = tasksClientFor(connection);
-      await tasksApi.tasks.delete({ tasklist: connection.taskListId, task: link.googleTaskId });
+      await withGoogleRetry(() =>
+        tasksApi.tasks.delete({ tasklist: connection.taskListId!, task: link.googleTaskId })
+      );
     } catch (err) {
       if (!isGoogleNotFound(err)) console.error(`Failed to delete Google task for ${uid}:`, err);
     }
@@ -189,5 +197,6 @@ export async function pushAllExistingTasks(uid: string, workspaceId: string): Pr
     .collection(`workspaces/${workspaceId}/tasks`)
     .where("ownerId", "==", uid)
     .get();
-  await mapWithConcurrency(tasksSnap.docs, 6, (doc) => pushTaskToGoogle(uid, workspaceId, doc.id));
+  // Kept low deliberately - see withGoogleRetry's docstring in ./client.ts.
+  await mapWithConcurrency(tasksSnap.docs, 3, (doc) => pushTaskToGoogle(uid, workspaceId, doc.id));
 }

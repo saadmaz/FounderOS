@@ -35,7 +35,7 @@ import type {
   Meeting,
   WorkspaceMember,
 } from "@/lib/types";
-import { calendarClientFor, getConnection, markConnectionError, markConnectionHealthy } from "./client";
+import { calendarClientFor, getConnection, markConnectionError, markConnectionHealthy, withGoogleRetry } from "./client";
 
 type ItemKind = "event" | "meeting";
 
@@ -226,15 +226,18 @@ export async function pushItemToGoogle(
     let result: calendar_v3.Schema$Event | null | undefined;
     if (link?.googleEventId) {
       try {
-        result = (await calendar.events.patch({ calendarId, eventId: link.googleEventId, requestBody: fields }))
-          .data;
+        result = (
+          await withGoogleRetry(() =>
+            calendar.events.patch({ calendarId, eventId: link.googleEventId, requestBody: fields })
+          )
+        ).data;
       } catch (err) {
         if (!isGoogleNotFound(err)) throw err;
         result = null; // deleted on the Google side - fall through and re-insert
       }
     }
     if (!result) {
-      result = (await calendar.events.insert({ calendarId, requestBody: fields })).data;
+      result = (await withGoogleRetry(() => calendar.events.insert({ calendarId, requestBody: fields }))).data;
     }
     if (!result.id) throw new Error("Google didn't return an event id.");
 
@@ -274,7 +277,9 @@ export async function deleteItemFromGoogle(
   if (connection) {
     try {
       const calendar = calendarClientFor(connection);
-      await calendar.events.delete({ calendarId: connection.calendarId, eventId: link.googleEventId });
+      await withGoogleRetry(() =>
+        calendar.events.delete({ calendarId: connection.calendarId, eventId: link.googleEventId })
+      );
     } catch (err) {
       if (!isGoogleNotFound(err)) console.error(`Failed to delete Google event for ${uid}:`, err);
     }
@@ -340,7 +345,11 @@ export async function pushToRelevantUsers(
  */
 export async function pushAllExistingItems(uid: string, workspaceId: string): Promise<void> {
   const db = getAdminFirestore();
-  const CONCURRENCY = 6;
+  // Kept low deliberately - see withGoogleRetry's docstring in ./client.ts.
+  // A full-history backfill pushing many items at once is exactly what hit
+  // Calendar's "queries per minute per user" quota; a lower concurrency
+  // spreads the burst out instead of firing it all in the same instant.
+  const CONCURRENCY = 3;
 
   const eventsSnap = await db.collection(`workspaces/${workspaceId}/calendarEvents`).get();
   await mapWithConcurrency(eventsSnap.docs, CONCURRENCY, (doc) =>
@@ -385,13 +394,15 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
     for (;;) {
       let page;
       try {
-        page = await calendar.events.list({
-          calendarId,
-          syncToken,
-          pageToken,
-          showDeleted: true,
-          singleEvents: true,
-        });
+        page = await withGoogleRetry(() =>
+          calendar.events.list({
+            calendarId,
+            syncToken,
+            pageToken,
+            showDeleted: true,
+            singleEvents: true,
+          })
+        );
       } catch (err) {
         if ((err as { code?: number })?.code === 410 && syncToken && !restarted) {
           // Sync token expired/invalid - drop it and do exactly one full
@@ -414,7 +425,7 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
     // Concurrency-limited for the same reason as pushAllExistingItems - a
     // primary calendar with years of history can easily be hundreds of
     // events, and this runs inside the same maxDuration-capped function.
-    await mapWithConcurrency(events, 6, (event) => applyGoogleEvent(uid, connection.workspaceId, event));
+    await mapWithConcurrency(events, 3, (event) => applyGoogleEvent(uid, connection.workspaceId, event));
 
     const patch: Record<string, unknown> = { lastSyncedAt: Date.now(), status: "connected", lastError: null };
     if (nextSyncToken) patch.syncToken = nextSyncToken;
@@ -475,15 +486,22 @@ async function applyGoogleEvent(uid: string, workspaceId: string, event: calenda
   const connection = await getConnection(uid);
   if (connection && event.id) {
     const calendar = calendarClientFor(connection);
-    const patched = await calendar.events.patch({
-      calendarId: connection.calendarId,
-      eventId: event.id,
-      requestBody: {
-        extendedProperties: {
-          private: { founderosId: newDoc.id, founderosKind: "event", founderosWorkspaceId: workspaceId, founderosUid: uid },
+    const patched = await withGoogleRetry(() =>
+      calendar.events.patch({
+        calendarId: connection.calendarId,
+        eventId: event.id!,
+        requestBody: {
+          extendedProperties: {
+            private: {
+              founderosId: newDoc.id,
+              founderosKind: "event",
+              founderosWorkspaceId: workspaceId,
+              founderosUid: uid,
+            },
+          },
         },
-      },
-    });
+      })
+    );
     await getAdminFirestore()
       .doc(`workspaces/${workspaceId}/googleEventLinks/${linkDocId(uid, "event", newDoc.id)}`)
       .set(
