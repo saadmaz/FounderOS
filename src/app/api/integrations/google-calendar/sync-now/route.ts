@@ -12,15 +12,20 @@ export const runtime = "nodejs";
 // this same cap while that background work finishes.
 export const maxDuration = 60;
 
-/** Manual "Sync now" button target - runs a full two-way resync for the
- * caller: pulls in whatever changed on the Google side, for both calendar
- * events and tasks (awaited, so the status the UI refreshes right after is
- * accurate), and (re-)pushes every existing FounderOS item/task they should
- * see in the background via after() (idempotent - see pushAllExistingItems
- * and pushAllExistingTasks). That backfill is also what fixes "I connected
- * and nothing showed up in Google" without needing to disconnect/reconnect
- * - it just won't be instantly done by the time this request returns on a
- * workspace with a lot of history. */
+/**
+ * Manual "Sync now" button target - kicks off a full two-way resync for the
+ * caller (pull + backfill push, for both calendar events and tasks) and
+ * returns immediately. Every step runs via after(), not awaited: this used
+ * to await the two pulls before responding on the theory that it kept the
+ * UI's refreshed status accurate, but a real Google account's primary
+ * calendar/task history is slow and variable enough that this was hitting
+ * a 504 on the browser's own fetch before the pulls even finished - the
+ * same problem pushAllExistingItems/pushAllExistingTasks already solved by
+ * going through after() instead of being awaited. The connection's
+ * status/lastSyncedAt fields (which the UI polls via GET .../status) update
+ * as each background step completes, so the card catches up within a few
+ * seconds without the request itself needing to wait on any of it.
+ */
 export async function POST(request: Request) {
   const authHeader = request.headers.get("authorization") ?? "";
   const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
@@ -35,8 +40,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Google Calendar isn't connected" }, { status: 400 });
     }
 
-    await pullChangesForConnection(decoded.uid);
-    await pullTasksForConnection(decoded.uid, connection.workspaceId);
+    after(() => pullChangesForConnection(decoded.uid));
+    after(() => pullTasksForConnection(decoded.uid, connection.workspaceId));
     after(() => pushAllExistingItems(decoded.uid, connection.workspaceId));
     after(() => pushAllExistingTasks(decoded.uid, connection.workspaceId));
     return NextResponse.json({ ok: true });

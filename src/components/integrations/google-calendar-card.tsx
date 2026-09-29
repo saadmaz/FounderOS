@@ -76,8 +76,18 @@ export function GoogleCalendarCard() {
   async function handleSyncNow() {
     setSyncing(true);
     try {
+      // The request itself returns almost immediately - the actual pull/
+      // push work runs server-side in the background (see the route's
+      // docstring for why: awaiting a real Google account's calendar/task
+      // history here was slow and variable enough to 504 on this fetch).
+      // So there's nothing to await here worth showing as "done" - just
+      // poll the status a couple of times over the next several seconds so
+      // the card catches up without the user needing to reload.
       await syncGoogleCalendarNow();
-      toast.success("Synced");
+      toast.success("Sync started");
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await refresh();
+      await new Promise((resolve) => setTimeout(resolve, 5000));
       await refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sync failed");

@@ -412,10 +412,16 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
           })
         );
       } catch (err) {
-        if ((err as { code?: number })?.code === 410 && syncToken && !restarted) {
-          // Sync token expired/invalid - drop it and do exactly one full
-          // resync instead (guarded by `restarted` so a persistently broken
-          // token can't loop forever).
+        // 410 = sync token expired/invalid outright. 400 = Google also
+        // returns this when the token was issued under different request
+        // parameters than the current call (e.g. it predates the
+        // eventTypes filter added above) - same fix applies to both: drop
+        // the token and do exactly one full resync (guarded by `restarted`
+        // so a persistently broken token, or a 400 for some unrelated
+        // reason, can't loop forever - it'll surface as a real error on
+        // the second attempt instead).
+        const code = (err as { code?: number })?.code;
+        if ((code === 410 || code === 400) && syncToken && !restarted) {
           syncToken = undefined;
           pageToken = undefined;
           restarted = true;
