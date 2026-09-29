@@ -141,7 +141,13 @@ export async function markConnectionHealthy(uid: string): Promise<void> {
     .catch(() => {});
 }
 
-const SYNC_LOCK_MS = 5 * 60 * 1000;
+// Deliberately close to (not much longer than) the 60s maxDuration every
+// caller of runFullSync runs under - if Vercel kills an invocation for
+// running past that cap, the lock's own `finally` never gets to run, so
+// this TTL is what actually un-sticks it, not that cleanup code. 5 minutes
+// here would mean a single killed run blocks every subsequent "Sync now"
+// click (and the daily cron) for 5 minutes for no reason.
+const SYNC_LOCK_MS = 90 * 1000;
 
 /**
  * Prevents overlapping full-sync runs for the same connection. Repeated

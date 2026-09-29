@@ -23,10 +23,19 @@ export async function runFullSync(uid: string, workspaceId: string): Promise<voi
   if (!acquired) return; // a sync is already running for this connection - let it finish, don't pile on
 
   try {
-    await pullChangesForConnection(uid);
-    await pullTasksForConnection(uid, workspaceId);
+    // Push first, pull second - deliberately. All four steps share one
+    // request's time/quota budget, and pulling a real Google account's
+    // calendar (even bounded to 90 days) is the slowest, most
+    // quota-hungry step by far, since every not-yet-tagged event needs
+    // its own extra write call. Pushing first means your own FounderOS
+    // items/tasks reliably reach Google even on a run where the pull step
+    // runs out of budget and doesn't finish - previously pull ran first,
+    // so a slow/failed pull could starve push of the time it needed and
+    // FounderOS's own items would never go out at all.
     await pushAllExistingItems(uid, workspaceId);
     await pushAllExistingTasks(uid, workspaceId);
+    await pullChangesForConnection(uid);
+    await pullTasksForConnection(uid, workspaceId);
   } finally {
     await releaseSyncLock(uid);
   }

@@ -389,7 +389,6 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
     let syncToken = connection.syncToken;
     let nextSyncToken: string | undefined;
     let restarted = false;
-    const events: calendar_v3.Schema$Event[] = [];
 
     for (;;) {
       let page;
@@ -419,9 +418,14 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
             // in one run - that, not any single request, is what was
             // exhausting the per-minute quota even with retries and a lock
             // against overlapping runs. Google remembers a sync token's
-            // original query params, so this 90-day window carries forward
-            // into every later incremental sync too, not just this one.
-            ...(!syncToken ? { timeMin: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() } : {}),
+            // original query params, so this window carries forward into
+            // every later incremental sync too, not just this one. Kept
+            // tight (30, not 90, days) so a first pull has a real chance
+            // of finishing inside one request's time budget rather than
+            // getting killed mid-run with nothing committed - see
+            // pullChangesForConnection's docstring above for why a killed
+            // run currently loses all its progress, not just the rest.
+            ...(!syncToken ? { timeMin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() } : {}),
           })
         );
       } catch (err) {
@@ -438,32 +442,41 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
           syncToken = undefined;
           pageToken = undefined;
           restarted = true;
-          events.length = 0;
           continue;
         }
         throw err;
       }
-      events.push(...(page.data.items ?? []));
+
+      // Applied per page, right away - not collected across every page
+      // and only applied at the end. A killed invocation (Vercel enforces
+      // maxDuration by force-terminating, so there's no cleanup hook to
+      // rely on here) used to lose everything it had fetched so far; now
+      // whatever page it got through is already durably in Firestore, and
+      // a retry that re-fetches an already-applied page mostly no-ops
+      // (see applyGoogleEvent's echo check), so it's strictly faster than
+      // the last attempt instead of starting cold every time.
+      //
+      // Concurrency-limited for the same reason as pushAllExistingItems -
+      // a primary calendar with real history can easily be hundreds of
+      // events even within the 30-day window above. Each event is
+      // isolated in its own try/catch: one malformed or unexpected event
+      // must never abort the batch, because that also means the sync
+      // token below never advances - the next pull would just hit the
+      // same bad event again, forever, exactly what happened with
+      // Google's special event types before the eventTypes filter above.
+      const pageEvents = page.data.items ?? [];
+      await mapWithConcurrency(pageEvents, 3, async (event) => {
+        try {
+          await applyGoogleEvent(uid, connection.workspaceId, event);
+        } catch (err) {
+          console.error(`Failed to apply pulled Google event ${event.id} for ${uid} (skipping it):`, err);
+        }
+      });
+
       pageToken = page.data.nextPageToken ?? undefined;
       nextSyncToken = page.data.nextSyncToken ?? nextSyncToken;
       if (!pageToken) break;
     }
-
-    // Concurrency-limited for the same reason as pushAllExistingItems - a
-    // primary calendar with years of history can easily be hundreds of
-    // events, and this runs inside the same maxDuration-capped function.
-    // Each event is isolated in its own try/catch: one malformed or
-    // unexpected event must never abort the whole batch, because that also
-    // means the sync token below never advances - the next pull would just
-    // hit the same bad event again, forever, exactly what happened with
-    // Google's special event types before the eventTypes filter above.
-    await mapWithConcurrency(events, 3, async (event) => {
-      try {
-        await applyGoogleEvent(uid, connection.workspaceId, event);
-      } catch (err) {
-        console.error(`Failed to apply pulled Google event ${event.id} for ${uid} (skipping it):`, err);
-      }
-    });
 
     const patch: Record<string, unknown> = { lastSyncedAt: Date.now(), status: "connected", lastError: null };
     if (nextSyncToken) patch.syncToken = nextSyncToken;
