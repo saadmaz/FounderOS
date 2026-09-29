@@ -1,31 +1,44 @@
 /**
- * Push-only sync: FounderOS Tasks -> a dedicated "FounderOS" Google Tasks
- * list (the "Tasks" panel inside Google Calendar) in each connected
+ * Two-way sync between FounderOS Tasks and a dedicated "FounderOS" Google
+ * Tasks list (the "Tasks" panel inside Google Calendar) in each connected
  * member's account. Separate from src/lib/google-calendar/sync.ts (Calendar
  * events/meetings) because Google Tasks is a genuinely different API with
  * its own OAuth scope - see ./oauth.ts.
  *
- * One-way and single-owner by design, unlike the Calendar side:
- * - No pull direction. Nobody asked for Google Tasks -> FounderOS, and the
- *   Tasks API doesn't support push notifications the way Calendar does
- *   anyway, so there's no cheap way to know something changed there.
- * - A task fans out to its `ownerId` only, not every connected workspace
- *   member (mirrors how a Meeting only pushes to its attendees, not the
- *   whole workspace - see pushToRelevantUsers in ./sync.ts). A task with no
- *   owner, or whose owner isn't connected, simply doesn't sync anywhere.
+ * Single-owner, unlike the Calendar side: a task fans out to its `ownerId`
+ * only, not every connected workspace member (mirrors how a Meeting only
+ * pushes to its attendees, not the whole workspace - see
+ * pushToRelevantUsers in ./sync.ts). A task with no owner, or whose owner
+ * isn't connected, simply doesn't sync anywhere.
+ *
+ * Pull is asymmetric with push, on purpose:
+ * - A task edited in Google (title, notes, due date, completion) updates
+ *   the linked FounderOS task - see applyGoogleTask.
+ * - A task *created* directly in Google Tasks is NOT imported as a new
+ *   FounderOS task. A Task requires companyId and priority, neither of
+ *   which Google Tasks has any concept of, so there's no valid FounderOS
+ *   task to create - see applyGoogleTask's early return for a task with no
+ *   existing link.
+ * - There's no push notification support for Google Tasks the way Calendar
+ *   has watch(), so pullTasksForConnection is only ever polled: from the
+ *   manual "Sync now" action and the reconcile cron, never a webhook.
  *
  * A dedicated task list (rather than the account's default "My Tasks")
  * keeps FounderOS-originated tasks visually separate from personal to-dos,
  * the same reasoning the Calendar side used to apply before it was pointed
- * at the primary calendar on request - that request was specifically about
- * pulling in *existing* calendar history, which doesn't apply here since
- * this is push-only.
+ * at the primary calendar on request.
  */
 import "server-only";
 import type { tasks_v1 } from "@googleapis/tasks";
 import { getAdminFirestore } from "@/lib/firebase/admin";
-import type { GoogleCalendarConnection, GoogleTaskLink, Task } from "@/lib/types";
-import { getConnection, markConnectionError, markConnectionHealthy, tasksClientFor, withGoogleRetry } from "./client";
+import type { GoogleCalendarConnection, GoogleTaskLink, Task, TaskStatus } from "@/lib/types";
+import {
+  getConnection,
+  markConnectionError,
+  markConnectionHealthy,
+  tasksClientFor,
+  withGoogleRetry,
+} from "./client";
 import { hashOf, mapWithConcurrency, omitUndefined } from "./sync";
 
 const FOUNDEROS_TASKLIST_TITLE = "FounderOS";
@@ -128,6 +141,7 @@ export async function pushTaskToGoogle(uid: string, workspaceId: string, taskId:
         workspaceId,
         taskId,
         googleTaskId: result.id,
+        lastPushedGoogleUpdated: result.updated,
         contentHash,
         updatedAt: Date.now(),
       })
@@ -199,4 +213,143 @@ export async function pushAllExistingTasks(uid: string, workspaceId: string): Pr
     .get();
   // Kept low deliberately - see withGoogleRetry's docstring in ./client.ts.
   await mapWithConcurrency(tasksSnap.docs, 3, (doc) => pushTaskToGoogle(uid, workspaceId, doc.id));
+}
+
+// ------------------------------------------------------------------ pull --
+
+/** Reverse map for a genuinely external edit to an already-linked task.
+ * Unlike calendarEventPatchFromGoogle in ./sync.ts, this can safely
+ * round-trip `notes` -> `description` (Google's `notes` isn't a lossy
+ * composition the way an event's description is - fieldsForTask writes it
+ * straight across, so reading it straight back is exactly as accurate).
+ *
+ * Status needs care: Google Tasks only has two states (needsAction/
+ * completed), FounderOS has six. Blindly mapping needsAction back would
+ * stomp a FounderOS-specific state like "in_progress" or "blocked" down to
+ * nothing every time this runs. So status/completedAt are only touched at
+ * the two edges that are actually unambiguous: Google says completed and
+ * FounderOS didn't already consider it done (mark it completed), or Google
+ * says needsAction and FounderOS had it marked done (un-complete it, back
+ * to "not_started" - there's no way to know which of the other four states
+ * it should return to, so this is a deliberate, reasonable default rather
+ * than a guess at "the right one"). */
+function taskPatchFromGoogle(gTask: tasks_v1.Schema$Task, currentStatus: TaskStatus): Partial<Task> {
+  const patch: Partial<Task> = omitUndefined({
+    title: gTask.title || "(untitled)",
+    description: gTask.notes || undefined,
+    dueDate: gTask.due ? new Date(gTask.due).getTime() : null,
+  });
+  const currentlyDone = currentStatus === "completed" || currentStatus === "cancelled";
+  const googleDone = gTask.status === "completed";
+  if (googleDone && !currentlyDone) {
+    patch.status = "completed";
+    patch.completedAt = gTask.completed ? new Date(gTask.completed).getTime() : Date.now();
+  } else if (!googleDone && currentlyDone) {
+    patch.status = "not_started";
+    patch.completedAt = null;
+  }
+  return patch;
+}
+
+async function applyGoogleTask(uid: string, workspaceId: string, gTask: tasks_v1.Schema$Task): Promise<void> {
+  if (!gTask.id) return;
+
+  // The link doc is keyed by our own taskId, not Google's, so finding it
+  // from a Google task needs a query rather than a direct doc read.
+  const linksSnap = await getAdminFirestore()
+    .collection(`workspaces/${workspaceId}/googleTaskLinks`)
+    .where("uid", "==", uid)
+    .where("googleTaskId", "==", gTask.id)
+    .get();
+  const linkDoc = linksSnap.docs[0];
+
+  if (gTask.deleted) {
+    if (!linkDoc) return; // never linked - nothing to do
+    const { taskId } = linkDoc.data() as GoogleTaskLink;
+    await getAdminFirestore()
+      .doc(`workspaces/${workspaceId}/tasks/${taskId}`)
+      .delete()
+      .catch(() => {}); // already gone on the FounderOS side - fine
+    await linkDoc.ref.delete();
+    return;
+  }
+
+  // A task created directly in Google Tasks, not through us - can't be
+  // imported (see the module docstring for why), and nothing to update.
+  if (!linkDoc) return;
+
+  const link = linkDoc.data() as GoogleTaskLink;
+  if (link.lastPushedGoogleUpdated && link.lastPushedGoogleUpdated === gTask.updated) return; // our own echo
+
+  const taskRef = getAdminFirestore().doc(`workspaces/${workspaceId}/tasks/${link.taskId}`);
+  const taskSnap = await taskRef.get();
+  if (!taskSnap.exists) {
+    // The FounderOS task is gone but the link wasn't cleaned up (e.g. a
+    // delete that happened before this integration existed, or a race) -
+    // clear the stale link and stop.
+    await linkDoc.ref.delete();
+    return;
+  }
+
+  const patch = taskPatchFromGoogle(gTask, (taskSnap.data() as Task).status);
+  await taskRef.update(patch);
+  await linkDoc.ref.set(
+    omitUndefined({
+      lastPushedGoogleUpdated: gTask.updated,
+      contentHash: hashOf(fieldsForTask({ ...(taskSnap.data() as Task), ...patch } as Task)),
+      updatedAt: Date.now(),
+    }),
+    { merge: true }
+  );
+}
+
+/** Pulls Google-side changes to already-linked tasks into Firestore for one
+ * connection - called by the manual "Sync now" action and the reconcile
+ * cron. There's no webhook for Google Tasks (see the module docstring), so
+ * this is the only way pull happens; unlike Calendar, there's no
+ * incremental sync token available either, so it's a full list of the
+ * dedicated task list every time - fine at this app's scale. Never throws;
+ * failures are recorded on the connection, same as pullChangesForConnection
+ * in ./sync.ts. */
+export async function pullTasksForConnection(uid: string, workspaceId: string): Promise<void> {
+  const connection = await getConnection(uid);
+  if (!connection) return;
+
+  try {
+    const tasksApi = tasksClientFor(connection);
+    const tasklist = await ensureFounderosTaskList(tasksApi, connection);
+
+    const googleTasks: tasks_v1.Schema$Task[] = [];
+    let pageToken: string | undefined;
+    for (;;) {
+      const page = await withGoogleRetry(() =>
+        tasksApi.tasks.list({
+          tasklist,
+          pageToken,
+          showCompleted: true,
+          showHidden: true,
+          showDeleted: true,
+          maxResults: 100,
+        })
+      );
+      googleTasks.push(...(page.data.items ?? []));
+      pageToken = page.data.nextPageToken ?? undefined;
+      if (!pageToken) break;
+    }
+
+    // Isolated per-task for the same reason as the Calendar pull loop in
+    // ./sync.ts - one bad task must never block the rest.
+    await mapWithConcurrency(googleTasks, 3, async (gTask) => {
+      try {
+        await applyGoogleTask(uid, workspaceId, gTask);
+      } catch (err) {
+        console.error(`Failed to apply pulled Google task ${gTask.id} for ${uid} (skipping it):`, err);
+      }
+    });
+
+    await markConnectionHealthy(uid);
+  } catch (err) {
+    console.error(`Failed to pull Google Tasks for ${uid}:`, err);
+    await markConnectionError(uid, err);
+  }
 }

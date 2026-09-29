@@ -401,6 +401,14 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
             pageToken,
             showDeleted: true,
             singleEvents: true,
+            // Google's own auto-generated event types (birthdays, working
+            // location, out-of-office, focus time, Gmail-detected events) -
+            // "default" is a normal event. These aren't meaningful on a
+            // shared company calendar, and some of them (birthday) reject
+            // extendedProperties outright, which is what was crashing the
+            // whole pull - see the per-event try/catch below for the other
+            // half of that fix.
+            eventTypes: ["default"],
           })
         );
       } catch (err) {
@@ -425,7 +433,18 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
     // Concurrency-limited for the same reason as pushAllExistingItems - a
     // primary calendar with years of history can easily be hundreds of
     // events, and this runs inside the same maxDuration-capped function.
-    await mapWithConcurrency(events, 3, (event) => applyGoogleEvent(uid, connection.workspaceId, event));
+    // Each event is isolated in its own try/catch: one malformed or
+    // unexpected event must never abort the whole batch, because that also
+    // means the sync token below never advances - the next pull would just
+    // hit the same bad event again, forever, exactly what happened with
+    // Google's special event types before the eventTypes filter above.
+    await mapWithConcurrency(events, 3, async (event) => {
+      try {
+        await applyGoogleEvent(uid, connection.workspaceId, event);
+      } catch (err) {
+        console.error(`Failed to apply pulled Google event ${event.id} for ${uid} (skipping it):`, err);
+      }
+    });
 
     const patch: Record<string, unknown> = { lastSyncedAt: Date.now(), status: "connected", lastError: null };
     if (nextSyncToken) patch.syncToken = nextSyncToken;
@@ -439,6 +458,16 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
 async function applyGoogleEvent(uid: string, workspaceId: string, event: calendar_v3.Schema$Event): Promise<void> {
   const founderosId = event.extendedProperties?.private?.founderosId;
   const founderosKind = event.extendedProperties?.private?.founderosKind as ItemKind | undefined;
+
+  // Belt-and-suspenders on top of the `eventTypes: ["default"]` filter in
+  // pullChangesForConnection's events.list call above - a cancellation of
+  // one of these special types can still surface here regardless of that
+  // filter (Google's docs don't guarantee it applies identically to a
+  // syncToken-driven incremental request), and several of them (birthday,
+  // in particular) reject extendedProperties outright, which is exactly
+  // what broke this pull before. None of these are meaningful line items
+  // on a shared company calendar anyway.
+  if (event.eventType && event.eventType !== "default") return;
 
   if (event.status === "cancelled") {
     if (!founderosId || !founderosKind) return; // an event we never synced - nothing to do

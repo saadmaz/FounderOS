@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { pullChangesForConnection } from "@/lib/google-calendar/sync";
+import { pullTasksForConnection } from "@/lib/google-calendar/task-sync";
+import type { GoogleCalendarConnection } from "@/lib/types";
 
 export const runtime = "nodejs";
 // Sequential per connection - fine at this app's scale (a handful of
@@ -23,7 +25,9 @@ function isAuthorized(request: Request): boolean {
  * incremental pull the webhook triggers, but on a timer for every
  * connection, regardless of whether Google's push notification arrived.
  * This - not the webhook - is what actually guarantees Google-side changes
- * eventually reach FounderOS.
+ * eventually reach FounderOS. Also the *only* way Google Tasks changes ever
+ * reach FounderOS at all - see pullTasksForConnection's docstring for why
+ * there's no webhook equivalent for Tasks.
  */
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
@@ -33,6 +37,7 @@ export async function GET(request: Request) {
   const snap = await getAdminFirestore().collection("googleCalendarConnections").get();
   for (const doc of snap.docs) {
     await pullChangesForConnection(doc.id);
+    await pullTasksForConnection(doc.id, (doc.data() as GoogleCalendarConnection).workspaceId);
   }
 
   return NextResponse.json({ ok: true, checked: snap.size });

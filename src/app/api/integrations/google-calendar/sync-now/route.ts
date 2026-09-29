@@ -2,7 +2,7 @@ import { after, NextResponse } from "next/server";
 import { getAdminAuth } from "@/lib/firebase/admin";
 import { getConnection } from "@/lib/google-calendar/client";
 import { pullChangesForConnection, pushAllExistingItems } from "@/lib/google-calendar/sync";
-import { pushAllExistingTasks } from "@/lib/google-calendar/task-sync";
+import { pullTasksForConnection, pushAllExistingTasks } from "@/lib/google-calendar/task-sync";
 
 export const runtime = "nodejs";
 // See the reconcile cron route for why this stays within the Hobby plan's
@@ -13,13 +13,14 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /** Manual "Sync now" button target - runs a full two-way resync for the
- * caller: pulls in whatever changed on the Google side (awaited, so the
- * status the UI refreshes right after is accurate), and (re-)pushes every
- * existing FounderOS item they should see in the background via after()
- * (idempotent - see pushAllExistingItems). That backfill is also what
- * fixes "I connected and nothing showed up in Google" without needing to
- * disconnect/reconnect - it just won't be instantly done by the time this
- * request returns on a workspace with a lot of history. */
+ * caller: pulls in whatever changed on the Google side, for both calendar
+ * events and tasks (awaited, so the status the UI refreshes right after is
+ * accurate), and (re-)pushes every existing FounderOS item/task they should
+ * see in the background via after() (idempotent - see pushAllExistingItems
+ * and pushAllExistingTasks). That backfill is also what fixes "I connected
+ * and nothing showed up in Google" without needing to disconnect/reconnect
+ * - it just won't be instantly done by the time this request returns on a
+ * workspace with a lot of history. */
 export async function POST(request: Request) {
   const authHeader = request.headers.get("authorization") ?? "";
   const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     }
 
     await pullChangesForConnection(decoded.uid);
+    await pullTasksForConnection(decoded.uid, connection.workspaceId);
     after(() => pushAllExistingItems(decoded.uid, connection.workspaceId));
     after(() => pushAllExistingTasks(decoded.uid, connection.workspaceId));
     return NextResponse.json({ ok: true });
