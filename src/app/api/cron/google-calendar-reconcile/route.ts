@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminFirestore } from "@/lib/firebase/admin";
-import { pullChangesForConnection } from "@/lib/google-calendar/sync";
-import { pullTasksForConnection } from "@/lib/google-calendar/task-sync";
+import { runFullSync } from "@/lib/google-calendar/full-sync";
 import type { GoogleCalendarConnection } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -21,13 +20,15 @@ function isAuthorized(request: Request): boolean {
 }
 
 /**
- * The resilience backstop for the whole sync system: runs the same
- * incremental pull the webhook triggers, but on a timer for every
- * connection, regardless of whether Google's push notification arrived.
- * This - not the webhook - is what actually guarantees Google-side changes
- * eventually reach FounderOS. Also the *only* way Google Tasks changes ever
- * reach FounderOS at all - see pullTasksForConnection's docstring for why
- * there's no webhook equivalent for Tasks.
+ * The resilience backstop for the whole sync system: runs a full sync (see
+ * runFullSync) for every connection on a timer, regardless of whether
+ * Google's push notification arrived or a client-side push ever fired.
+ * This - not the webhook, not notifyGoogleSync - is what actually
+ * guarantees changes on either side eventually reach the other, and the
+ * *only* way Google Tasks changes ever reach FounderOS at all (there's no
+ * webhook equivalent for Tasks - see task-sync.ts's module docstring).
+ * runFullSync's own lock means this naturally skips a connection that's
+ * already mid-sync from a manual "Sync now" click, rather than piling on.
  */
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
@@ -36,8 +37,7 @@ export async function GET(request: Request) {
 
   const snap = await getAdminFirestore().collection("googleCalendarConnections").get();
   for (const doc of snap.docs) {
-    await pullChangesForConnection(doc.id);
-    await pullTasksForConnection(doc.id, (doc.data() as GoogleCalendarConnection).workspaceId);
+    await runFullSync(doc.id, (doc.data() as GoogleCalendarConnection).workspaceId);
   }
 
   return NextResponse.json({ ok: true, checked: snap.size });

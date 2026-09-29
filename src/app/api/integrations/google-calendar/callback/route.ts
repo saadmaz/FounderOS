@@ -1,9 +1,8 @@
 import { after, NextResponse } from "next/server";
 import { getAppUrl } from "@/lib/email/app-url";
 import { getAdminFirestore } from "@/lib/firebase/admin";
+import { runFullSync } from "@/lib/google-calendar/full-sync";
 import { exchangeCodeForTokens } from "@/lib/google-calendar/oauth";
-import { pullChangesForConnection, pushAllExistingItems } from "@/lib/google-calendar/sync";
-import { pullTasksForConnection, pushAllExistingTasks } from "@/lib/google-calendar/task-sync";
 import { startWatch } from "@/lib/google-calendar/watch";
 import type { GoogleCalendarConnection } from "@/lib/types";
 
@@ -68,15 +67,11 @@ export async function GET(request: Request) {
       .set({ ...connection, lastError: null }, { merge: true });
 
     await startWatch(connection); // best-effort, never blocks connecting
-    // Both directions run in the background (not awaited) so the redirect
-    // below fires immediately instead of making the browser wait on a
-    // potentially large initial two-way sync: pull imports the account's
-    // existing calendar history into FounderOS, push backfills existing
-    // FounderOS items out to Google (see pushAllExistingItems's docstring).
-    after(() => pullChangesForConnection(state.uid));
-    after(() => pullTasksForConnection(state.uid, state.workspaceId));
-    after(() => pushAllExistingItems(state.uid, state.workspaceId));
-    after(() => pushAllExistingTasks(state.uid, state.workspaceId));
+    // Runs in the background (not awaited) so the redirect below fires
+    // immediately instead of making the browser wait on a potentially
+    // large initial two-way sync - see runFullSync's docstring for why
+    // this is one sequential call rather than several parallel ones.
+    after(() => runFullSync(state.uid, state.workspaceId));
 
     return redirectToProfile("connected");
   } catch (err) {

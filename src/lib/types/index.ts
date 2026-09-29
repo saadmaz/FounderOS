@@ -722,6 +722,7 @@ export interface GoogleCalendarConnection {
   lastError?: string;
   lastSyncedAt?: number;
   connectedAt: number;
+  syncLockedUntil?: number | null; // see acquireSyncLock in src/lib/google-calendar/client.ts
 }
 
 /** Links one FounderOS item to the Google event it produced in one

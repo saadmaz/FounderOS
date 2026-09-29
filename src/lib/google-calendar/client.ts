@@ -140,3 +140,34 @@ export async function markConnectionHealthy(uid: string): Promise<void> {
     .update({ status: "connected", lastError: null, lastSyncedAt: Date.now() })
     .catch(() => {});
 }
+
+const SYNC_LOCK_MS = 5 * 60 * 1000;
+
+/**
+ * Prevents overlapping full-sync runs for the same connection. Repeated
+ * "Sync now" clicks, or the reconcile cron landing while a manual sync is
+ * still in flight, had nothing stopping them from running concurrently -
+ * each one on its own stayed under Calendar's per-minute rate limit, but
+ * stacked on top of each other they didn't. Returns false (and does
+ * nothing) if a sync is already in progress; true if this call acquired
+ * the lock and should proceed - see runFullSync in ./full-sync.ts, the
+ * only caller. Not a Firestore transaction (just a read then a write), but
+ * that's fine here: this guards against a frustrated user clicking a
+ * button several times or two schedules overlapping, not a hostile actor
+ * racing it on purpose.
+ */
+export async function acquireSyncLock(uid: string): Promise<boolean> {
+  const ref = getAdminFirestore().doc(`googleCalendarConnections/${uid}`);
+  const snap = await ref.get();
+  const lockedUntil = (snap.data() as GoogleCalendarConnection | undefined)?.syncLockedUntil;
+  if (lockedUntil && lockedUntil > Date.now()) return false;
+  await ref.update({ syncLockedUntil: Date.now() + SYNC_LOCK_MS });
+  return true;
+}
+
+export async function releaseSyncLock(uid: string): Promise<void> {
+  await getAdminFirestore()
+    .doc(`googleCalendarConnections/${uid}`)
+    .update({ syncLockedUntil: null })
+    .catch(() => {});
+}
