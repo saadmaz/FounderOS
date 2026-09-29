@@ -409,6 +409,19 @@ export async function pullChangesForConnection(uid: string): Promise<void> {
             // whole pull - see the per-event try/catch below for the other
             // half of that fix.
             eventTypes: ["default"],
+            // Only on a full sync (no syncToken yet) - timeMin/timeMax
+            // can't be combined with syncToken at all, Google rejects it.
+            // Bounding how far back a *first* import reaches matters a lot
+            // here: every pre-existing event without our tag needs its own
+            // extra write call to tag it (see applyGoogleEvent's "brand
+            // new event" branch below), so a primary calendar with months
+            // or years of real history turns into hundreds of write calls
+            // in one run - that, not any single request, is what was
+            // exhausting the per-minute quota even with retries and a lock
+            // against overlapping runs. Google remembers a sync token's
+            // original query params, so this 90-day window carries forward
+            // into every later incremental sync too, not just this one.
+            ...(!syncToken ? { timeMin: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() } : {}),
           })
         );
       } catch (err) {

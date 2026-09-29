@@ -105,11 +105,12 @@ export function GoogleCalendarCard() {
         <div className="min-w-0">
           <h2 className="text-sm font-semibold">Google Calendar</h2>
           <p className="text-xs text-muted-foreground">
-            Two-way sync with your primary Google Calendar (every event on it - including
-            existing history - becomes visible to everyone in this workspace), plus your
-            FounderOS tasks two-way with a dedicated &quot;FounderOS&quot; list in Google Tasks
-            (editing or completing a task there updates it here - a task added directly in
-            Google Tasks won&apos;t appear here, since it has no company or priority to assign).
+            Two-way sync with your primary Google Calendar (every event from the last 90 days
+            onward - including future events - becomes visible to everyone in this workspace),
+            plus your FounderOS tasks two-way with a dedicated &quot;FounderOS&quot; list in
+            Google Tasks (editing or completing a task there updates it here - a task added
+            directly in Google Tasks won&apos;t appear here, since it has no company or priority
+            to assign).
           </p>
         </div>
       </div>
