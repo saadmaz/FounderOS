@@ -4,6 +4,7 @@ import { CalendarSync, Check, Loader2, RefreshCw, Unlink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { SettingsSection } from "@/components/shared/settings-section";
 import { useConfirm } from "@/lib/confirm/confirm-provider";
 import {
   connectGoogleCalendar,
@@ -97,71 +98,80 @@ export function GoogleCalendarCard() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-5">
-      <div className="flex items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-inset ring-ring-subtle">
-          <CalendarSync className="size-4.5 text-primary" />
-        </span>
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold">Google Calendar</h2>
-          <p className="text-xs text-muted-foreground">
-            Two-way sync with your primary Google Calendar (every event from the last 90 days
-            onward - including future events - becomes visible to everyone in this workspace),
-            plus your FounderOS tasks two-way with a dedicated &quot;FounderOS&quot; list in
-            Google Tasks (editing or completing a task there updates it here - a task added
-            directly in Google Tasks won&apos;t appear here, since it has no company or priority
-            to assign).
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4">
-        {loading ? (
-          <div className="h-9 w-44 animate-pulse rounded-md bg-muted" />
+    <SettingsSection
+      icon={CalendarSync}
+      title="Google Calendar"
+      description="Two-way sync with your primary Google Calendar and Google Tasks."
+      action={
+        !loading && status?.connected ? (
+          status.status === "error" ? (
+            <span className="inline-flex items-center rounded-full bg-danger/10 px-2.5 py-0.5 text-xs font-medium text-danger">
+              Sync error
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-medium text-success">
+              <Check className="size-3" /> Connected
+            </span>
+          )
+        ) : null
+      }
+      bodyClassName="space-y-4"
+      footer={
+        loading ? (
+          <div className="h-8 w-40 animate-pulse rounded-md bg-muted" />
         ) : status?.connected ? (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              {status.status === "error" ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
-                  Sync error
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
-                  <Check className="size-3" /> Connected
-                </span>
-              )}
-              <span className="truncate text-muted-foreground">{status.googleEmail}</span>
-            </div>
-            {status.lastError && status.status === "error" && (
-              <p className="text-xs text-danger">{status.lastError}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {status.lastSyncedAt ? `Last synced ${formatDateTime(status.lastSyncedAt)}` : "Not synced yet"}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={handleSyncNow} disabled={syncing} className="gap-1.5">
-                <RefreshCw className={cn("size-3.5", syncing && "animate-spin")} />
-                Sync now
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDisconnect}
-                disabled={disconnecting}
-                className="gap-1.5 text-danger hover:text-danger"
-              >
-                <Unlink className="size-3.5" />
-                Disconnect
-              </Button>
-            </div>
-          </div>
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDisconnect}
+              disabled={disconnecting}
+              className="mr-auto gap-1.5 text-danger hover:text-danger"
+            >
+              <Unlink className="size-3.5" />
+              Disconnect
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSyncNow} disabled={syncing} className="gap-1.5">
+              <RefreshCw className={cn("size-3.5", syncing && "animate-spin")} />
+              Sync now
+            </Button>
+          </>
         ) : (
           <Button onClick={handleConnect} disabled={connecting || !workspace} className="gap-1.5">
             {connecting ? <Loader2 className="size-4 animate-spin" /> : <CalendarSync className="size-4" />}
             Connect Google Calendar
           </Button>
-        )}
-      </div>
-    </section>
+        )
+      }
+    >
+      {status?.connected && !loading && (
+        <dl className="space-y-3 text-sm">
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-muted-foreground">Account</dt>
+            <dd className="truncate font-medium">{status.googleEmail}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-muted-foreground">Last synced</dt>
+            <dd className="font-medium">
+              {status.lastSyncedAt ? formatDateTime(status.lastSyncedAt) : "Not synced yet"}
+            </dd>
+          </div>
+          {status.lastError && status.status === "error" && (
+            <p className="rounded-lg bg-danger/10 px-3 py-2 text-xs text-danger">{status.lastError}</p>
+          )}
+        </dl>
+      )}
+      <ul className="space-y-1.5 text-[13px] leading-5 text-muted-foreground">
+        <li>
+          Events from the last 90 days onward, including future ones, become visible to everyone in
+          this workspace.
+        </li>
+        <li>
+          FounderOS tasks sync two-way with a dedicated &quot;FounderOS&quot; list in Google Tasks.
+          Tasks added directly in Google Tasks won&apos;t appear here, since they have no company or
+          priority.
+        </li>
+      </ul>
+    </SettingsSection>
   );
 }

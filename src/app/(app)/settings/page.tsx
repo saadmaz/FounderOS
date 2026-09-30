@@ -1,6 +1,6 @@
 "use client";
 
-import { Moon, Sun, Trash2, UserPlus } from "lucide-react";
+import { Building2, Check, Mail, Moon, Palette, Sun, Trash2, UserPlus, Users } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/page-header";
+import { SettingsField, SettingsSection } from "@/components/shared/settings-section";
+import { cn } from "@/lib/utils";
 import { updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { sendInviteEmail } from "@/lib/auth/actions";
@@ -138,52 +140,64 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Workspace, members, and preferences." />
 
-      <div className="max-w-2xl flex-1 space-y-8 p-4 lg:p-6">
-        <section className="rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold">Workspace</h2>
-          <div className="mt-4 space-y-1.5">
-            <Label htmlFor="workspaceName">Name</Label>
-            <div className="flex gap-2">
-              <Input
-                id="workspaceName"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={!canEdit}
-              />
-              {canEdit && (
-                <Button onClick={saveName} disabled={saving || name === workspace?.name}>
-                  Save
-                </Button>
-              )}
-            </div>
-          </div>
-        </section>
+      <div className="mx-auto w-full max-w-3xl flex-1 space-y-6 p-4 lg:p-8">
+        <SettingsSection
+          icon={Building2}
+          title="Workspace"
+          description="The name shown to everyone in this workspace."
+          footer={
+            canEdit ? (
+              <Button onClick={saveName} disabled={saving || !name.trim() || name === workspace?.name}>
+                {saving ? "Saving…" : "Save changes"}
+              </Button>
+            ) : (
+              <p className="mr-auto text-xs text-muted-foreground">
+                Only owners and admins can edit the workspace.
+              </p>
+            )
+          }
+        >
+          <SettingsField label="Workspace name" htmlFor="workspaceName">
+            <Input
+              id="workspaceName"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={!canEdit}
+            />
+          </SettingsField>
+        </SettingsSection>
 
-        <section className="rounded-xl border border-border bg-card">
-          <div className="flex items-center justify-between gap-2 border-b border-border px-5 py-3.5">
-            <div>
-              <h2 className="text-sm font-semibold">Members</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">Members and their roles.</p>
-            </div>
-            {canEdit && (
+        <SettingsSection
+          icon={Users}
+          title="Members"
+          description={`${members.length} ${members.length === 1 ? "member" : "members"} and their roles.`}
+          action={
+            canEdit && (
               <Button size="sm" className="gap-1.5" onClick={() => setInviteOpen(true)}>
                 <UserPlus className="size-3.5" />
                 Invite
               </Button>
-            )}
-          </div>
+            )
+          }
+          bodyClassName="p-0 sm:p-0"
+        >
           <ul className="divide-y divide-border">
             {members.map((m) => {
               const isOwner = m.role === "owner";
               const isSelf = m.id === user?.uid;
               return (
-                <li key={m.id} className="flex items-center gap-3 px-5 py-3">
-                  <Avatar className="size-8">
+                <li key={m.id} className="flex items-center gap-3 px-5 py-3.5 sm:px-6">
+                  <Avatar className="size-9">
                     <AvatarImage src={m.photoURL} />
                     <AvatarFallback className="text-xs">{initials(m.displayName)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{m.displayName}</p>
+                    <p className="truncate text-sm font-medium">
+                      {m.displayName}
+                      {isSelf && (
+                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">(you)</span>
+                      )}
+                    </p>
                     <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                   </div>
                   {canEdit && !isOwner && !isSelf ? (
@@ -191,7 +205,7 @@ export default function SettingsPage() {
                       value={m.role}
                       onValueChange={(v) => v && handleRoleChange(m.id, v as Exclude<Role, "owner">)}
                     >
-                      <SelectTrigger size="sm" className="h-7 w-32 border-none bg-transparent shadow-none">
+                      <SelectTrigger size="sm" className="h-8 w-32 justify-between">
                         <SelectValue>
                           {(v: string) => (
                             <span
@@ -212,21 +226,25 @@ export default function SettingsPage() {
                     </Select>
                   ) : (
                     <span
-                      className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium capitalize ${ROLE_STYLES[m.role]}`}
+                      className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${ROLE_STYLES[m.role]}`}
                     >
                       {m.role}
                     </span>
                   )}
-                  {canEdit && !isOwner && !isSelf && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 text-muted-foreground-2 hover:text-danger"
-                      aria-label={`Remove ${m.displayName}`}
-                      onClick={() => handleRemove(m.id, m.displayName)}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                  {canEdit && (
+                    <div className="size-8 shrink-0">
+                      {!isOwner && !isSelf && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-muted-foreground-2 hover:text-danger"
+                          aria-label={`Remove ${m.displayName}`}
+                          onClick={() => handleRemove(m.id, m.displayName)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </li>
               );
@@ -234,18 +252,26 @@ export default function SettingsPage() {
           </ul>
           {invites.length > 0 && (
             <>
-              <div className="border-t border-b border-border px-5 py-2.5">
-                <h3 className="text-xs font-semibold text-muted-foreground">Pending invites</h3>
+              <div className="flex items-center gap-2 border-y border-border bg-muted/30 px-5 py-2.5 sm:px-6">
+                <Mail className="size-3.5 text-muted-foreground" />
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Pending invites
+                </h3>
               </div>
               <ul className="divide-y divide-border">
                 {invites.map((inv) => (
-                  <li key={inv.id} className="flex items-center gap-3 px-5 py-3">
+                  <li key={inv.id} className="flex items-center gap-3 px-5 py-3.5 sm:px-6">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground">
+                      <Mail className="size-4" />
+                    </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm">{inv.email}</p>
-                      <p className="truncate text-xs text-muted-foreground">Invited by {inv.invitedByName}</p>
+                      <p className="truncate text-sm font-medium">{inv.email}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        Invited by {inv.invitedByName}
+                      </p>
                     </div>
                     <span
-                      className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium capitalize ${ROLE_STYLES[inv.role]}`}
+                      className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${ROLE_STYLES[inv.role]}`}
                     >
                       {inv.role}
                     </span>
@@ -253,7 +279,7 @@ export default function SettingsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-muted-foreground hover:text-danger"
+                        className="shrink-0 text-muted-foreground hover:text-danger"
                         onClick={() => handleRevoke(inv.id, inv.email)}
                       >
                         Revoke
@@ -264,31 +290,42 @@ export default function SettingsPage() {
               </ul>
             </>
           )}
-        </section>
+        </SettingsSection>
 
-        <section className="rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold">Appearance</h2>
-          <div className="mt-4 flex items-center gap-2">
-            <Button
-              variant={resolvedTheme === "dark" ? "default" : "outline"}
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setTheme("dark")}
-            >
-              <Moon className="size-3.5" />
-              Dark
-            </Button>
-            <Button
-              variant={resolvedTheme === "light" ? "default" : "outline"}
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setTheme("light")}
-            >
-              <Sun className="size-3.5" />
-              Light
-            </Button>
+        <SettingsSection
+          icon={Palette}
+          title="Appearance"
+          description="Choose how FounderOS looks on this device."
+        >
+          <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
+            {(
+              [
+                { value: "light", label: "Light", icon: Sun },
+                { value: "dark", label: "Dark", icon: Moon },
+              ] as const
+            ).map(({ value, label, icon: Icon }) => {
+              const active = resolvedTheme === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setTheme(value)}
+                  aria-pressed={active}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                    active
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  <Icon className="size-4" />
+                  {label}
+                  {active && <Check className="ml-auto size-4" />}
+                </button>
+              );
+            })}
           </div>
-        </section>
+        </SettingsSection>
       </div>
 
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
