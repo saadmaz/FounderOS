@@ -58,7 +58,10 @@ function DialogContent({
           // instead of getting clipped above/below the screen with no way
           // to reach it - position:fixed content can't be reached by
           // scrolling the page behind it.
-          "fixed top-1/2 left-1/2 z-50 grid max-h-[85vh] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-x-hidden overflow-y-auto rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none scrollbar-thin sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // grid-cols-1 (= minmax(0, 1fr)) pins the column to the dialog's
+          // width - an implicit auto column grows to fit its widest content,
+          // so one long select value could push the form past the edge.
+          "fixed top-1/2 left-1/2 z-50 grid grid-cols-1 max-h-[85vh] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-x-hidden overflow-y-auto rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none scrollbar-thin sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}

@@ -162,8 +162,10 @@ export function ManualEntryDialog({
             {errors.companyId && <p className="text-xs text-danger">{errors.companyId.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+          {/* Stacked on phones: side by side, each picker is ~130px wide -
+           * too narrow to read a project or task name. */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="min-w-0 space-y-1.5">
               <Label>Project (optional)</Label>
               <Select
                 value={projectId}
@@ -187,7 +189,7 @@ export function ManualEntryDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label>Task (optional)</Label>
               <Select
                 value={watch("taskId")}

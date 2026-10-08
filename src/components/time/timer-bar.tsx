@@ -110,10 +110,13 @@ export function TimerBar({
         runningEntry ? "border-primary/30 bg-primary/5" : "border-border bg-card"
       )}
     >
+      {/* Idle below desktop width the pickers take the full row, which would
+       * strand the dot on a line of its own - only show it once they fit
+       * beside it. */}
       <div
         className={cn(
-          "flex size-10 shrink-0 self-start items-center justify-center rounded-full",
-          runningEntry ? "animate-pulse bg-primary/20" : "bg-secondary"
+          "size-10 shrink-0 items-center justify-center rounded-full",
+          runningEntry ? "flex animate-pulse bg-primary/20" : "hidden bg-secondary lg:flex"
         )}
       >
         <span
@@ -132,15 +135,23 @@ export function TimerBar({
               {activeCompany?.name ?? "No company"}
             </p>
           </div>
-          <span className="font-mono text-xl font-semibold tabular-nums">{elapsedLabel(elapsed)}</span>
-          <Button onClick={handleStop} disabled={busy} variant="destructive" className="gap-1.5">
+          <span className="shrink-0 font-mono text-lg font-semibold tabular-nums sm:text-xl">
+            {elapsedLabel(elapsed)}
+          </span>
+          <Button
+            onClick={handleStop}
+            disabled={busy}
+            variant="destructive"
+            className="w-full gap-1.5 sm:w-auto"
+          >
             <Square className="size-3.5 fill-current" />
             Stop
           </Button>
         </>
       ) : (
         <>
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          {/* Stacked on phones, a 2x2 grid on tablets, one row on desktop. */}
+          <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:w-auto lg:flex-1 lg:flex-wrap lg:items-center">
             <Select
               value={companyId}
               onValueChange={(v) => {
@@ -149,7 +160,7 @@ export function TimerBar({
                 setTaskId("");
               }}
             >
-              <SelectTrigger className="w-full sm:w-44">
+              <SelectTrigger className="w-full lg:w-44">
                 <SelectValue placeholder="Company">
                   {(v: string) => companies.find((c) => c.id === v)?.name ?? "Select company"}
                 </SelectValue>
@@ -171,7 +182,7 @@ export function TimerBar({
               }}
               disabled={!companyId}
             >
-              <SelectTrigger className="w-full sm:w-40">
+              <SelectTrigger className="w-full lg:w-40">
                 <SelectValue placeholder="Project (optional)">
                   {(v: string) => projects.find((p) => p.id === v)?.name ?? "No project"}
                 </SelectValue>
@@ -186,7 +197,7 @@ export function TimerBar({
             </Select>
 
             <Select value={taskId} onValueChange={(v) => setTaskId(v ?? "")} disabled={!companyId}>
-              <SelectTrigger className="w-full sm:w-40">
+              <SelectTrigger className="w-full lg:w-40">
                 <SelectValue placeholder="Task (optional)">
                   {(v: string) => tasks.find((t) => t.id === v)?.title ?? "No task"}
                 </SelectValue>
@@ -204,10 +215,10 @@ export function TimerBar({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Or just say what you're doing…"
-              className="w-full sm:w-48"
+              className="w-full lg:w-48"
             />
           </div>
-          <Button onClick={handleStart} disabled={busy} className="w-full gap-1.5 sm:w-auto">
+          <Button onClick={handleStart} disabled={busy} className="w-full gap-1.5 lg:w-auto">
             <Play className="size-3.5 fill-current" />
             Start timer
           </Button>
