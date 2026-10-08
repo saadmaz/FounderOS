@@ -9,6 +9,7 @@ import {
   Clock,
   FolderKanban,
   Plus,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -23,6 +24,14 @@ import {
 } from "recharts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/page-header";
 import { PriorityBadge, StatusBadge } from "@/components/shared/status-badge";
 import { StatCard } from "@/components/shared/stat-card";
@@ -31,11 +40,24 @@ import { OnboardingWelcome } from "@/components/companies/onboarding-welcome";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useCompanies } from "@/lib/data/companies";
+import { useExpenses } from "@/lib/data/expenses";
 import { useMeetings } from "@/lib/data/meetings";
 import { useProjects } from "@/lib/data/projects";
 import { useTasks } from "@/lib/data/tasks";
 import { useTimeEntries } from "@/lib/data/time-entries";
-import { formatDate, formatHours, sumHours, sumMeetingHours, sumTaskActualHours } from "@/lib/format";
+import {
+  DASHBOARD_PERIODS,
+  dashboardPeriodBounds,
+  type DashboardPeriod,
+} from "@/lib/date-range";
+import {
+  formatDate,
+  formatHours,
+  formatMixedCurrencyTotal,
+  sumHours,
+  sumMeetingHours,
+  sumTaskActualHours,
+} from "@/lib/format";
 import type { CompanyType } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace/workspace-provider";
 import { cn } from "@/lib/utils";
@@ -46,11 +68,13 @@ function startOfDay(d: Date) {
   return x.getTime();
 }
 
-function startOfWeek(d: Date) {
-  const x = new Date(d);
-  const day = (x.getDay() + 6) % 7; // Monday = 0
-  x.setDate(x.getDate() - day);
-  return startOfDay(x);
+const DAY_MS = 86_400_000;
+
+const shortDate = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+/** e.g. "Sep 1 – 30, 2026" for an [start, end) range. */
+function formatRangeLabel([start, end]: [number, number]) {
+  return shortDate.formatRange(new Date(start), new Date(end - 1));
 }
 
 function greeting() {
@@ -68,13 +92,26 @@ export default function DashboardPage() {
   const { data: tasks, loading: tasksLoading } = useTasks(workspace?.id ?? null);
   const { data: timeEntries } = useTimeEntries(workspace?.id ?? null);
   const { data: meetings } = useMeetings(workspace?.id ?? null);
+  const { data: expenses, loading: expensesLoading } = useExpenses(workspace?.id ?? null);
+  const [period, setPeriod] = useState<DashboardPeriod>("this_week");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
   const [quickType, setQuickType] = useState<CompanyType>("startup");
 
   const today = startOfDay(new Date());
-  const weekStart = startOfWeek(new Date());
-  const inSevenDays = today + 7 * 86400000;
+  const inSevenDays = today + 7 * DAY_MS;
+
+  // Everything period-scoped below (hours, money spent, the trend chart,
+  // company performance) reads from this one [start, end) window. Null while
+  // a custom range is only half picked.
+  const bounds = useMemo(
+    () => dashboardPeriodBounds(period, { from: customFrom, to: customTo }),
+    // `today` keeps "this week" rolling over at midnight on a long-open tab.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [period, customFrom, customTo, today]
+  );
 
   const openTasks = useMemo(
     () => tasks.filter((t) => t.status !== "completed" && t.status !== "cancelled"),
@@ -107,64 +144,76 @@ export default function DashboardPage() {
     () => projects.filter((p) => p.status !== "completed" && p.status !== "cancelled"),
     [projects]
   );
-  // Self-reported time logged directly on a task (no timer/manual entry,
-  // just estimatedMinutes + workDate - see taskMinutesSpent) for tasks whose
-  // workDate falls in [from, to). Real timer/manual entries are already
-  // covered by sumHours over timeEntries below, so this only adds tasks that
-  // have zero entries of their own, to avoid double-counting.
-  const selfReportedTaskHours = (from: number, to: number) =>
-    sumTaskActualHours(
-      tasks.filter(
-        (t) => t.workDate && t.workDate >= from && t.workDate < to && !timeEntries.some((e) => e.taskId === t.id)
-      ),
-      timeEntries
-    );
+  // Hours in [from, to), optionally for one company: timer/manual entries,
+  // completed meetings, plus time self-reported directly on a task (no
+  // timer/manual entry, just estimatedMinutes + workDate - see
+  // taskMinutesSpent) for tasks with zero entries of their own, so real
+  // entries aren't double-counted.
+  const hoursIn = useMemo(() => {
+    const tasksWithEntries = new Set(timeEntries.map((e) => e.taskId).filter(Boolean));
+    return (from: number, to: number, companyId?: string) => {
+      const inCompany = (x: { companyId: string }) => !companyId || x.companyId === companyId;
+      return (
+        sumHours(timeEntries.filter((e) => inCompany(e) && e.startedAt >= from && e.startedAt < to)) +
+        sumMeetingHours(meetings.filter((m) => inCompany(m) && m.scheduledAt >= from && m.scheduledAt < to)) +
+        sumTaskActualHours(
+          tasks.filter(
+            (t) =>
+              inCompany(t) && t.workDate && t.workDate >= from && t.workDate < to && !tasksWithEntries.has(t.id)
+          ),
+          timeEntries
+        )
+      );
+    };
+  }, [timeEntries, meetings, tasks]);
 
-  const hoursThisWeek = useMemo(
-    () =>
-      sumHours(timeEntries.filter((e) => e.startedAt >= weekStart)) +
-      sumMeetingHours(meetings.filter((m) => m.scheduledAt >= weekStart)) +
-      selfReportedTaskHours(weekStart, today + 86400000),
-    [timeEntries, meetings, tasks, weekStart, today]
-  );
-  const hoursLastWeek = useMemo(() => {
-    const lastWeekStart = weekStart - 7 * 86400000;
-    return (
-      sumHours(timeEntries.filter((e) => e.startedAt >= lastWeekStart && e.startedAt < weekStart)) +
-      sumMeetingHours(meetings.filter((m) => m.scheduledAt >= lastWeekStart && m.scheduledAt < weekStart)) +
-      selfReportedTaskHours(lastWeekStart, weekStart)
-    );
-  }, [timeEntries, meetings, tasks, weekStart]);
-  // Only shown when there's a real prior week to compare against - a
+  const periodHours = useMemo(() => (bounds ? hoursIn(...bounds.range) : 0), [bounds, hoursIn]);
+  // Only shown when there's a real prior period to compare against - a
   // fabricated "+100%" off a zero baseline would be exactly the kind of
   // misleading stat this is meant to replace (see: the old notification bell).
   const hoursDelta = useMemo(() => {
-    if (hoursLastWeek <= 0) return undefined;
-    const pct = Math.round(((hoursThisWeek - hoursLastWeek) / hoursLastWeek) * 100);
+    if (!bounds) return undefined;
+    const previous = hoursIn(...bounds.previous);
+    if (previous <= 0) return undefined;
+    const pct = Math.round(((periodHours - previous) / previous) * 100);
     if (pct === 0) return undefined;
     return { value: `${Math.abs(pct)}%`, positive: pct > 0 };
-  }, [hoursThisWeek, hoursLastWeek]);
+  }, [bounds, hoursIn, periodHours]);
 
-  // Daily hours (time entries + meetings + self-reported task time) for the
-  // last 14 days, for the trend chart below the stat row.
-  const dailyHours = useMemo(() => {
-    const days = 14;
+  // Every expense counts as money spent, reimbursed or not. Expenses can
+  // each carry their own currency, so this stays a per-currency sum
+  // (formatMixedCurrencyTotal) rather than one misleading number.
+  const periodExpenses = useMemo(
+    () => (bounds ? expenses.filter((e) => e.date >= bounds.range[0] && e.date < bounds.range[1]) : []),
+    [expenses, bounds]
+  );
+  const moneySpent = useMemo(() => formatMixedCurrencyTotal(periodExpenses), [periodExpenses]);
+
+  // Hours trend across the selected period - one point per day for up to
+  // ~2 months, one per month beyond that (a year of daily points is noise).
+  const hoursTrend = useMemo(() => {
+    if (!bounds) return [];
+    const [from, to] = bounds.range;
     const points: { date: string; hours: number }[] = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const dayStart = today - i * 86400000;
-      const dayEnd = dayStart + 86400000;
-      const hours =
-        sumHours(timeEntries.filter((e) => e.startedAt >= dayStart && e.startedAt < dayEnd)) +
-        sumMeetingHours(meetings.filter((m) => m.scheduledAt >= dayStart && m.scheduledAt < dayEnd)) +
-        selfReportedTaskHours(dayStart, dayEnd);
+    const daily = to - from <= 62 * DAY_MS;
+    const label = new Intl.DateTimeFormat(
+      "en-US",
+      daily ? { month: "short", day: "numeric" } : { month: "short", year: "2-digit" }
+    );
+    const cursor = new Date(from);
+    while (cursor.getTime() < to) {
+      const bucketStart = cursor.getTime();
+      if (daily) cursor.setDate(cursor.getDate() + 1);
+      else cursor.setMonth(cursor.getMonth() + 1, 1);
+      const bucketEnd = Math.min(cursor.getTime(), to);
       points.push({
-        date: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(dayStart)),
-        hours: Math.round(hours * 10) / 10,
+        date: label.format(new Date(bucketStart)),
+        hours: Math.round(hoursIn(bucketStart, bucketEnd) * 10) / 10,
       });
     }
     return points;
-  }, [timeEntries, meetings, tasks, today]);
-  const hasHoursHistory = dailyHours.some((d) => d.hours > 0);
+  }, [bounds, hoursIn]);
+  const hasHoursHistory = hoursTrend.some((d) => d.hours > 0);
 
   const recentActivity = useMemo(
     () => [...tasks].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6),
@@ -175,18 +224,18 @@ export default function DashboardPage() {
     return companies
       .filter((c) => c.status === "active")
       .map((c) => {
-        const companyTasks = tasks.filter((t) => t.companyId === c.id);
-        const hours =
-          sumHours(timeEntries.filter((e) => e.companyId === c.id && !e.taskId)) +
-          sumMeetingHours(meetings.filter((m) => m.companyId === c.id)) +
-          sumTaskActualHours(companyTasks, timeEntries);
+        const hours = bounds ? hoursIn(bounds.range[0], bounds.range[1], c.id) : 0;
+        const companyExpenses = periodExpenses.filter((e) => e.companyId === c.id);
+        const spent = companyExpenses.length > 0 ? formatMixedCurrencyTotal(companyExpenses) : null;
         const open = tasks.filter(
           (t) => t.companyId === c.id && t.status !== "completed" && t.status !== "cancelled"
         ).length;
-        return { company: c, hours, open };
+        return { company: c, hours, spent, open };
       })
       .sort((a, b) => b.hours - a.hours);
-  }, [companies, timeEntries, meetings, tasks]);
+  }, [companies, tasks, bounds, hoursIn, periodExpenses]);
+
+  const periodLabel = DASHBOARD_PERIODS.find((p) => p.value === period)?.label ?? "";
 
   const firstName = user?.displayName?.split(" ")[0];
 
@@ -237,7 +286,7 @@ export default function DashboardPage() {
       />
 
       <div className="flex-1 space-y-6 p-4 lg:p-6">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <StatCard
             label="Active Companies"
             value={String(companies.filter((c) => c.status === "active").length)}
@@ -276,66 +325,125 @@ export default function DashboardPage() {
             accentBg="bg-danger/10"
             loading={tasksLoading}
           />
-          <StatCard
-            label="Hours This Week"
-            value={formatHours(hoursThisWeek)}
-            icon={Clock}
-            accent="text-analytics-pink"
-            accentBg="bg-analytics-pink/10"
-            delta={hoursDelta}
-          />
         </div>
 
-        <section className="rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold">Hours Logged</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Last 14 days, across all companies</p>
-          <div className="mt-4 h-48">
-            {hasHoursHistory ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dailyHours} margin={{ left: -20 }}>
-                  <defs>
-                    <linearGradient id="dashboardHoursGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--analytics-pink)" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="var(--analytics-pink)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                    axisLine={{ stroke: "var(--border)" }}
-                    tickLine={false}
-                    interval={2}
+        {/* Period-scoped stats - everything in this section, plus Company
+         * Performance below, follows the period picked here. The task stats
+         * above are "right now" figures and deliberately don't. */}
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold">Time &amp; Spend</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {bounds ? formatRangeLabel(bounds.range) : "Pick a start and end date"}
+              </p>
+            </div>
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+              <Select value={period} onValueChange={(v) => setPeriod((v ?? "this_week") as DashboardPeriod)}>
+                <SelectTrigger size="sm" className="w-full sm:w-40" aria-label="Period">
+                  <SelectValue>{() => periodLabel}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {DASHBOARD_PERIODS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {period === "custom" && (
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+                  <DatePicker
+                    value={customFrom}
+                    onChange={setCustomFrom}
+                    placeholder="From"
+                    className="h-7 text-xs sm:w-36"
                   />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={44}
+                  <DatePicker
+                    value={customTo}
+                    onChange={setCustomTo}
+                    placeholder="To"
+                    className="h-7 text-xs sm:w-36"
+                    fromDate={customFrom ? new Date(`${customFrom}T00:00:00`) : undefined}
                   />
-                  <Tooltip
-                    contentStyle={{
-                      background: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                    }}
-                    formatter={(value) => [`${value}h`, "Hours"]}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="hours"
-                    stroke="var(--analytics-pink)"
-                    strokeWidth={2}
-                    fill="url(#dashboardHoursGradient)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                No hours logged in the last 14 days.
-              </div>
-            )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <StatCard
+              label="Hours Spent"
+              value={formatHours(periodHours)}
+              icon={Clock}
+              accent="text-analytics-pink"
+              accentBg="bg-analytics-pink/10"
+              delta={hoursDelta}
+            />
+            <StatCard
+              label={`Money Spent · ${periodExpenses.length} expense${periodExpenses.length === 1 ? "" : "s"}`}
+              value={moneySpent}
+              icon={Wallet}
+              accent="text-success"
+              accentBg="bg-success/10"
+              loading={expensesLoading}
+            />
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h3 className="text-sm font-semibold">Hours Logged</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {periodLabel}, across all companies
+            </p>
+            <div className="mt-4 h-48">
+              {hasHoursHistory ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={hoursTrend} margin={{ left: -20 }}>
+                    <defs>
+                      <linearGradient id="dashboardHoursGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--analytics-pink)" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="var(--analytics-pink)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                      axisLine={{ stroke: "var(--border)" }}
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                      minTickGap={16}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={44}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                      }}
+                      formatter={(value) => [`${value}h`, "Hours"]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="hours"
+                      stroke="var(--analytics-pink)"
+                      strokeWidth={2}
+                      fill="url(#dashboardHoursGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
+                  {bounds ? "No hours logged in this period." : "Pick a start and end date to see hours."}
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
@@ -414,7 +522,10 @@ export default function DashboardPage() {
           <div className="space-y-6">
             <section className="rounded-xl border border-border bg-card">
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                <h2 className="text-sm font-semibold">Company Performance</h2>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold">Company Performance</h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Hours &amp; spend · {periodLabel}</p>
+                </div>
                 <Link href="/companies" className="text-xs text-muted-foreground hover:text-foreground">
                   View all
                 </Link>
@@ -425,7 +536,7 @@ export default function DashboardPage() {
                 </p>
               ) : (
                 <ul className="divide-y divide-border">
-                  {companyPerf.map(({ company, hours, open }) => (
+                  {companyPerf.map(({ company, hours, spent, open }) => (
                     <li key={company.id}>
                       <Link
                         href={`/companies/${company.id}`}
@@ -441,9 +552,14 @@ export default function DashboardPage() {
                           </AvatarFallback>
                         </Avatar>
                         <span className="flex-1 truncate text-sm font-medium">{company.name}</span>
-                        <span className="text-xs text-muted-foreground">{open} open</span>
-                        <span className="w-12 shrink-0 text-right text-xs font-medium">
-                          {formatHours(hours)}
+                        <span className="shrink-0 text-xs text-muted-foreground">{open} open</span>
+                        <span className="flex max-w-[45%] shrink-0 flex-col items-end text-right">
+                          <span className="text-xs font-medium">{formatHours(hours)}</span>
+                          {spent && (
+                            <span className="truncate text-[11px] text-muted-foreground" title={spent}>
+                              {spent}
+                            </span>
+                          )}
                         </span>
                       </Link>
                     </li>
