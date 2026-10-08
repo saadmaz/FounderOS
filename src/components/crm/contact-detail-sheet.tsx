@@ -12,7 +12,7 @@ import {
   TrendingUp,
   Users as UsersIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { LinkedinLogo } from "@/components/shared/brand-icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -151,6 +151,39 @@ export function ContactDetailSheet({
    * instead of stacking a second sheet on top of this one. */
   onOpenDeal?: (deal: Deal) => void;
 }) {
+  // Callers clear `contact` the moment the sheet closes, which would gut the
+  // popup mid exit-animation (and swap the whole tree under Base UI while it
+  // is still tearing down focus trap / scroll lock). Hold on to the last
+  // contact until the close animation has finished instead.
+  const [lastContact, setLastContact] = useState<Contact | null>(contact);
+  if (contact && contact !== lastContact) setLastContact(contact);
+  const shownContact = contact ?? lastContact;
+
+  return (
+    <ContactDetailSheetInner
+      open={open && Boolean(contact)}
+      onOpenChange={onOpenChange}
+      onClosed={() => setLastContact(null)}
+      contact={shownContact}
+      onOpenDeal={onOpenDeal}
+    />
+  );
+}
+
+function ContactDetailSheetInner({
+  open,
+  onOpenChange,
+  onClosed,
+  contact,
+  onOpenDeal,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onClosed: () => void;
+  contact: Contact | null;
+  onOpenDeal?: (deal: Deal) => void;
+}) {
+  const popupRef = useRef<HTMLDivElement>(null);
   const { workspace } = useWorkspace();
   const { user } = useAuth();
   const confirm = useConfirm();
@@ -169,13 +202,17 @@ export function ContactDetailSheet({
   const [uploadOpen, setUploadOpen] = useState(false);
   const [dealDialogOpen, setDealDialogOpen] = useState(false);
 
+  // Re-seed only when a session *opens* - re-seeding on close would wipe an
+  // in-progress edit before the blur flush in handleOpenChange can save it.
   if (sessionKey !== seededKey) {
     setSeededKey(sessionKey);
-    setDraft(contact ? draftFrom(contact) : null);
-    setActivityType("note");
-    setActivityText("");
-    setNewTaskTitle("");
-    setNewTaskDate("");
+    if (sessionKey !== "closed") {
+      setDraft(contact ? draftFrom(contact) : null);
+      setActivityType("note");
+      setActivityText("");
+      setNewTaskTitle("");
+      setNewTaskDate("");
+    }
   }
 
   // Date.now() is impure, so the "today" default for a fresh session is set
@@ -195,18 +232,34 @@ export function ContactDetailSheet({
   const companyById = new Map(companies.map((c) => [c.id, c]));
   const memberById = new Map(members.map((m) => [m.id, m]));
 
-  if (!contact || !draft) {
-    return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full p-0 sm:max-w-xl lg:max-w-2xl" />
-      </Sheet>
-    );
+  // Nothing selected yet (or the close animation has finished) - render no
+  // dialog at all rather than an empty, closed one.
+  if (!contact || !draft) return null;
+
+  function handleOpenChange(next: boolean) {
+    // Fields save on blur, so flush whichever one still has focus before the
+    // popup goes away - otherwise an edit followed straight by Esc / the X /
+    // a backdrop click would be dropped.
+    const active = document.activeElement;
+    if (!next && active instanceof HTMLElement && popupRef.current?.contains(active)) {
+      active.blur();
+    }
+    onOpenChange(next);
   }
 
   async function commit(patch: Partial<Contact>) {
     if (!workspace || !contact) return;
+    // Every blur calls this, changed or not - skip the no-op writes so simply
+    // tabbing through fields doesn't fire a Firestore write (and a re-render
+    // of every contacts subscriber) per field.
+    const changed = Object.fromEntries(
+      Object.entries(patch).filter(
+        ([k, v]) => (v ?? null) !== (contact[k as keyof Contact] ?? null)
+      )
+    ) as Partial<Contact>;
+    if (Object.keys(changed).length === 0) return;
     try {
-      await updateContact(workspace.id, contact.id, patch);
+      await updateContact(workspace.id, contact.id, changed);
     } catch (err) {
       console.error("Contact update failed:", err);
       toast.error(err instanceof Error ? err.message : "Couldn't save. Try again.");
@@ -286,8 +339,20 @@ export function ContactDetailSheet({
   const owner = draft.ownerId ? memberById.get(draft.ownerId) : undefined;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-xl lg:max-w-2xl">
+    <Sheet
+      open={open}
+      onOpenChange={handleOpenChange}
+      onOpenChangeComplete={(isOpen) => !isOpen && onClosed()}
+    >
+      {/* initialFocus on the popup itself: the sheet is opened from a table
+       * row, not a Base UI trigger, so Base UI can't tell a tap from a click
+       * and would otherwise focus the name input - popping the on-screen
+       * keyboard over the sheet on phones/tablets the moment it opens. */}
+      <SheetContent
+        ref={popupRef}
+        initialFocus={popupRef}
+        className="flex w-full flex-col gap-0 p-0 outline-none sm:max-w-xl lg:max-w-2xl"
+      >
         {/* Header */}
         <div className="space-y-3.5 border-b border-border p-5 lg:p-6">
           <div className="flex items-start gap-3 pr-8">
@@ -373,7 +438,7 @@ export function ContactDetailSheet({
         </div>
 
         {/* Body */}
-        <div className="flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain lg:flex-row lg:overflow-hidden">
           {/* Properties */}
           <div className="order-2 shrink-0 space-y-3 border-t border-border p-4 lg:w-72 lg:overflow-y-auto lg:border-t-0 lg:border-l lg:p-5">
             <SectionLabel>Contact info</SectionLabel>
@@ -542,9 +607,11 @@ export function ContactDetailSheet({
           </div>
 
           {/* Tabs: Timeline / Tasks / Documents / Deals */}
-          <div className="order-1 flex-1 p-4 lg:overflow-y-auto lg:p-5">
+          <div className="order-1 min-w-0 flex-1 p-4 lg:overflow-y-auto lg:overscroll-contain lg:p-5">
             <Tabs defaultValue="timeline">
-              <TabsList>
+              {/* Four labels with counts don't fit a phone-width sheet - let
+               * the strip scroll sideways instead of overflowing the sheet. */}
+              <TabsList className="max-w-full justify-start overflow-x-auto">
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 <TabsTrigger value="tasks">
                   Tasks{tasks.length > 0 ? ` (${tasks.length})` : ""}
@@ -641,7 +708,7 @@ export function ContactDetailSheet({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="size-6 shrink-0 opacity-0 group-hover:opacity-100"
+                              className="size-6 shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
                               aria-label="Remove entry"
                               onClick={() =>
                                 workspace &&
@@ -669,7 +736,7 @@ export function ContactDetailSheet({
                     onChange={(e) => setNewTaskTitle(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
                   />
-                  <div className="w-36 shrink-0">
+                  <div className="w-32 shrink-0 sm:w-36">
                     <DatePicker value={newTaskDate} onChange={setNewTaskDate} placeholder="Due" />
                   </div>
                   <Button
