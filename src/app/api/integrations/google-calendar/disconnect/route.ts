@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAdminAuth, getAdminFirestore } from "@/lib/firebase/admin";
+import { verifyRequestUser } from "@/lib/auth/server";
+import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getConnection } from "@/lib/google-calendar/client";
 import { revokeConnectionTokens } from "@/lib/google-calendar/oauth";
 import { stopWatch } from "@/lib/google-calendar/watch";
@@ -7,14 +8,12 @@ import { stopWatch } from "@/lib/google-calendar/watch";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const authHeader = request.headers.get("authorization") ?? "";
-  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
-  if (!idToken) {
-    return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
+  const decoded = await verifyRequestUser(request);
+  if (!decoded) {
+    return NextResponse.json({ error: "Missing or invalid auth token" }, { status: 401 });
   }
 
   try {
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
     const connection = await getConnection(decoded.uid);
     if (!connection) return NextResponse.json({ ok: true });
 

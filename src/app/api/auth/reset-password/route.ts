@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAdminAuth } from "@/lib/firebase/admin";
+import { createHash } from "node:crypto";
+import { getAdminAuth, getAdminFirestore } from "@/lib/firebase/admin";
 import { getAppUrl } from "@/lib/email/app-url";
 import { passwordResetEmail } from "@/lib/email/messages";
 import { sendEmail } from "@/lib/email/send";
@@ -14,16 +15,26 @@ export const runtime = "nodejs";
 /**
  * Per-email cooldown so this public, unauthenticated endpoint can't be used
  * to repeatedly email someone a real reset link - nothing here requires
- * proving you own the address, so without a throttle anyone (or a script)
- * submitting it on the login form fires a fresh Resend send every time. An
- * in-memory Map resets on cold start and isn't shared across instances,
- * which is a real limitation for a multi-instance deploy, but it's what
- * catches the common case (a form double-submit, or a script hammering one
- * warm instance) with no extra infra. A proper fix needs a shared store
- * (Redis/Firestore) keyed by email or IP.
+ * proving you own the address. Kept in Firestore (keyed by a hash of the
+ * email, so the collection never holds plaintext addresses) rather than
+ * in memory, since serverless instances neither share memory nor survive
+ * cold starts. `rateLimits` has no client rules, so only Admin can touch it.
  */
 const RESET_COOLDOWN_MS = 60_000;
-const lastSentAt = new Map<string, number>();
+
+/** Atomically checks-and-claims the cooldown slot; false = still cooling down. */
+async function claimResetSlot(email: string): Promise<boolean> {
+  const key = createHash("sha256").update(email).digest("hex");
+  const db = getAdminFirestore();
+  const ref = db.doc(`rateLimits/password-reset-${key}`);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const last = snap.exists ? (snap.data()?.lastSentAt as number | undefined) : undefined;
+    if (last && Date.now() - last < RESET_COOLDOWN_MS) return false;
+    tx.set(ref, { lastSentAt: Date.now() });
+    return true;
+  });
+}
 
 /**
  * Generates a password-reset action link via Firebase Admin and emails it
@@ -43,15 +54,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email is required" }, { status: 400 });
   }
 
-  const last = lastSentAt.get(email);
-  if (last && Date.now() - last < RESET_COOLDOWN_MS) {
-    // Same non-enumerating 200 as every other outcome here - a cooldown hit
-    // shouldn't tell a caller anything about whether the address is real.
-    return NextResponse.json({ ok: true });
-  }
-  lastSentAt.set(email, Date.now());
-
   try {
+    if (!(await claimResetSlot(email))) {
+      // Same non-enumerating 200 as every other outcome here - a cooldown
+      // hit shouldn't tell a caller anything about whether the address is real.
+      return NextResponse.json({ ok: true });
+    }
     const link = await getAdminAuth().generatePasswordResetLink(email, {
       url: `${getAppUrl()}/auth/action`,
     });

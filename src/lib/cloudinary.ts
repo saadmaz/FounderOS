@@ -1,24 +1,50 @@
+import { auth } from "@/lib/firebase/client";
+
 /**
- * Direct-from-browser uploads via Cloudinary unsigned upload presets - no
- * server route, no IAM/security-rule cross-service dependency (unlike
- * Firebase Storage, see workspace.ts history). The preset itself is the
- * access boundary: configure allowed formats/max file size on it in the
- * Cloudinary dashboard rather than trusting the client.
+ * Direct-from-browser uploads to Cloudinary. Each upload is signed first by
+ * src/app/api/cloudinary/sign, which checks the caller's workspace role for
+ * the target folder - the file itself never passes through our server, only
+ * the signature does. Format/max-size limits still live on the presets in
+ * the Cloudinary dashboard (which must be set to "Signed" mode).
  */
+
+async function authedJson<T>(url: string, body: unknown): Promise<T> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not signed in");
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${await user.getIdToken()}` },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
+  return data as T;
+}
 
 async function uploadToCloudinary(
   file: File,
-  opts: { preset: string; endpoint: "image" | "raw"; folder?: string }
+  opts: { endpoint: "image" | "raw"; folder: string }
 ): Promise<{ url: string; publicId: string; resourceType: string }> {
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   if (!cloudName) {
     throw new Error("Cloudinary isn't configured - set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.");
   }
 
+  const signed = await authedJson<{
+    signature: string;
+    timestamp: number;
+    apiKey: string;
+    uploadPreset: string;
+    folder: string;
+  }>("/api/cloudinary/sign", { folder: opts.folder, kind: opts.endpoint });
+
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("upload_preset", opts.preset);
-  if (opts.folder) formData.append("folder", opts.folder);
+  formData.append("api_key", signed.apiKey);
+  formData.append("timestamp", String(signed.timestamp));
+  formData.append("signature", signed.signature);
+  formData.append("upload_preset", signed.uploadPreset);
+  formData.append("folder", signed.folder);
 
   const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${opts.endpoint}/upload`, {
     method: "POST",
@@ -32,13 +58,10 @@ async function uploadToCloudinary(
   return { url: data.secure_url, publicId: data.public_id, resourceType: data.resource_type };
 }
 
-/** Company logos - image-only preset. */
-export async function uploadImageToCloudinary(file: File, folder?: string): Promise<string> {
-  const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-  if (!preset) {
-    throw new Error("Cloudinary isn't configured - set NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.");
-  }
-  const { url } = await uploadToCloudinary(file, { preset, endpoint: "image", folder });
+/** Company logos - image-only preset. `folder` is
+ * `founderos/{workspaceId}/logos`. */
+export async function uploadImageToCloudinary(file: File, folder: string): Promise<string> {
+  const { url } = await uploadToCloudinary(file, { endpoint: "image", folder });
   return url;
 }
 
@@ -56,12 +79,8 @@ export async function uploadImageToCloudinary(file: File, folder?: string): Prom
  * `resourceType` back to delete it later, since Cloudinary's destroy API is
  * scoped per resource type.
  */
-export async function uploadDocumentToCloudinary(file: File, folder?: string) {
-  const preset = process.env.NEXT_PUBLIC_CLOUDINARY_DOCS_UPLOAD_PRESET;
-  if (!preset) {
-    throw new Error("Cloudinary isn't configured - set NEXT_PUBLIC_CLOUDINARY_DOCS_UPLOAD_PRESET.");
-  }
-  return uploadToCloudinary(file, { preset, endpoint: "raw", folder });
+export async function uploadDocumentToCloudinary(file: File, folder: string) {
+  return uploadToCloudinary(file, { endpoint: "raw", folder });
 }
 
 /**
@@ -73,12 +92,5 @@ export async function uploadDocumentToCloudinary(file: File, folder?: string) {
  * from deleting the underlying expense record.
  */
 export async function deleteCloudinaryAsset(publicId: string, resourceType: string) {
-  const res = await fetch("/api/documents/delete", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ publicId, resourceType }),
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to delete Cloudinary asset (${res.status})`);
-  }
+  await authedJson("/api/documents/delete", { publicId, resourceType });
 }

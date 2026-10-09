@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminAuth } from "@/lib/firebase/admin";
+import { verifyRequestUser } from "@/lib/auth/server";
 import { getConnection } from "@/lib/google-calendar/client";
 
 export const runtime = "nodejs";
@@ -8,14 +8,12 @@ export const runtime = "nodejs";
  * src/lib/types/index.ts's GoogleCalendarConnection doc comment) - this is
  * the only way the client can read its own connection status. */
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization") ?? "";
-  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
-  if (!idToken) {
-    return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
+  const decoded = await verifyRequestUser(request);
+  if (!decoded) {
+    return NextResponse.json({ error: "Missing or invalid auth token" }, { status: 401 });
   }
 
   try {
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
     const connection = await getConnection(decoded.uid);
     if (!connection) return NextResponse.json({ connected: false });
 

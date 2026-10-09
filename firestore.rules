@@ -30,6 +30,10 @@ service cloud.firestore {
       return isMember(workspaceId) && role(workspaceId) != 'viewer';
     }
 
+    function isInvitableRole(r) {
+      return r in ['admin', 'manager', 'employee', 'accountant', 'viewer'];
+    }
+
     function isOwnerOrAdmin(workspaceId) {
       return isMember(workspaceId) && role(workspaceId) in ['owner', 'admin'];
     }
@@ -60,11 +64,16 @@ service cloud.firestore {
     match /invites/{inviteId} {
       allow get: if true;
       allow list: if isOwnerOrAdmin(resource.data.workspaceId);
+      // Never "owner" (no owner transfer) - accept-invite copies `role`
+      // straight onto the new member doc, so this is the escalation guard.
       allow create: if isOwnerOrAdmin(request.resource.data.workspaceId) &&
         request.resource.data.invitedBy == request.auth.uid &&
-        request.resource.data.status == 'pending';
-      // Revoke only.
-      allow update, delete: if isOwnerOrAdmin(resource.data.workspaceId);
+        request.resource.data.status == 'pending' &&
+        isInvitableRole(request.resource.data.role);
+      // No client updates at all: revoking deletes the doc (revokeInvite),
+      // and accepting is server-side. Allowing updates would let an admin
+      // rewrite an existing invite's role/email or un-revoke it.
+      allow delete: if isOwnerOrAdmin(resource.data.workspaceId);
     }
 
     match /workspaces/{workspaceId} {
@@ -85,13 +94,17 @@ service cloud.firestore {
         // Adding/editing/removing others is owner/admin only, and can never
         // touch the owner role - no demoting, removing, or newly assigning
         // it through this UI (no owner transfer in this pass).
-        allow create: if isOwnerOrAdmin(workspaceId) && request.resource.data.role != 'owner';
+        allow create: if isOwnerOrAdmin(workspaceId) && isInvitableRole(request.resource.data.role);
         // request.resource is null on delete - keep it out of that branch
         // entirely rather than referencing it in a combined update+delete
         // condition, which would make every delete fail closed.
         allow update: if isOwnerOrAdmin(workspaceId) &&
           resource.data.role != 'owner' &&
-          (!('role' in request.resource.data) || request.resource.data.role != 'owner');
+          (!('role' in request.resource.data) || isInvitableRole(request.resource.data.role));
+        // Anyone (owner included) may edit their own profile fields - what
+        // updateUserProfile writes - but nothing else on their own doc.
+        allow update: if isSignedIn() && request.auth.uid == memberId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL']);
         allow delete: if isOwnerOrAdmin(workspaceId) && resource.data.role != 'owner';
       }
 

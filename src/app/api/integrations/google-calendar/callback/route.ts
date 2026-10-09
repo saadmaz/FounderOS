@@ -2,7 +2,7 @@ import { after, NextResponse } from "next/server";
 import { getAppUrl } from "@/lib/email/app-url";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { runFullSync } from "@/lib/google-calendar/full-sync";
-import { exchangeCodeForTokens } from "@/lib/google-calendar/oauth";
+import { exchangeCodeForTokens, OAUTH_STATE_COOKIE } from "@/lib/google-calendar/oauth";
 import { startWatch } from "@/lib/google-calendar/watch";
 import type { GoogleCalendarConnection } from "@/lib/types";
 
@@ -16,7 +16,19 @@ export const maxDuration = 60;
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
 function redirectToProfile(status: "connected" | "denied" | "error") {
-  return NextResponse.redirect(`${getAppUrl()}/profile?googleCalendar=${status}`);
+  const response = NextResponse.redirect(`${getAppUrl()}/profile?googleCalendar=${status}`);
+  // Single-use, like the oauthStates doc itself.
+  response.cookies.delete({ name: OAUTH_STATE_COOKIE, path: "/api/integrations/google-calendar/callback" });
+  return response;
+}
+
+function readCookie(request: Request, name: string): string | null {
+  const header = request.headers.get("cookie") ?? "";
+  for (const part of header.split(";")) {
+    const [key, ...rest] = part.trim().split("=");
+    if (key === name) return decodeURIComponent(rest.join("="));
+  }
+  return null;
 }
 
 /**
@@ -33,6 +45,10 @@ export async function GET(request: Request) {
 
   if (error) return redirectToProfile("denied");
   if (!code || !stateId) return redirectToProfile("error");
+  // Must be the same browser that called the connect route (see the
+  // cookie set there) - stops a forwarded consent link from connecting the
+  // clicker's Google account to whoever generated the link.
+  if (readCookie(request, OAUTH_STATE_COOKIE) !== stateId) return redirectToProfile("error");
 
   const db = getAdminFirestore();
   const stateRef = db.collection("oauthStates").doc(stateId);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAdminAuth, getAdminFirestore } from "@/lib/firebase/admin";
+import { verifyRequestUser } from "@/lib/auth/server";
+import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getAppUrl } from "@/lib/email/app-url";
 import { inviteEmail } from "@/lib/email/messages";
 import { sendEmail } from "@/lib/email/send";
@@ -21,10 +22,9 @@ function roleLabel(role: string): string {
  * re-check workspace role, since the doc couldn't exist otherwise.
  */
 export async function POST(request: Request) {
-  const authHeader = request.headers.get("authorization") ?? "";
-  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
-  if (!idToken) {
-    return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
+  const decoded = await verifyRequestUser(request);
+  if (!decoded) {
+    return NextResponse.json({ error: "Missing or invalid auth token" }, { status: 401 });
   }
 
   const body = await request.json().catch(() => null);
@@ -34,7 +34,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
     const db = getAdminFirestore();
     const snap = await db.doc(`invites/${inviteId}`).get();
     if (!snap.exists) {

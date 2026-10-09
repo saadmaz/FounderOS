@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { verifyRequestUser } from "@/lib/auth/server";
 import { getAdminAuth } from "@/lib/firebase/admin";
 import { getAppUrl } from "@/lib/email/app-url";
 import { verifyEmailEmail } from "@/lib/email/messages";
@@ -14,14 +15,12 @@ export const runtime = "nodejs";
  * used to spam verification emails at arbitrary addresses.
  */
 export async function POST(request: Request) {
-  const authHeader = request.headers.get("authorization") ?? "";
-  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
-  if (!idToken) {
-    return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
+  const decoded = await verifyRequestUser(request);
+  if (!decoded) {
+    return NextResponse.json({ error: "Missing or invalid auth token" }, { status: 401 });
   }
 
   try {
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
     if (!decoded.email) {
       return NextResponse.json({ error: "Account has no email address" }, { status: 400 });
     }

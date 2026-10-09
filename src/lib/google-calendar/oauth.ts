@@ -25,6 +25,10 @@ export const GOOGLE_CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/tasks",
 ];
 
+/** httpOnly cookie carrying the `oauthStates` id from the connect route to
+ * the callback route, binding the OAuth flow to the browser that started it. */
+export const OAUTH_STATE_COOKIE = "gcal_oauth_state";
+
 export function buildConsentUrl(state: string): string {
   const oauth2 = createOAuthClient();
   return oauth2.generateAuthUrl({

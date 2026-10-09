@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { getAdminAuth, getAdminFirestore } from "@/lib/firebase/admin";
+import { verifyRequestUser } from "@/lib/auth/server";
+import { getAdminFirestore } from "@/lib/firebase/admin";
 import { isGoogleCalendarConfigured } from "@/lib/google-calendar/client";
-import { buildConsentUrl } from "@/lib/google-calendar/oauth";
+import { buildConsentUrl, OAUTH_STATE_COOKIE } from "@/lib/google-calendar/oauth";
 
 // firebase-admin needs Node's crypto/fs/net at import time - see
 // reset-password/route.ts for the full explanation.
@@ -22,10 +23,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const authHeader = request.headers.get("authorization") ?? "";
-  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
-  if (!idToken) {
-    return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
+  const decoded = await verifyRequestUser(request);
+  if (!decoded) {
+    return NextResponse.json({ error: "Missing or invalid auth token" }, { status: 401 });
   }
 
   const body = await request.json().catch(() => null);
@@ -35,7 +35,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
     const db = getAdminFirestore();
     const memberSnap = await db.doc(`workspaces/${workspaceId}/members/${decoded.uid}`).get();
     if (!memberSnap.exists) {
@@ -45,7 +44,20 @@ export async function POST(request: Request) {
     const stateRef = db.collection("oauthStates").doc();
     await stateRef.set({ uid: decoded.uid, workspaceId, createdAt: Date.now() });
 
-    return NextResponse.json({ url: buildConsentUrl(stateRef.id) });
+    // Bind the flow to this browser too, not just this uid: the callback
+    // only accepts a `state` matching this cookie. Otherwise someone could
+    // start a connect themselves, send the resulting consent URL to a
+    // victim, and have the victim's Google calendar land on the attacker's
+    // account. SameSite=Lax still sends it on Google's top-level redirect back.
+    const response = NextResponse.json({ url: buildConsentUrl(stateRef.id) });
+    response.cookies.set(OAUTH_STATE_COOKIE, stateRef.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/api/integrations/google-calendar/callback",
+      maxAge: 10 * 60,
+    });
+    return response;
   } catch (err) {
     console.error("Failed to start Google Calendar connect flow:", err);
     return NextResponse.json({ error: "Couldn't start the connect flow" }, { status: 500 });

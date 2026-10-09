@@ -12,9 +12,19 @@ service firebase.storage {
       );
     }
 
-    // workspaces/{workspaceId}/(receipts|documents|logos)/...
-    match /workspaces/{workspaceId}/{allPaths=**} {
-      allow read, write: if isMember(workspaceId);
+    // Avatars are the only thing still stored in Firebase Storage (logos,
+    // documents and receipts moved to Cloudinary - see src/lib/cloudinary.ts).
+    // Members can read any avatar in their workspace, but only write their
+    // own (updateUserProfile names files `{uid}-{timestamp}.{ext}`), and
+    // only as a reasonably-sized image. Never deleted client-side.
+    match /workspaces/{workspaceId}/avatars/{fileName} {
+      allow read: if isMember(workspaceId);
+      allow create: if isMember(workspaceId) &&
+        fileName.matches(request.auth.uid + '-[0-9]+\\.[A-Za-z0-9]+') &&
+        request.resource.contentType.matches('image/.*') &&
+        request.resource.size < 5 * 1024 * 1024;
     }
+
+    // Everything else is closed by default.
   }
 }
